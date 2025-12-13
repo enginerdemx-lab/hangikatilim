@@ -8,6 +8,8 @@ export const SiteSettings: React.FC = () => {
     const [settings, setSettings] = useState<SiteSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
     const { success, error: showError } = useToast();
 
@@ -15,6 +17,7 @@ export const SiteSettings: React.FC = () => {
     const [formData, setFormData] = useState({
         site_name: 'Hangi Katılım',
         logo_url: '',
+        dark_logo_url: '',
         favicon_url: '',
         primary_color: '#3B82F6',
         gradient_start: '#3B82F6',
@@ -47,6 +50,7 @@ export const SiteSettings: React.FC = () => {
                 setFormData({
                     site_name: data.site_name,
                     logo_url: data.logo_url || '',
+                    dark_logo_url: data.dark_logo_url || '',
                     favicon_url: data.favicon_url || '',
                     primary_color: data.primary_color,
                     gradient_start: data.gradient_start,
@@ -72,8 +76,20 @@ export const SiteSettings: React.FC = () => {
         }
     };
 
+    const handleFormChange = (updates: Partial<typeof formData>) => {
+        setFormData(prev => ({ ...prev, ...updates }));
+        setHasUnsavedChanges(true);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!hasUnsavedChanges) return;
+
+        setShowConfirmDialog(true);
+    };
+
+    const confirmSave = async () => {
+        setShowConfirmDialog(false);
         setSaving(true);
 
         try {
@@ -84,7 +100,8 @@ export const SiteSettings: React.FC = () => {
                 await siteSettingsApi.createSettings(formData);
                 success('Ayarlar oluşturuldu');
             }
-            loadSettings();
+            setHasUnsavedChanges(false);
+            await loadSettings();
         } catch (err) {
             showError(err instanceof Error ? err.message : 'Kaydetme başarısız');
         } finally {
@@ -125,28 +142,118 @@ export const SiteSettings: React.FC = () => {
 
                         {/* Logo */}
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu</h3>
-                            <ImageUpload
-                                folder="branding"
-                                currentImageUrl={formData.logo_url}
-                                onUploadComplete={(url) => setFormData({ ...formData, logo_url: url })}
-                                onDelete={() => setFormData({ ...formData, logo_url: '' })}
-                                label="Logo"
-                            />
-                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 200x60 px (PNG formatı önerilir)</p>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu (Light Mode)</h3>
+
+                            {/* Dosyadan Yükle */}
+                            <div className="space-y-3 mb-6">
+                                <label className="block text-sm font-medium text-gray-700">Dosyadan Yükle</label>
+                                <ImageUpload
+                                    folder="branding"
+                                    currentImageUrl={formData.logo_url}
+                                    onUploadComplete={(url) => handleFormChange({ logo_url: url })}
+                                    onDelete={() => handleFormChange({ logo_url: '' })}
+                                    label="Logo"
+                                />
+                                <p className="text-xs text-gray-500">Bilgisayarınızdan logo dosyası seçin ve yükleyin</p>
+                            </div>
+
+                            {/* VEYA Ayırıcı */}
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-300"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-gray-500">VEYA</span>
+                                </div>
+                            </div>
+
+                            {/* Logo URL Input */}
+                            <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-700">Logo URL</label>
+                                <input
+                                    type="url"
+                                    value={formData.logo_url}
+                                    onChange={(e) => handleFormChange({ logo_url: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="https://example.com/logo.png"
+                                />
+                                <p className="text-xs text-gray-500">Kendi sunucunuza yüklediğiniz logo URL'sini buraya yapıştırın</p>
+
+                                {/* Preview */}
+                                {formData.logo_url && (
+                                    <div className="mt-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                                        <p className="text-xs text-gray-600 mb-2">Önizleme:</p>
+                                        <img
+                                            src={formData.logo_url}
+                                            alt="Logo Preview"
+                                            className="h-12 w-auto object-contain"
+                                            onError={(e) => {
+                                                e.currentTarget.src = '';
+                                                e.currentTarget.className = 'hidden';
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 1818x361 px (PNG formatı şeffaf arka plan için önerilir)</p>
                         </div>
 
-                        {/* Favicon */}
+                        {/* Dark Mode Logo */}
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Favicon</h3>
-                            <ImageUpload
-                                folder="branding"
-                                currentImageUrl={formData.favicon_url}
-                                onUploadComplete={(url) => setFormData({ ...formData, favicon_url: url })}
-                                onDelete={() => setFormData({ ...formData, favicon_url: '' })}
-                                label="Favicon"
-                            />
-                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 32x32 px veya 64x64 px (ICO veya PNG)</p>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu (Dark Mode)</h3>
+
+                            {/* Dosyadan Yükle */}
+                            <div className="space-y-3 mb-6">
+                                <label className="block text-sm font-medium text-gray-700">Dosyadan Yükle</label>
+                                <ImageUpload
+                                    folder="branding"
+                                    currentImageUrl={formData.dark_logo_url}
+                                    onUploadComplete={(url) => handleFormChange({ dark_logo_url: url })}
+                                    onDelete={() => handleFormChange({ dark_logo_url: '' })}
+                                    label="Dark Mode Logo"
+                                />
+                                <p className="text-xs text-gray-500">Bilgisayarınızdan dark mode logo dosyası seçin ve yükleyin</p>
+                            </div>
+
+                            {/* VEYA Ayırıcı */}
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-300"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-gray-500">VEYA</span>
+                                </div>
+                            </div>
+
+                            {/* Dark Logo URL Input */}
+                            <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-700">Dark Mode Logo URL</label>
+                                <input
+                                    type="url"
+                                    value={formData.dark_logo_url}
+                                    onChange={(e) => handleFormChange({ dark_logo_url: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="https://example.com/logo-dark.png"
+                                />
+                                <p className="text-xs text-gray-500">Dark mode için ayrı logo (opsiyonel). Boş bırakılırsa light mode logosu kullanılır.</p>
+
+                                {/* Preview */}
+                                {formData.dark_logo_url && (
+                                    <div className="mt-3 p-4 border border-gray-200 rounded-lg bg-slate-800">
+                                        <p className="text-xs text-gray-300 mb-2">Önizleme (Dark Mode):</p>
+                                        <img
+                                            src={formData.dark_logo_url}
+                                            alt="Dark Logo Preview"
+                                            className="h-12 w-auto object-contain"
+                                            onError={(e) => {
+                                                e.currentTarget.src = '';
+                                                e.currentTarget.className = 'hidden';
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 1818x361 px (Dark mode için)</p>
                         </div>
                     </div>
                 </div>
@@ -266,8 +373,8 @@ export const SiteSettings: React.FC = () => {
                             <ImageUpload
                                 folder="branding"
                                 currentImageUrl={formData.og_image_url}
-                                onUploadComplete={(url) => setFormData({ ...formData, og_image_url: url })}
-                                onDelete={() => setFormData({ ...formData, og_image_url: '' })}
+                                onUploadComplete={(url) => handleFormChange({ og_image_url: url })}
+                                onDelete={() => handleFormChange({ og_image_url: '' })}
                                 label="OG Image"
                             />
                             <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 1200x630 px (Facebook, Twitter, LinkedIn için)</p>
@@ -392,17 +499,59 @@ export const SiteSettings: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Submit Button */}
-                <div className="flex gap-3">
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {saving ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
-                    </button>
+                {/* Sticky Save Button */}
+                <div className="sticky bottom-0 bg-white border-t border-gray-200 -mx-6 px-6 py-4 flex items-center justify-between gap-4 shadow-lg">
+                    {hasUnsavedChanges && (
+                        <p className="text-sm text-orange-600 font-medium flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            Kaydedilmemiş değişiklikler var
+                        </p>
+                    )}
+                    <div className="flex gap-3 ml-auto">
+                        <button
+                            type="button"
+                            onClick={() => window.location.reload()}
+                            disabled={saving || !hasUnsavedChanges}
+                            className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            İptal
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving || !hasUnsavedChanges}
+                            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                        </button>
+                    </div>
                 </div>
             </form>
+
+            {/* Confirmation Dialog */}
+            {showConfirmDialog && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-2xl">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Değişiklikleri Kaydet?</h3>
+                        <p className="text-gray-600 mb-6">Site ayarlarındaki değişiklikler tüm kullanıcılar için geçerli olacak. Devam etmek istiyor musunuz?</p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowConfirmDialog(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={confirmSave}
+                                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700"
+                            >
+                                Evet, Kaydet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

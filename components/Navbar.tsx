@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, Moon, Sun, X } from 'lucide-react';
+import { supabase } from '../src/services/supabaseClient';
 
 interface NavbarProps {
   theme: 'light' | 'dark';
@@ -11,6 +12,38 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, onNavigate }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // FALLBACK LOGO - Used if database fetch fails
+  const [logoUrl, setLogoUrl] = useState('https://i.imgur.com/4QfFVdm.png');
+  const [darkLogoUrl, setDarkLogoUrl] = useState('https://i.imgur.com/4QfFVdm.png');
+
+  useEffect(() => {
+    // Try to load logo from site_settings
+    const loadLogos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('logo_url, dark_logo_url')
+          .single();
+
+        if (error) {
+          console.warn('Could not fetch logos from database, using fallback:', error.message);
+          return;
+        }
+
+        if (data && data.logo_url) {
+          setLogoUrl(data.logo_url);
+          setDarkLogoUrl(data.dark_logo_url || data.logo_url);
+        }
+      } catch (err) {
+        console.warn('Error loading logos, using fallback');
+      }
+    };
+
+    loadLogos();
+  }, []);
+
+  const currentLogo = theme === 'dark' ? darkLogoUrl : logoUrl;
 
   const navItems = [
     { id: 'home', label: 'Ana Sayfa' },
@@ -29,16 +62,16 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 transition-colors duration-300">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-        
+
         {/* Logo */}
-        <div 
-          className="flex items-center cursor-pointer" 
+        <div
+          className="flex items-center cursor-pointer"
           onClick={() => handleNavClick('home')}
         >
-          <img 
-            src="https://hangikatilim.com/images/Siyah-Logo.png" 
-            alt="Hangi Katılım" 
-            className="h-10 md:h-12 w-auto object-contain transition-all dark:brightness-0 dark:invert"
+          <img
+            src={currentLogo}
+            alt="Hangi Katılım"
+            className="h-10 md:h-12 w-auto object-contain transition-all"
           />
         </div>
 
@@ -48,11 +81,10 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activePage === item.id
-                  ? 'bg-primary-50 dark:bg-slate-800 text-primary-700 dark:text-primary-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600'
-              }`}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activePage === item.id
+                ? 'bg-primary-50 dark:bg-slate-800 text-primary-700 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-primary-600'
+                }`}
             >
               {item.label}
             </button>
@@ -68,9 +100,9 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
           >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
-          
+
           {/* Mobile Menu Button */}
-          <button 
+          <button
             className="lg:hidden p-2 text-gray-600 dark:text-gray-300"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
@@ -82,15 +114,14 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
         <div className="lg:hidden absolute top-20 left-0 w-full bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 shadow-xl py-4 px-4 flex flex-col gap-2 animate-fade-in h-[calc(100vh-80px)] overflow-y-auto">
-           {navItems.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activePage === item.id
-                  ? 'bg-primary-50 dark:bg-slate-800 text-primary-700 dark:text-primary-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activePage === item.id
+                ? 'bg-primary-50 dark:bg-slate-800 text-primary-700 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+                }`}
             >
               {item.label}
             </button>

@@ -34,10 +34,8 @@ const PublicApp: React.FC = () => {
       } else {
         document.documentElement.classList.remove('dark');
       }
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
     }
+    // Default: Light mode (removed: auto dark mode detection)
   }, []);
 
   const toggleTheme = () => {

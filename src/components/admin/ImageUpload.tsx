@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { storageService, type StorageFolder } from '../../services/storageService';
 
 interface ImageUploadProps {
@@ -21,6 +21,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     const [uploading, setUploading] = useState(false);
     const [preview, setPreview] = useState<string | undefined>(currentImageUrl);
     const [error, setError] = useState<string | null>(null);
+
+    // Update preview when currentImageUrl changes
+    useEffect(() => {
+        setPreview(currentImageUrl);
+    }, [currentImageUrl]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

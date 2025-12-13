@@ -3,6 +3,7 @@ export interface SiteSettings {
   id: string;
   site_name: string;
   logo_url?: string;
+  dark_logo_url?: string;
   favicon_url?: string;
   primary_color: string;
   gradient_start: string;

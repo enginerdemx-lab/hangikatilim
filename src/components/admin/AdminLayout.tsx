@@ -7,7 +7,6 @@ import { useToast } from '../../hooks/useToast';
 
 // Import admin pages
 import { AdminDashboard } from '../../pages/admin/AdminDashboard';
-import { PopularSearchesAdmin } from '../../pages/admin/PopularSearches';
 // Add other admin page imports here
 
 export const AdminLayout: React.FC = () => {
@@ -25,10 +24,9 @@ export const AdminLayout: React.FC = () => {
         );
     }
 
-    // TEMPORARILY DISABLED FOR TESTING - REMOVE THIS COMMENT LATER
-    // if (!isAuthenticated) {
-    //     return <Navigate to="/admin/login" replace />;
-    // }
+    if (!isAuthenticated) {
+        return <Navigate to="/admin/login" replace />;
+    }
 
     const handleLogout = async () => {
         try {
