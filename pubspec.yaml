@@ -1,0 +1,45 @@
+name: hangi_katilim
+description: Hangi Katılım - Tasarruf Finansmanı Hesaplama Uygulaması.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase (Uygulama analitiği ve kimlik doğrulama için)
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+
+  # Google Gemini AI (Yapay zeka yorumları için)
+  google_generative_ai: ^0.2.2
+
+  # UI & Stil (Fontlar ve İkonlar)
+  google_fonts: ^6.1.0
+  font_awesome_flutter: ^10.6.0
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.2
+
+  # State Management (Durum Yönetimi)
+  provider: ^6.1.1
+
+  # Görselleştirme (Grafikler)
+  fl_chart: ^0.66.0
+
+  # Araçlar (Link açma ve yerel hafıza)
+  url_launcher: ^6.2.4
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  # Eğer uygulamanıza resim ekleyecekseniz assets klasörünü oluşturup burayı açın:
+  # assets:
+  #   - assets/images/

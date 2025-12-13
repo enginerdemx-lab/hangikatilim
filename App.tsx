@@ -1,0 +1,50 @@
+import React from 'react';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import MainApp from './MainApp';
+import { AdminLogin } from './src/pages/admin/AdminLogin';
+import { AdminDashboard } from './src/pages/admin/AdminDashboard';
+import { Campaigns } from './src/pages/admin/Campaigns';
+import { Companies } from './src/pages/admin/Companies';
+import { SiteSettings } from './src/pages/admin/SiteSettings';
+import { Blog } from './src/pages/admin/Blog';
+import { HomeHeroSettings } from './src/pages/admin/HomeHeroSettings';
+import { Navigation } from './src/pages/admin/Navigation';
+import { Ticker } from './src/pages/admin/Ticker';
+import { Calculator } from './src/pages/admin/Calculator';
+import { News } from './src/pages/admin/News';
+import { Contact } from './src/pages/admin/Contact';
+import { Media } from './src/pages/admin/Media';
+import { AdminLayout } from './src/components/admin/AdminLayout';
+
+const App: React.FC = () => {
+    const location = useLocation();
+
+    // Check if we're on an admin route
+    const isAdminRoute = location.pathname.startsWith('/admin');
+
+    return (
+        <Routes>
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="site-settings" element={<SiteSettings />} />
+                <Route path="navigation" element={<Navigation />} />
+                <Route path="ticker" element={<Ticker />} />
+                <Route path="home-hero" element={<HomeHeroSettings />} />
+                <Route path="calculator" element={<Calculator />} />
+                <Route path="companies" element={<Companies />} />
+                <Route path="campaigns" element={<Campaigns />} />
+                <Route path="news" element={<News />} />
+                <Route path="blog" element={<Blog />} />
+                <Route path="contact" element={<Contact />} />
+                <Route path="media" element={<Media />} />
+            </Route>
+
+            {/* Public Routes - All other routes go to MainApp */}
+            <Route path="*" element={<MainApp />} />
+        </Routes>
+    );
+};
+
+export default App;
