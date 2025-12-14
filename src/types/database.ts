@@ -16,6 +16,22 @@ export interface SiteSettings {
   footer_email?: string;
   footer_phone?: string;
   footer_address?: string;
+  // App Store Links
+  app_store_url?: string;
+  google_play_url?: string;
+  // Legal / Rıza Metinleri
+  kvkk_text?: string;
+  privacy_text?: string;
+  terms_text?: string;
+  cookie_text?: string;
+  // Legal Content (Full documents)
+  kvkk_content?: string;
+  privacy_content?: string;
+  terms_content?: string;
+  cookie_content?: string;
+  // App Store Badges
+  app_store_badge_url?: string;
+  google_play_badge_url?: string;
   // Social media
   facebook_url?: string;
   twitter_url?: string;
@@ -101,7 +117,10 @@ export interface Campaign {
   bullet_points?: string[];
   application_link?: string;
   terms_link?: string;
-  image_url?: string; // Kampanya özel görseli
+  application_button_text?: string;
+  terms_button_text?: string;
+  image_url?: string; // Kampanya özel görseli (desktop)
+  mobile_image_url?: string; // Mobil cihazlar için dikey görsel
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -125,6 +144,54 @@ export interface NewsPost {
   updated_at: string;
   published_at?: string;
 }
+
+// ===== HOMEPAGE CONTENT TYPES =====
+
+export interface HowItWorksStep {
+  id: string;
+  step_number: number;
+  icon_name?: string;
+  title: string;
+  description?: string;
+  is_active: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InfoCard {
+  id: string;
+  section: string;
+  icon_name?: string;
+  title: string;
+  description?: string;
+  is_active: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LicensedCompany {
+  id: string;
+  company_name: string;
+  logo_url: string;
+  is_active: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  is_active: boolean;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 
 export interface BlogPost {
   id: string;
@@ -176,6 +243,7 @@ export interface CampaignFormData {
   application_link?: string;
   terms_link?: string;
   image_url?: string;
+  mobile_image_url?: string;
   is_active: boolean;
 }
 

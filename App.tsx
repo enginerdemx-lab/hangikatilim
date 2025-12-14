@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainApp from './MainApp';
 import { AdminLogin } from './src/pages/admin/AdminLogin';
 import { AdminDashboard } from './src/pages/admin/AdminDashboard';
@@ -14,37 +14,37 @@ import { Calculator } from './src/pages/admin/Calculator';
 import { News } from './src/pages/admin/News';
 import { Contact } from './src/pages/admin/Contact';
 import { Media } from './src/pages/admin/Media';
+import { HomeContent } from './src/pages/admin/HomeContent';
 import { AdminLayout } from './src/components/admin/AdminLayout';
 
 const App: React.FC = () => {
-    const location = useLocation();
-
-    // Check if we're on an admin route
-    const isAdminRoute = location.pathname.startsWith('/admin');
-
     return (
-        <Routes>
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="site-settings" element={<SiteSettings />} />
-                <Route path="navigation" element={<Navigation />} />
-                <Route path="ticker" element={<Ticker />} />
-                <Route path="home-hero" element={<HomeHeroSettings />} />
-                <Route path="calculator" element={<Calculator />} />
-                <Route path="companies" element={<Companies />} />
-                <Route path="campaigns" element={<Campaigns />} />
-                <Route path="news" element={<News />} />
-                <Route path="blog" element={<Blog />} />
-                <Route path="contact" element={<Contact />} />
-                <Route path="media" element={<Media />} />
-            </Route>
+        <BrowserRouter>
+            <Routes>
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="home-content" element={<HomeContent />} />
+                    <Route path="site-settings" element={<SiteSettings />} />
+                    <Route path="navigation" element={<Navigation />} />
+                    <Route path="ticker" element={<Ticker />} />
+                    <Route path="home-hero" element={<HomeHeroSettings />} />
+                    <Route path="calculator" element={<Calculator />} />
+                    <Route path="companies" element={<Companies />} />
+                    <Route path="campaigns" element={<Campaigns />} />
+                    <Route path="news" element={<News />} />
+                    <Route path="blog" element={<Blog />} />
+                    <Route path="contact" element={<Contact />} />
+                    <Route path="media" element={<Media />} />
+                </Route>
 
-            {/* Public Routes - All other routes go to MainApp */}
-            <Route path="*" element={<MainApp />} />
-        </Routes>
+                {/* Public Routes - All other routes go to MainApp */}
+                <Route path="/*" element={<MainApp />} />
+            </Routes>
+        </BrowserRouter>
     );
 };
 
 export default App;
+

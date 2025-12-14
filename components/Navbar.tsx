@@ -14,8 +14,9 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // FALLBACK LOGO - Used if database fetch fails
-  const [logoUrl, setLogoUrl] = useState('https://i.imgur.com/4QfFVdm.png');
-  const [darkLogoUrl, setDarkLogoUrl] = useState('https://i.imgur.com/4QfFVdm.png');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [darkLogoUrl, setDarkLogoUrl] = useState('');
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
   useEffect(() => {
     // Try to load logo from site_settings
@@ -34,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
         if (data && data.logo_url) {
           setLogoUrl(data.logo_url);
           setDarkLogoUrl(data.dark_logo_url || data.logo_url);
+          setLogoLoaded(true);
         }
       } catch (err) {
         console.warn('Error loading logos, using fallback');
@@ -71,7 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
           <img
             src={currentLogo}
             alt="Hangi Katılım"
-            className="h-10 md:h-12 w-auto object-contain transition-all"
+            className="h-10 md:h-12 w-auto object-contain transition-opacity duration-300"
+            style={{ opacity: logoLoaded ? 1 : 0 }}
           />
         </div>
 

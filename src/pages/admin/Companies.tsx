@@ -292,6 +292,7 @@ export const Companies: React.FC = () => {
                     <table className="w-full">
                         <thead className="bg-gray-50">
                             <tr>
+                                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase w-20">Sıra</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Firma</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bilgiler</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
@@ -299,8 +300,45 @@ export const Companies: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {filteredCompanies.map((company) => (
+                            {filteredCompanies.map((company, index) => (
                                 <tr key={company.id} className="hover:bg-gray-50">
+                                    {/* SORTING ARROWS - NOW AT LEFT! */}
+                                    <td className="px-2 py-4">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    const currentIndex = filteredCompanies.findIndex(c => c.id === company.id);
+                                                    if (currentIndex > 0) showError('Sıralama için order_index alanı gerekli');
+                                                }}
+                                                disabled={index === 0}
+                                                className={`p-1.5 rounded transition-all ${index === 0
+                                                        ? 'text-gray-300 cursor-not-allowed'
+                                                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95'
+                                                    }`}
+                                                title="Yukarı Taşı"
+                                            >
+                                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const currentIndex = filteredCompanies.findIndex(c => c.id === company.id);
+                                                    if (currentIndex < filteredCompanies.length - 1) showError('Sıralama için order_index alanı gerekli');
+                                                }}
+                                                disabled={index === filteredCompanies.length - 1}
+                                                className={`p-1.5 rounded transition-all ${index === filteredCompanies.length - 1
+                                                        ? 'text-gray-300 cursor-not-allowed'
+                                                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95'
+                                                    }`}
+                                                title="Aşağı Taşı"
+                                            >
+                                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             {company.logo_url && (
@@ -334,19 +372,21 @@ export const Companies: React.FC = () => {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        <button
-                                            onClick={() => handleEdit(company)}
-                                            className="text-blue-600 hover:text-blue-800"
-                                        >
-                                            Düzenle
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(company.id)}
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            Sil
-                                        </button>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex items-center justify-end gap-3">
+                                            <button
+                                                onClick={() => handleEdit(company)}
+                                                className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                                            >
+                                                Düzenle
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(company.id)}
+                                                className="text-red-600 hover:text-red-800 font-medium transition-colors"
+                                            >
+                                                Sil
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -4,12 +4,15 @@ import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { SiteSettings } from '../../types/database';
 
+type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'uygulama' | 'hukuki';
+
 export const SiteSettings: React.FC = () => {
     const [settings, setSettings] = useState<SiteSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabType>('genel');
 
     const { success, error: showError } = useToast();
 
@@ -30,6 +33,21 @@ export const SiteSettings: React.FC = () => {
         footer_email: '',
         footer_phone: '',
         footer_address: '',
+        // App Store Links
+        app_store_url: '',
+        google_play_url: '',
+        app_store_badge_url: '',
+        google_play_badge_url: '',
+        // Legal Texts
+        kvkk_text: 'KVKK Aydınlatma Metni',
+        privacy_text: 'Gizlilik Politikası',
+        terms_text: 'Kullanım Koşulları',
+        cookie_text: 'Çerez Politikası',
+        // Legal Content
+        kvkk_content: '',
+        privacy_content: '',
+        terms_content: '',
+        cookie_content: '',
         // Social media
         facebook_url: '',
         twitter_url: '',
@@ -62,6 +80,18 @@ export const SiteSettings: React.FC = () => {
                     footer_email: data.footer_email || '',
                     footer_phone: data.footer_phone || '',
                     footer_address: data.footer_address || '',
+                    app_store_url: data.app_store_url || '',
+                    google_play_url: data.google_play_url || '',
+                    app_store_badge_url: data.app_store_badge_url || '',
+                    google_play_badge_url: data.google_play_badge_url || '',
+                    kvkk_text: data.kvkk_text || 'KVKK Aydınlatma Metni',
+                    privacy_text: data.privacy_text || 'Gizlilik Politikası',
+                    terms_text: data.terms_text || 'Kullanım Koşulları',
+                    cookie_text: data.cookie_text || 'Çerez Politikası',
+                    kvkk_content: data.kvkk_content || '',
+                    privacy_content: data.privacy_content || '',
+                    terms_content: data.terms_content || '',
+                    cookie_content: data.cookie_content || '',
                     facebook_url: data.facebook_url || '',
                     twitter_url: data.twitter_url || '',
                     instagram_url: data.instagram_url || '',
@@ -81,24 +111,20 @@ export const SiteSettings: React.FC = () => {
         setHasUnsavedChanges(true);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!hasUnsavedChanges) return;
-
         setShowConfirmDialog(true);
     };
 
     const confirmSave = async () => {
-        setShowConfirmDialog(false);
-        setSaving(true);
-
         try {
-            if (settings) {
-                await siteSettingsApi.updateSettings(settings.id, formData);
-                success('Ayarlar güncellendi');
-            } else {
-                await siteSettingsApi.createSettings(formData);
-                success('Ayarlar oluşturuldu');
+            setSaving(true);
+            setShowConfirmDialog(false);
+
+            const updateData: Partial<SiteSettings> = { ...formData };
+            if (settings?.id) {
+                await siteSettingsApi.updateSettings(settings.id, updateData);
+                success('Ayarlar başarıyla kaydedildi');
             }
             setHasUnsavedChanges(false);
             await loadSettings();
@@ -108,6 +134,16 @@ export const SiteSettings: React.FC = () => {
             setSaving(false);
         }
     };
+
+    // Tab definitions
+    const tabs: Array<{ id: TabType; label: string; icon: string }> = [
+        { id: 'genel', label: 'Genel', icon: '⚙️' },
+        { id: 'seo', label: 'SEO', icon: '🔍' },
+        { id: 'footer', label: 'Footer İletişim', icon: '📞' },
+        { id: 'sosyal', label: 'Sosyal Medya', icon: '📱' },
+        { id: 'uygulama', label: 'Uygulama Linkleri', icon: '📲' },
+        { id: 'hukuki', label: 'Hukuki Belgeler', icon: '📄' },
+    ];
 
     if (loading) {
         return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
@@ -121,407 +157,50 @@ export const SiteSettings: React.FC = () => {
                 <p className="text-gray-600 mt-1">Site genelindeki ayarları buradan yönetin</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Genel Ayarlar */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Genel Ayarlar</h2>
-
-                    <div className="space-y-6">
-                        {/* Site Adı */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Site Adı *</label>
-                            <input
-                                type="text"
-                                value={formData.site_name}
-                                onChange={(e) => setFormData({ ...formData, site_name: e.target.value })}
-                                required
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Hangi Katılım"
-                            />
-                        </div>
-
-                        {/* Logo */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu (Light Mode)</h3>
-
-                            {/* Dosyadan Yükle */}
-                            <div className="space-y-3 mb-6">
-                                <label className="block text-sm font-medium text-gray-700">Dosyadan Yükle</label>
-                                <ImageUpload
-                                    folder="branding"
-                                    currentImageUrl={formData.logo_url}
-                                    onUploadComplete={(url) => handleFormChange({ logo_url: url })}
-                                    onDelete={() => handleFormChange({ logo_url: '' })}
-                                    label="Logo"
-                                />
-                                <p className="text-xs text-gray-500">Bilgisayarınızdan logo dosyası seçin ve yükleyin</p>
-                            </div>
-
-                            {/* VEYA Ayırıcı */}
-                            <div className="relative my-6">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-300"></div>
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">VEYA</span>
-                                </div>
-                            </div>
-
-                            {/* Logo URL Input */}
-                            <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">Logo URL</label>
-                                <input
-                                    type="url"
-                                    value={formData.logo_url}
-                                    onChange={(e) => handleFormChange({ logo_url: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="https://example.com/logo.png"
-                                />
-                                <p className="text-xs text-gray-500">Kendi sunucunuza yüklediğiniz logo URL'sini buraya yapıştırın</p>
-
-                                {/* Preview */}
-                                {formData.logo_url && (
-                                    <div className="mt-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                                        <p className="text-xs text-gray-600 mb-2">Önizleme:</p>
-                                        <img
-                                            src={formData.logo_url}
-                                            alt="Logo Preview"
-                                            className="h-12 w-auto object-contain"
-                                            onError={(e) => {
-                                                e.currentTarget.src = '';
-                                                e.currentTarget.className = 'hidden';
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 1818x361 px (PNG formatı şeffaf arka plan için önerilir)</p>
-                        </div>
-
-                        {/* Dark Mode Logo */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu (Dark Mode)</h3>
-
-                            {/* Dosyadan Yükle */}
-                            <div className="space-y-3 mb-6">
-                                <label className="block text-sm font-medium text-gray-700">Dosyadan Yükle</label>
-                                <ImageUpload
-                                    folder="branding"
-                                    currentImageUrl={formData.dark_logo_url}
-                                    onUploadComplete={(url) => handleFormChange({ dark_logo_url: url })}
-                                    onDelete={() => handleFormChange({ dark_logo_url: '' })}
-                                    label="Dark Mode Logo"
-                                />
-                                <p className="text-xs text-gray-500">Bilgisayarınızdan dark mode logo dosyası seçin ve yükleyin</p>
-                            </div>
-
-                            {/* VEYA Ayırıcı */}
-                            <div className="relative my-6">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-300"></div>
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">VEYA</span>
-                                </div>
-                            </div>
-
-                            {/* Dark Logo URL Input */}
-                            <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">Dark Mode Logo URL</label>
-                                <input
-                                    type="url"
-                                    value={formData.dark_logo_url}
-                                    onChange={(e) => handleFormChange({ dark_logo_url: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="https://example.com/logo-dark.png"
-                                />
-                                <p className="text-xs text-gray-500">Dark mode için ayrı logo (opsiyonel). Boş bırakılırsa light mode logosu kullanılır.</p>
-
-                                {/* Preview */}
-                                {formData.dark_logo_url && (
-                                    <div className="mt-3 p-4 border border-gray-200 rounded-lg bg-slate-800">
-                                        <p className="text-xs text-gray-300 mb-2">Önizleme (Dark Mode):</p>
-                                        <img
-                                            src={formData.dark_logo_url}
-                                            alt="Dark Logo Preview"
-                                            className="h-12 w-auto object-contain"
-                                            onError={(e) => {
-                                                e.currentTarget.src = '';
-                                                e.currentTarget.className = 'hidden';
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 1818x361 px (Dark mode için)</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Renk Ayarları */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Renk Teması</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Primary Color */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Ana Renk</label>
-                            <div className="flex gap-3 items-center">
-                                <input
-                                    type="color"
-                                    value={formData.primary_color}
-                                    onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-                                    className="h-12 w-20 rounded border border-gray-300 cursor-pointer"
-                                />
-                                <input
-                                    type="text"
-                                    value={formData.primary_color}
-                                    onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="#3B82F6"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Gradient Start */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Gradient Başlangıç</label>
-                            <div className="flex gap-3 items-center">
-                                <input
-                                    type="color"
-                                    value={formData.gradient_start}
-                                    onChange={(e) => setFormData({ ...formData, gradient_start: e.target.value })}
-                                    className="h-12 w-20 rounded border border-gray-300 cursor-pointer"
-                                />
-                                <input
-                                    type="text"
-                                    value={formData.gradient_start}
-                                    onChange={(e) => setFormData({ ...formData, gradient_start: e.target.value })}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="#3B82F6"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Gradient End */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Gradient Bitiş</label>
-                            <div className="flex gap-3 items-center">
-                                <input
-                                    type="color"
-                                    value={formData.gradient_end}
-                                    onChange={(e) => setFormData({ ...formData, gradient_end: e.target.value })}
-                                    className="h-12 w-20 rounded border border-gray-300 cursor-pointer"
-                                />
-                                <input
-                                    type="text"
-                                    value={formData.gradient_end}
-                                    onChange={(e) => setFormData({ ...formData, gradient_end: e.target.value })}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="#8B5CF6"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Gradient Preview */}
-                    <div className="mt-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Gradient Önizleme</label>
-                        <div
-                            className="h-24 rounded-lg"
-                            style={{
-                                background: `linear-gradient(to right, ${formData.gradient_start}, ${formData.gradient_end})`
-                            }}
-                        ></div>
-                    </div>
-                </div>
-
-                {/* SEO Ayarları */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">SEO Ayarları</h2>
-
-                    <div className="space-y-6">
-                        {/* Default SEO Title */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Varsayılan SEO Başlığı</label>
-                            <input
-                                type="text"
-                                value={formData.default_seo_title}
-                                onChange={(e) => setFormData({ ...formData, default_seo_title: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Hangi Katılım - Tasarruf Finansman Karşılaştırma"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Önerilen uzunluk: 50-60 karakter</p>
-                        </div>
-
-                        {/* Default SEO Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Varsayılan SEO Açıklaması</label>
-                            <textarea
-                                value={formData.default_seo_description}
-                                onChange={(e) => setFormData({ ...formData, default_seo_description: e.target.value })}
-                                rows={3}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Türkiye'nin en kapsamlı tasarruf finansman karşılaştırma platformu..."
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Önerilen uzunluk: 150-160 karakter</p>
-                        </div>
-
-                        {/* OG Image */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sosyal Medya Görseli (OG Image)</h3>
-                            <ImageUpload
-                                folder="branding"
-                                currentImageUrl={formData.og_image_url}
-                                onUploadComplete={(url) => handleFormChange({ og_image_url: url })}
-                                onDelete={() => handleFormChange({ og_image_url: '' })}
-                                label="OG Image"
-                            />
-                            <p className="text-xs text-gray-500 mt-2">Önerilen boyut: 1200x630 px (Facebook, Twitter, LinkedIn için)</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer Ayarları */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Footer Ayarları</h2>
-
-                    <div className="space-y-6">
-                        {/* Footer Description */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Footer Açıklaması</label>
-                            <textarea
-                                value={formData.footer_description}
-                                onChange={(e) => setFormData({ ...formData, footer_description: e.target.value })}
-                                rows={3}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Türkiye'nin ilk kapsamlı tasarruf finansmanı hesaplama ve karşılaştırma platformu..."
-                            />
-                        </div>
-
-                        {/* Contact Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">E-posta</label>
-                                <input
-                                    type="email"
-                                    value={formData.footer_email}
-                                    onChange={(e) => setFormData({ ...formData, footer_email: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="info@hangikatilim.com"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Telefon</label>
-                                <input
-                                    type="tel"
-                                    value={formData.footer_phone}
-                                    onChange={(e) => setFormData({ ...formData, footer_phone: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="+90 XXX XXX XX XX"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Adres</label>
-                            <input
-                                type="text"
-                                value={formData.footer_address}
-                                onChange={(e) => setFormData({ ...formData, footer_address: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="İstanbul, Türkiye"
-                            />
-                        </div>
-
-                        {/* Social Media */}
-                        <div className="border-t pt-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sosyal Medya Linkleri</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
-                                    <input
-                                        type="url"
-                                        value={formData.facebook_url}
-                                        onChange={(e) => setFormData({ ...formData, facebook_url: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="https://facebook.com/..."
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Twitter</label>
-                                    <input
-                                        type="url"
-                                        value={formData.twitter_url}
-                                        onChange={(e) => setFormData({ ...formData, twitter_url: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="https://twitter.com/..."
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
-                                    <input
-                                        type="url"
-                                        value={formData.instagram_url}
-                                        onChange={(e) => setFormData({ ...formData, instagram_url: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="https://instagram.com/..."
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
-                                    <input
-                                        type="url"
-                                        value={formData.linkedin_url}
-                                        onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        placeholder="https://linkedin.com/company/..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Copyright */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Copyright Metni</label>
-                            <input
-                                type="text"
-                                value={formData.copyright_text}
-                                onChange={(e) => setFormData({ ...formData, copyright_text: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Hangi Katılım Platformu © 2025"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sticky Save Button */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 -mx-6 px-6 py-4 flex items-center justify-between gap-4 shadow-lg">
-                    {hasUnsavedChanges && (
-                        <p className="text-sm text-orange-600 font-medium flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            Kaydedilmemiş değişiklikler var
-                        </p>
-                    )}
-                    <div className="flex gap-3 ml-auto">
+            {/* Tabs Navigation */}
+            <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-4 overflow-x-auto">
+                    {tabs.map(tab => (
                         <button
+                            key={tab.id}
                             type="button"
-                            onClick={() => window.location.reload()}
-                            disabled={saving || !hasUnsavedChanges}
-                            className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`
+                                whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-colors
+                                ${activeTab === tab.id
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }
+                            `}
                         >
-                            İptal
+                            <span className="mr-2">{tab.icon}</span>
+                            {tab.label}
                         </button>
+                    ))}
+                </nav>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Tab Content */}
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                    {activeTab === 'genel' && renderGenelTab()}
+                    {activeTab === 'seo' && renderSEOTab()}
+                    {activeTab === 'footer' && renderFooterTab()}
+                    {activeTab === 'sosyal' && renderSosyalTab()}
+                    {activeTab === 'uygulama' && renderUygulamaTab()}
+                    {activeTab === 'hukuki' && renderHukukiTab()}
+                </div>
+
+                {/* Save Button - Sticky Bottom */}
+                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 shadow-lg">
+                    <div className="flex items-center justify-between max-w-4xl mx-auto">
+                        {hasUnsavedChanges && (
+                            <span className="text-sm text-yellow-600 font-medium">⚠️ Kaydedilmemiş değişiklikler var</span>
+                        )}
                         <button
                             type="submit"
                             disabled={saving || !hasUnsavedChanges}
-                            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            className="ml-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                             {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                         </button>
@@ -554,4 +233,530 @@ export const SiteSettings: React.FC = () => {
             )}
         </div>
     );
+
+    // TAB RENDER FUNCTIONS
+    function renderGenelTab() {
+        return (
+            <div className="space-y-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Genel Ayarlar</h2>
+
+                {/* Site Adı */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Site Adı *</label>
+                    <input
+                        type="text"
+                        value={formData.site_name}
+                        onChange={(e) => handleFormChange({ site_name: e.target.value })}
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Hangi Katılım"
+                    />
+                </div>
+
+                {/* Logo (Light Mode) */}
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu (Light Mode)</h3>
+                    <div className="space-y-4">
+                        <ImageUpload
+                            folder="branding"
+                            currentImageUrl={formData.logo_url}
+                            onUploadComplete={(url) => handleFormChange({ logo_url: url })}
+                            onDelete={() => handleFormChange({ logo_url: '' })}
+                            label="Logo"
+                        />
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-300"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-gray-500">VEYA</span>
+                            </div>
+                        </div>
+                        <input
+                            type="text"
+                            value={formData.logo_url}
+                            onChange={(e) => handleFormChange({ logo_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://example.com/logo.png"
+                        />
+                    </div>
+                </div>
+
+                {/* Dark Logo */}
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Site Logosu (Dark Mode)</h3>
+                    <div className="space-y-4">
+                        <ImageUpload
+                            folder="branding"
+                            currentImageUrl={formData.dark_logo_url}
+                            onUploadComplete={(url) => handleFormChange({ dark_logo_url: url })}
+                            onDelete={() => handleFormChange({ dark_logo_url: '' })}
+                            label="Dark Logo"
+                        />
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-300"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-gray-500">VEYA</span>
+                            </div>
+                        </div>
+                        <input
+                            type="text"
+                            value={formData.dark_logo_url}
+                            onChange={(e) => handleFormChange({ dark_logo_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://example.com/dark-logo.png"
+                        />
+                    </div>
+                </div>
+
+                {/* Favicon */}
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Favicon</h3>
+                    <div className="space-y-4">
+                        <ImageUpload
+                            folder="branding"
+                            currentImageUrl={formData.favicon_url}
+                            onUploadComplete={(url) => handleFormChange({ favicon_url: url })}
+                            onDelete={() => handleFormChange({ favicon_url: '' })}
+                            label="Favicon"
+                        />
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-300"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-gray-500">VEYA</span>
+                            </div>
+                        </div>
+                        <input
+                            type="text"
+                            value={formData.favicon_url}
+                            onChange={(e) => handleFormChange({ favicon_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://example.com/favicon.ico"
+                        />
+                    </div>
+                </div>
+
+                {/* Colors */}
+                <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Renkler</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Ana Renk</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={formData.primary_color}
+                                    onChange={(e) => handleFormChange({ primary_color: e.target.value })}
+                                    className="h-10 w-20"
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.primary_color}
+                                    onChange={(e) => handleFormChange({ primary_color: e.target.value })}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Gradient Başlangıç</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={formData.gradient_start}
+                                    onChange={(e) => handleFormChange({ gradient_start: e.target.value })}
+                                    className="h-10 w-20"
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.gradient_start}
+                                    onChange={(e) => handleFormChange({ gradient_start: e.target.value })}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Gradient Bitiş</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={formData.gradient_end}
+                                    onChange={(e) => handleFormChange({ gradient_end: e.target.value })}
+                                    className="h-10 w-20"
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.gradient_end}
+                                    onChange={(e) => handleFormChange({ gradient_end: e.target.value })}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function renderSEOTab() {
+        return (
+            <div className="space-y-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">SEO Ayarları</h2>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Varsayılan SEO Başlığı</label>
+                    <input
+                        type="text"
+                        value={formData.default_seo_title}
+                        onChange={(e) => handleFormChange({ default_seo_title: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Hangi Katılım - Katılım Bankacılığı Karşılaştırma Platformu"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Varsayılan SEO Açıklaması</label>
+                    <textarea
+                        value={formData.default_seo_description}
+                        onChange={(e) => handleFormChange({ default_seo_description: e.target.value })}
+                        rows={4}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Katılım bankalarının kampanyalarını karşılaştırın..."
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-4">OG (Open Graph) Görseli</label>
+                    <ImageUpload
+                        folder="seo"
+                        currentImageUrl={formData.og_image_url}
+                        onUploadComplete={(url) => handleFormChange({ og_image_url: url })}
+                        onDelete={() => handleFormChange({ og_image_url: '' })}
+                        label="OG Image"
+                    />
+                    <p className="text-sm text-gray-500 mt-2">Sosyal medyada paylaşıldığında gösterilecek görsel (1200x630px önerilir)</p>
+                </div>
+            </div>
+        );
+    }
+
+    function renderFooterTab() {
+        return (
+            <div className="space-y-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Footer İletişim Bilgileri</h2>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Footer Açıklaması</label>
+                    <textarea
+                        value={formData.footer_description}
+                        onChange={(e) => handleFormChange({ footer_description: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Katılım bankacılığı hakkında kısa bir açıklama..."
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">E-posta</label>
+                        <input
+                            type="email"
+                            value={formData.footer_email}
+                            onChange={(e) => handleFormChange({ footer_email: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="info@hangikatilim.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Telefon</label>
+                        <input
+                            type="tel"
+                            value={formData.footer_phone}
+                            onChange={(e) => handleFormChange({ footer_phone: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="+90 (212) 123 45 67"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Adres</label>
+                    <textarea
+                        value={formData.footer_address}
+                        onChange={(e) => handleFormChange({ footer_address: e.target.value })}
+                        rows={2}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="İstanbul, Türkiye"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Copyright Metni</label>
+                    <input
+                        type="text"
+                        value={formData.copyright_text}
+                        onChange={(e) => handleFormChange({ copyright_text: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="© 2025 Hangi Katılım. Tüm hakları saklıdır."
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    function renderSosyalTab() {
+        return (
+            <div className="space-y-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Sosyal Medya Linkleri</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
+                        <input
+                            type="url"
+                            value={formData.facebook_url}
+                            onChange={(e) => handleFormChange({ facebook_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://facebook.com/..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Twitter</label>
+                        <input
+                            type="url"
+                            value={formData.twitter_url}
+                            onChange={(e) => handleFormChange({ twitter_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://twitter.com/..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+                        <input
+                            type="url"
+                            value={formData.instagram_url}
+                            onChange={(e) => handleFormChange({ instagram_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://instagram.com/..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
+                        <input
+                            type="url"
+                            value={formData.linkedin_url}
+                            onChange={(e) => handleFormChange({ linkedin_url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://linkedin.com/company/..."
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function renderUygulamaTab() {
+        return (
+            <div className="space-y-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Uygulama Mağaza Linkleri</h2>
+                <p className="text-gray-600 mb-4">Mobil uygulama indirme linklerinizi ve badge görsellerinizi buradan yönetin</p>
+
+                {/* App Store */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">📱 App Store</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">App Store URL</label>
+                            <input
+                                type="url"
+                                value={formData.app_store_url}
+                                onChange={(e) => handleFormChange({ app_store_url: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="https://apps.apple.com/app/..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-4">App Store Badge (Görsel)</label>
+                            <ImageUpload
+                                folder="badges"
+                                currentImageUrl={formData.app_store_badge_url}
+                                onUploadComplete={(url) => handleFormChange({ app_store_badge_url: url })}
+                                onDelete={() => handleFormChange({ app_store_badge_url: '' })}
+                                label="App Store Badge"
+                            />
+                            <p className="text-sm text-gray-500 mt-2">App Store indirme butonu görseli</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Google Play */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">🤖 Google Play</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Google Play URL</label>
+                            <input
+                                type="url"
+                                value={formData.google_play_url}
+                                onChange={(e) => handleFormChange({ google_play_url: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="https://play.google.com/store/apps/details?id=..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-4">Google Play Badge (Görsel)</label>
+                            <ImageUpload
+                                folder="badges"
+                                currentImageUrl={formData.google_play_badge_url}
+                                onUploadComplete={(url) => handleFormChange({ google_play_badge_url: url })}
+                                onDelete={() => handleFormChange({ google_play_badge_url: '' })}
+                                label="Google Play Badge"
+                            />
+                            <p className="text-sm text-gray-500 mt-2">Google Play indirme butonu görseli</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function renderHukukiTab() {
+        return (
+            <div className="space-y-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Hukuki Belgeler</h2>
+                <p className="text-gray-600 mb-4">Footer'da görünecek hukuki belge linklerinin metinlerini ve içeriklerini düzenleyin</p>
+
+                {/* KVKK */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">KVKK Aydınlatma Metni</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Link Metni</label>
+                            <input
+                                type="text"
+                                value={formData.kvkk_text}
+                                onChange={(e) => handleFormChange({ kvkk_text: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="KVKK Aydınlatma Metni"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">İçerik</label>
+                            <textarea
+                                value={formData.kvkk_content}
+                                onChange={(e) => handleFormChange({ kvkk_content: e.target.value })}
+                                rows={6}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                placeholder="KVKK aydınlatma metninin tam içeriğini buraya yazın..."
+                            />
+                            <p className="text-sm text-gray-500 mt-1">{formData.kvkk_content.length} karakter</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Gizlilik Politikası */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Gizlilik Politikası</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Link Metni</label>
+                            <input
+                                type="text"
+                                value={formData.privacy_text}
+                                onChange={(e) => handleFormChange({ privacy_text: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Gizlilik Politikası"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">İçerik</label>
+                            <textarea
+                                value={formData.privacy_content}
+                                onChange={(e) => handleFormChange({ privacy_content: e.target.value })}
+                                rows={6}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                placeholder="Gizlilik politikasının tam içeriğini buraya yazın..."
+                            />
+                            <p className="text-sm text-gray-500 mt-1">{formData.privacy_content.length} karakter</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Kullanım Koşulları */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Kullanım Koşulları</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Link Metni</label>
+                            <input
+                                type="text"
+                                value={formData.terms_text}
+                                onChange={(e) => handleFormChange({ terms_text: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Kullanım Koşulları"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">İçerik</label>
+                            <textarea
+                                value={formData.terms_content}
+                                onChange={(e) => handleFormChange({ terms_content: e.target.value })}
+                                rows={6}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                placeholder="Kullanım koşullarının tam içeriğini buraya yazın..."
+                            />
+                            <p className="text-sm text-gray-500 mt-1">{formData.terms_content.length} karakter</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Çerez Politikası */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Çerez Politikası</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Link Metni</label>
+                            <input
+                                type="text"
+                                value={formData.cookie_text}
+                                onChange={(e) => handleFormChange({ cookie_text: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Çerez Politikası"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">İçerik</label>
+                            <textarea
+                                value={formData.cookie_content}
+                                onChange={(e) => handleFormChange({ cookie_content: e.target.value })}
+                                rows={6}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                                placeholder="Çerez politikasının tam içeriğini buraya yazın..."
+                            />
+                            <p className="text-sm text-gray-500 mt-1">{formData.cookie_content.length} karakter</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 };

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { RouteDebugger } from './components/RouteDebugger';
 import { Navbar } from './components/Navbar';
 import { Calculator } from './components/Calculator';
 import { FAQ } from './components/FAQ';
 import { CompanyLogos } from './components/CompanyLogos';
-import { HowItWorks } from './components/HowItWorks';
 import { Chatbot } from './components/Chatbot';
 import { MobileAppPromo } from './components/MobileAppPromo';
 import { ArrowRight, Home, Car, Wallet, Facebook, Twitter, Instagram, Linkedin, Info, Mail, ChevronRight } from 'lucide-react';
@@ -13,11 +13,25 @@ import { CompaniesPage } from './components/pages/CompaniesPage';
 import { ContactPage } from './components/pages/ContactPage';
 import { BlogPage } from './components/pages/BlogPage';
 import { NewsPage } from './components/pages/NewsPage';
+import { NewsDetailPage } from './components/pages/NewsDetailPage';
 import { NewsTicker } from './components/NewsTicker';
 import { LegalModal, LegalType } from './components/LegalModal';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { HomeContent } from './pages/admin/HomeContent';
 import { AdminLogin } from './pages/admin/AdminLogin';
+import { SiteSettings } from './pages/admin/SiteSettings';
+import { Navigation } from './pages/admin/Navigation';
+import { Ticker } from './pages/admin/Ticker';
+import { HomeHeroSettings } from './pages/admin/HomeHeroSettings';
+import { Calculator as AdminCalculator } from './pages/admin/Calculator';
+import { News } from './pages/admin/News';
+import { Blog } from './pages/admin/Blog';
+import { Contact } from './pages/admin/Contact';
+import { Media } from './pages/admin/Media';
+import { Campaigns } from './pages/admin/Campaigns';
+import { Companies } from './pages/admin/Companies';
+import { siteSettingsApi } from './services/api/siteSettings';
 
 const PublicApp: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -26,16 +40,41 @@ const PublicApp: React.FC = () => {
   const [activePage, setActivePage] = useState<string>('home');
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+    // FORCE light mode on every page load - clear any saved theme preference
+    localStorage.removeItem('theme');
+
+    // Explicitly remove dark class from html element
+    document.documentElement.classList.remove('dark');
+
+    // Also ensure no dark class on body
+    document.body.classList.remove('dark');
+
+    // Set theme state to light
+    setTheme('light');
+
+    // Load favicon from site settings
+    const loadFavicon = async () => {
+      try {
+        const settings = await siteSettingsApi.getSettings();
+        if (settings?.favicon_url) {
+          // Remove existing favicon
+          const existingFavicon = document.querySelector('link[rel="icon"]');
+          if (existingFavicon) {
+            existingFavicon.remove();
+          }
+
+          // Add new favicon
+          const link = document.createElement('link');
+          link.rel = 'icon';
+          link.href = settings.favicon_url;
+          link.type = 'image/x-icon';
+          document.head.appendChild(link);
+        }
+      } catch (error) {
+        console.error('Favicon yüklenemedi:', error);
       }
-    }
-    // Default: Light mode (removed: auto dark mode detection)
+    };
+    loadFavicon();
   }, []);
 
   const toggleTheme = () => {
@@ -78,6 +117,8 @@ const PublicApp: React.FC = () => {
         return <CompaniesPage />;
       case 'news':
         return <NewsPage />;
+      case 'news-detail':
+        return <NewsDetailPage />;
       case 'contact':
         return <ContactPage />;
       case 'blog':
@@ -127,8 +168,6 @@ const PublicApp: React.FC = () => {
             <Calculator
               theme={theme}
             />
-
-            <HowItWorks />
 
             <section id="info" className="bg-white dark:bg-slate-850 py-16 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">
               <div className="container mx-auto px-4">
@@ -298,12 +337,25 @@ const PublicApp: React.FC = () => {
 const App: React.FC = () => {
   return (
     <BrowserRouter>
+      <RouteDebugger />
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/*" element={<AdminLayout />}>
+        <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="home-content" element={<HomeContent />} />
+          <Route path="site-settings" element={<SiteSettings />} />
+          <Route path="navigation" element={<Navigation />} />
+          <Route path="ticker" element={<Ticker />} />
+          <Route path="home-hero" element={<HomeHeroSettings />} />
+          <Route path="calculator" element={<AdminCalculator />} />
+          <Route path="news" element={<News />} />
+          <Route path="blog" element={<Blog />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="media" element={<Media />} />
+          <Route path="campaigns" element={<Campaigns />} />
+          <Route path="companies" element={<Companies />} />
         </Route>
-        <Route path="*" element={<PublicApp />} />
+        <Route path="/*" element={<PublicApp />} />
       </Routes>
     </BrowserRouter>
   );

@@ -82,12 +82,12 @@ export const Chatbot: React.FC = () => {
       } else {
         // Fallback if API key is missing or init failed
         setTimeout(() => {
-           setMessages(prev => [...prev, {
+          setMessages(prev => [...prev, {
             id: Date.now().toString(),
             role: 'model',
             text: "Asistan bağlantısı şu anda kurulamadı. Lütfen daha sonra tekrar deneyin."
-           }]);
-           setIsLoading(false);
+          }]);
+          setIsLoading(false);
         }, 1000);
         return;
       }
@@ -104,11 +104,11 @@ export const Chatbot: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-4 font-sans">
+    <div className="fixed bottom-4 md:bottom-6 left-4 md:left-6 z-50 flex flex-col items-start gap-4 font-sans">
       {/* Chat Window */}
       {isOpen && (
-        <div className="bg-white dark:bg-slate-900 w-[350px] h-[500px] rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 flex flex-col overflow-hidden animate-fade-in-up origin-bottom-left transition-all duration-300">
-          
+        <div className="bg-white dark:bg-slate-900 w-80 md:w-[350px] h-96 md:h-[500px] rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 flex flex-col overflow-hidden animate-fade-in-up origin-bottom-left transition-all duration-300">
+
           {/* Header */}
           <div className="bg-gradient-to-r from-[#4DC9E6] to-[#210CAE] p-4 flex items-center justify-between text-white">
             <div className="flex items-center gap-3">
@@ -123,7 +123,7 @@ export const Chatbot: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsOpen(false)}
               className="text-white/70 hover:text-white hover:bg-white/10 p-1 rounded-full transition-colors"
             >
@@ -134,40 +134,38 @@ export const Chatbot: React.FC = () => {
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-slate-950 space-y-4 custom-scrollbar">
             {messages.map((msg) => (
-              <div 
-                key={msg.id} 
+              <div
+                key={msg.id}
                 className={`flex items-start gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  msg.role === 'user' 
-                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' 
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
+                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
                     : 'bg-[#4DC9E6]/20 dark:bg-[#4DC9E6]/10 text-[#210CAE] dark:text-[#4DC9E6]'
-                }`}>
+                  }`}>
                   {msg.role === 'user' ? <User size={14} /> : <Sparkles size={14} />}
                 </div>
-                
-                <div className={`max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                  msg.role === 'user'
+
+                <div className={`max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
                     ? 'bg-[#210CAE] text-white rounded-tr-none'
                     : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-slate-700'
-                }`}>
+                  }`}>
                   {msg.text}
                 </div>
               </div>
             ))}
-            
+
             {isLoading && (
               <div className="flex items-start gap-2.5">
-                 <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 flex items-center justify-center flex-shrink-0">
-                    <Sparkles size={14} />
-                 </div>
-                 <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-slate-700">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></span>
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></span>
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></span>
-                    </div>
-                 </div>
+                <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 flex items-center justify-center flex-shrink-0">
+                  <Sparkles size={14} />
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-slate-700">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </div>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -183,7 +181,7 @@ export const Chatbot: React.FC = () => {
                 placeholder="Sorunuzu buraya yazın..."
                 className="w-full pl-4 pr-12 py-3 bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 border border-transparent text-sm"
               />
-              <button 
+              <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
                 className="absolute right-2 p-2 bg-[#210CAE] hover:bg-[#1a098e] disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white rounded-lg transition-colors shadow-md"
@@ -198,24 +196,25 @@ export const Chatbot: React.FC = () => {
         </div>
       )}
 
-      {/* Toggle Button */}
+      {/* Toggle Button - Smaller on Mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`group flex items-center gap-2 h-14 px-4 rounded-full shadow-xl transition-all duration-300 hover:scale-105 ${
-          isOpen 
-            ? 'bg-red-500 hover:bg-red-600 text-white' 
+        className={`group flex items-center gap-1.5 md:gap-2 h-11 md:h-14 px-3 md:px-4 rounded-full shadow-xl transition-all duration-300 hover:scale-105 ${isOpen
+            ? 'bg-red-500 hover:bg-red-600 text-white'
             : 'bg-[linear-gradient(90deg,#4DC9E6,#210CAE)] hover:opacity-90 text-white'
-        }`}
+          }`}
       >
         {isOpen ? (
           <>
-            <X size={24} />
-            <span className="font-bold text-sm pr-2">Kapat</span>
+            <X size={20} className="md:hidden" />
+            <X size={24} className="hidden md:block" />
+            <span className="font-bold text-xs md:text-sm pr-1 md:pr-2">Kapat</span>
           </>
         ) : (
           <>
-            <MessageCircle size={24} className="group-hover:rotate-12 transition-transform" />
-            <span className="font-bold text-sm pr-2">Asistana Sor</span>
+            <MessageCircle size={20} className="md:hidden group-hover:rotate-12 transition-transform" />
+            <MessageCircle size={24} className="hidden md:block group-hover:rotate-12 transition-transform" />
+            <span className="font-bold text-xs md:text-sm pr-1 md:pr-2">Asistan</span>
           </>
         )}
       </button>

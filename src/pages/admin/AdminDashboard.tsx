@@ -57,6 +57,7 @@ export const AdminDashboard: React.FC = () => {
     ];
 
     const quickLinks = [
+        { label: 'Ana Sayfa İçerik', path: '/admin/home-content', icon: '🏠' },
         { label: 'Site Ayarları', path: '/admin/site-settings', icon: '⚙️' },
         { label: 'Navigasyon', path: '/admin/navigation', icon: '📋' },
         { label: 'Sektör Gündemi', path: '/admin/ticker', icon: '⚡' },

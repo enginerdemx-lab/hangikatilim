@@ -26,6 +26,7 @@ export const campaignsApi = {
       `)
             .eq('is_active', true)
             .eq('companies.is_active', true)
+            .order('order_index', { ascending: true })
             .order('updated_at', { ascending: false });
 
         if (error) throw error;
@@ -126,5 +127,44 @@ export const campaignsApi = {
 
         if (error) throw error;
         return data || [];
+    },
+
+    // Update campaign order
+    async updateCampaignOrder(campaignId: string, newOrderIndex: number): Promise<void> {
+        const { error } = await supabase
+            .from('campaigns')
+            .update({ order_index: newOrderIndex })
+            .eq('id', campaignId);
+
+        if (error) throw error;
+    },
+
+    // Swap order of two campaigns
+    async swapCampaignOrder(campaign1Id: string, campaign2Id: string): Promise<void> {
+        // Get both campaigns' current orders
+        const { data: campaigns, error: fetchError } = await supabase
+            .from('campaigns')
+            .select('id, order_index')
+            .in('id', [campaign1Id, campaign2Id]);
+
+        if (fetchError) throw fetchError;
+        if (!campaigns || campaigns.length !== 2) throw new Error('Campaigns not found');
+
+        const [camp1, camp2] = campaigns;
+
+        // Swap their order_index values
+        const { error: update1Error } = await supabase
+            .from('campaigns')
+            .update({ order_index: camp2.order_index })
+            .eq('id', camp1.id);
+
+        if (update1Error) throw update1Error;
+
+        const { error: update2Error } = await supabase
+            .from('campaigns')
+            .update({ order_index: camp1.order_index })
+            .eq('id', camp2.id);
+
+        if (update2Error) throw update2Error;
     },
 };

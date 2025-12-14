@@ -264,13 +264,20 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
          </div>
 
          <div className="container mx-auto px-4 max-w-6xl">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-6">
 
-               {/* LEFT COLUMN - CAMPAIGN LIST */}
-               <div className="lg:col-span-3 space-y-4">
+               {/* CAMPAIGN LIST */}
+               <div className="space-y-4">
 
                   {campaigns.map((camp) => (
-                     <div key={camp.id} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                     <div
+                        key={camp.id}
+                        className="group relative bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300"
+                     >
+                        {/* Shine Effect Overlay */}
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-[2500ms]"></div>
+                        </div>
                         {/* Card Header */}
                         <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${getBadgeColor(camp.badge_type)}`}>
@@ -308,15 +315,21 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                                  {camp.title}
                               </h4>
                               <div className="flex items-center justify-center md:justify-start gap-4 mb-3 text-sm text-gray-600 dark:text-gray-400">
-                                 <div className="flex flex-col">
-                                    <span className="text-xs text-gray-400">Vade</span>
-                                    <span className="font-bold text-gray-900 dark:text-white">{camp.vade_months} Ay</span>
-                                 </div>
-                                 <div className="w-px h-8 bg-gray-200 dark:bg-slate-600"></div>
-                                 <div className="flex flex-col">
-                                    <span className="text-xs text-gray-400">Tutar</span>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatMoney(camp.amount_tl)} TL</span>
-                                 </div>
+                                 {camp.vade_months > 0 && (
+                                    <>
+                                       <div className="flex flex-col">
+                                          <span className="text-xs text-gray-400">Vade</span>
+                                          <span className="font-bold text-gray-900 dark:text-white">{camp.vade_months} Ay</span>
+                                       </div>
+                                       {camp.amount_tl > 0 && <div className="w-px h-8 bg-gray-200 dark:bg-slate-600"></div>}
+                                    </>
+                                 )}
+                                 {camp.amount_tl > 0 && (
+                                    <div className="flex flex-col">
+                                       <span className="text-xs text-gray-400">Tutar</span>
+                                       <span className="font-bold text-gray-900 dark:text-white">{formatMoney(camp.amount_tl)} TL</span>
+                                    </div>
+                                 )}
                               </div>
 
                               <ul className="space-y-1">
@@ -333,17 +346,17 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                            <div className="w-full md:w-auto flex-shrink-0 flex flex-col gap-2">
                               <button
                                  className="w-full bg-white dark:bg-slate-700 border-2 border-[#210CAE] text-[#210CAE] hover:bg-gradient-to-r hover:from-[#4DC9E6] hover:to-[#210CAE] hover:text-white font-bold py-2.5 px-6 rounded-lg transition-all text-sm"
-                                 onClick={handleCalculate}
+                                 onClick={() => window.open(camp.application_link, '_blank')}
                               >
-                                 Hemen Başvur
+                                 {camp.application_button_text || 'Hemen Başvur'}
                               </button>
                               <a
-                                 href={camp.link}
+                                 href={camp.terms_link}
                                  target="_blank"
                                  rel="noreferrer"
                                  className="block text-center text-xs font-semibold text-gray-500 hover:text-blue-600 hover:underline"
                               >
-                                 Koşulları İncele
+                                 {camp.terms_button_text || 'Koşulları İncele'}
                               </a>
                            </div>
                         </div>
@@ -360,87 +373,6 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                         <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                            Listelenen kampanyalar şirketlerin genel verilerine dayanmaktadır. Size özel ödeme planı ve kesin organizasyon ücreti için lütfen "Ödeme Planı Hesapla" butonunu kullanın veya şirketle iletişime geçin.
                         </p>
-                     </div>
-                  </div>
-
-               </div>
-
-               {/* RIGHT COLUMN - POPULAR SEARCHES */}
-               <div className="lg:col-span-1 space-y-6">
-
-                  {/* Enhanced Popular Searches Widget */}
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
-                     <div className="bg-gray-50 dark:bg-slate-900 p-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                        <h4 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                           <Star size={16} className="text-yellow-500 fill-yellow-500" />
-                           Popüler Aramalar
-                        </h4>
-                     </div>
-
-                     {/* Tabs */}
-                     <div className="flex border-b border-gray-100 dark:border-slate-700">
-                        <button
-                           onClick={() => setPopularTab('HOME')}
-                           className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors border-b-2 ${popularTab === 'HOME' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                        >
-                           <Home size={16} /> Ev
-                        </button>
-                        <button
-                           onClick={() => setPopularTab('CAR')}
-                           className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors border-b-2 ${popularTab === 'CAR' ? 'border-[#ff6f00] text-[#ff6f00] dark:text-orange-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                        >
-                           <Car size={16} /> Araba
-                        </button>
-                     </div>
-
-                     {/* List Content */}
-                     <div className="divide-y divide-gray-100 dark:divide-slate-700 max-h-[500px] overflow-y-auto">
-                        {(popularTab === 'HOME' ? popularHomePlans : popularCarPlans).map((plan) => (
-                           <div
-                              key={plan.id}
-                              className="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
-                              onClick={() => handlePopularPlanClick(plan)}
-                           >
-                              <div className="flex justify-between items-start mb-2">
-                                 <h5 className="font-bold text-gray-800 dark:text-white text-sm group-hover:text-primary-600 transition-colors">
-                                    {plan.title}
-                                 </h5>
-                                 <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${plan.systemType === SystemType.LOTTERY
-                                    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300'
-                                    : 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300'
-                                    }`}>
-                                    {plan.badge}
-                                 </span>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs">
-                                 <div className="flex flex-col">
-                                    <span className="text-gray-400 flex items-center gap-1"><Wallet size={10} /> Tutar</span>
-                                    <span className="font-bold text-gray-700 dark:text-gray-300">{formatMoney(plan.amount)} TL</span>
-                                 </div>
-                                 <div className="flex flex-col text-right">
-                                    <span className="text-gray-400 flex items-center justify-end gap-1"><Calendar size={10} /> Vade</span>
-                                    <span className="font-bold text-gray-700 dark:text-gray-300">{plan.months} Ay</span>
-                                 </div>
-                                 <div className="flex flex-col col-span-2 mt-1 pt-2 border-t border-gray-100 dark:border-slate-700 border-dashed">
-                                    <div className="flex justify-between items-center mb-1">
-                                       <span className="text-gray-500 dark:text-gray-400">Taksit:</span>
-                                       <span className="font-bold text-gray-900 dark:text-white">~{formatMoney(plan.estInstallment)} TL</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                       <span className="text-gray-500 dark:text-gray-400">Top. Geri Ödeme:</span>
-                                       <span className="font-bold text-primary-700 dark:text-primary-400">{formatMoney(plan.totalPayment)} TL</span>
-                                    </div>
-                                 </div>
-                              </div>
-
-                              <div className="mt-3 text-center">
-                                 <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Hesapla <ChevronRight size={12} />
-                                 </span>
-                              </div>
-                           </div>
-                        ))}
                      </div>
                   </div>
 

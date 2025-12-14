@@ -81,11 +81,11 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
 
                     {/* Right Side: Campaign Image (PROMINENT) */}
                     {campaign.image_url && (
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 w-full sm:w-auto">
                             <img
                                 src={campaign.image_url}
                                 alt={campaign.title}
-                                className="w-64 h-32 object-cover rounded-lg shadow-md border-2 border-white"
+                                className="w-full sm:w-48 md:w-64 h-32 sm:h-28 md:h-32 object-cover rounded-lg shadow-md border-2 border-white"
                             />
                         </div>
                     )}

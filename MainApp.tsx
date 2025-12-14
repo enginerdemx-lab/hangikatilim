@@ -4,7 +4,8 @@ import { Navbar } from './components/Navbar';
 import { Calculator } from './components/Calculator';
 import { FAQ } from './components/FAQ';
 import { CompanyLogos } from './components/CompanyLogos';
-import { HowItWorks } from './components/HowItWorks';
+// HowItWorks component removed per user request
+import { InfoCards } from './components/InfoCards';
 import { Chatbot } from './components/Chatbot';
 import { ArrowRight, Home, Car, Wallet, Facebook, Twitter, Instagram, Linkedin, Info, Mail, ChevronRight, ChevronLeft } from 'lucide-react';
 import { CampaignsPage } from './components/pages/CampaignsPage';
@@ -289,51 +290,10 @@ const App: React.FC = () => {
 
             <Calculator theme={theme} />
 
-            <HowItWorks />
+            {/* HowItWorks component removed per user request */}
 
-            {/* Information Section */}
-            <section id="info" className="bg-white dark:bg-slate-850 py-16 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">
-              <div className="container mx-auto px-4">
-                <div className="text-center max-w-3xl mx-auto mb-12">
-                  <h2 className="text-3xl font-bold text-primary-900 dark:text-white mb-4">Tasarruf Finansmanı (Evim Sistemleri) Nedir?</h2>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Tasarruf finansmanı, bireylerin ev veya araba gibi büyük ölçekli yatırımları, faiz maliyeti olmadan, dayanışma ve sıra sistemiyle finanse etmelerini sağlayan bir yöntemdir.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="bg-gray-50 dark:bg-slate-800 p-8 rounded-2xl border border-gray-100 dark:border-slate-700 text-center hover:shadow-lg transition-all">
-                    <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-primary-600 dark:text-primary-400">
-                      <Home size={28} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Dayanışma Tasarrufu</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Belirli bir amaca yönelik bir araya gelen kişiler, her ay düzenli ödemeler yaparak finansal güçlerini birleştirirler.
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 dark:bg-slate-800 p-8 rounded-2xl border border-gray-100 dark:border-slate-700 text-center hover:shadow-lg transition-all">
-                    <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-primary-600 dark:text-primary-400">
-                      <Wallet size={28} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Faizsiz Sistem</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Klasik kredi sistemlerinden farklı olarak, vade farkı veya faiz ödemezsiniz. Sadece organizasyon katılım bedeli alınır.
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 dark:bg-slate-800 p-8 rounded-2xl border border-gray-100 dark:border-slate-700 text-center hover:shadow-lg transition-all">
-                    <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 dark:text-green-400">
-                      <Car size={28} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Erken Teslimat</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Noter huzurunda yapılan çekilişlerle veya peşinatlı sistemlerle, vadeniz bitmeden evinizi veya aracınızı teslim alabilirsiniz.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
+            {/* Information Section - Now dynamic from Supabase */}
+            <InfoCards />
 
             <CompanyLogos />
 

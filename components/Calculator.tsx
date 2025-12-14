@@ -3,7 +3,7 @@ import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, 
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, SavedCalculation } from '../types';
 import { getFinancialAdvice } from '../services/geminiService';
-import { generatePDF } from '../services/pdfService';
+import { generatePDF } from '../src/services/pdfService';
 
 const MIN_TARGET = 50000;
 const MAX_TARGET = 5000000;
