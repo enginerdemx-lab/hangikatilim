@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Calendar, Clock, ArrowRight, Building2, TrendingUp, Tag, Share2, Newspaper } from 'lucide-react';
 import { newsApi } from '../../src/services/api/news';
 import type { NewsPost } from '../../src/types/database';
 
 export const NewsPage: React.FC = () => {
-  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'COMPANY' | 'REGULATION'>('ALL');
   const [news, setNews] = useState<NewsPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +27,11 @@ export const NewsPage: React.FC = () => {
     fetchNews();
   }, []);
 
+  // Generate URL: prefer slug, fallback to id
+  const getNewsUrl = (item: NewsPost) => {
+    return `/sektor-haberleri/${item.slug || item.id}`;
+  };
+
   // Featured news: is_featured olanı al, yoksa en yeni haber
   const featuredNews = news.find(n => n.is_featured) || news[0];
 
@@ -38,16 +42,6 @@ export const NewsPage: React.FC = () => {
   const filteredNews = activeFilter === 'ALL'
     ? otherNews
     : otherNews.filter(n => n.category === activeFilter);
-
-  // Kategori badge rengi
-  const getBadgeColor = (category: string) => {
-    switch (category) {
-      case 'COMPANY': return 'bg-orange-100 text-orange-700';
-      case 'REGULATION': return 'bg-red-100 text-red-700';
-      case 'SECTOR': return 'bg-blue-100 text-blue-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
 
   // Tarih formatla
   const formatDate = (dateString: string) => {
@@ -67,6 +61,29 @@ export const NewsPage: React.FC = () => {
       SECTOR: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&q=80'
     };
     return images[category as keyof typeof images] || images.SECTOR;
+  };
+
+  // Share handler
+  const handleShare = async (e: React.MouseEvent, item: NewsPost) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const url = window.location.origin + getNewsUrl(item);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: item.title,
+          text: item.summary || '',
+          url: url
+        });
+      } catch (err) {
+        console.log('Share cancelled');
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      alert('Bağlantı kopyalandı!');
+    }
   };
 
   if (loading) {
@@ -149,9 +166,10 @@ export const NewsPage: React.FC = () => {
 
         {/* Featured News (Hero) */}
         {activeFilter === 'ALL' && featuredNews && (
-          <div
-            onClick={() => navigate(`/news/${featuredNews.id}`)}
-            className="group relative rounded-3xl overflow-hidden shadow-2xl h-[400px] md:h-[500px] mb-12 cursor-pointer"
+          <Link
+            to={getNewsUrl(featuredNews)}
+            className="group relative rounded-3xl overflow-hidden shadow-2xl h-[400px] md:h-[500px] mb-12 block focus:outline-none focus-visible:ring-4 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+            aria-label={`${featuredNews.title} haberini oku`}
           >
             <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${featuredNews.cover_image_url || getPlaceholderImage(featuredNews.category || 'SECTOR')})` }}></div>
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent opacity-90"></div>
@@ -160,7 +178,7 @@ export const NewsPage: React.FC = () => {
               <span className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold uppercase mb-4 inline-block shadow-lg">
                 Manşet
               </span>
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight group-hover:text-red-200 transition-colors">
                 {featuredNews.title}
               </h2>
               <p className="text-gray-200 text-lg mb-6 line-clamp-2 md:line-clamp-none max-w-3xl">
@@ -182,15 +200,18 @@ export const NewsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
         )}
 
         {/* News Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           {filteredNews.map((item) => (
-            <div key={item.id}
-              onClick={() => navigate(`/news/${item.id}`)}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full cursor-pointer">
+            <Link
+              key={item.id}
+              to={getNewsUrl(item)}
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+              aria-label={`${item.title} haberini oku`}
+            >
               <div className="relative h-48 overflow-hidden">
                 <div className="absolute top-4 left-4 z-10">
                   {item.category === 'COMPANY' && (
@@ -231,18 +252,19 @@ export const NewsPage: React.FC = () => {
                 </p>
 
                 <div className="pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between mt-auto">
-                  <span className="text-primary-600 dark:text-primary-400 font-bold text-xs flex items-center gap-1 hover:gap-2 transition-all">
+                  <span className="text-primary-600 dark:text-primary-400 font-bold text-xs flex items-center gap-1 group-hover:gap-2 transition-all">
                     Haberi Oku <ArrowRight size={14} />
                   </span>
                   <button
-                    onClick={(e) => { e.stopPropagation(); /* Share logic */ }}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    onClick={(e) => handleShare(e, item)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    aria-label="Haberi paylaş"
                   >
                     <Share2 size={16} />
                   </button>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 

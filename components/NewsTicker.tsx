@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface NewsTickerProps {
   onNavigate?: (page: string) => void;
 }
 
-export const NewsTicker: React.FC<NewsTickerProps> = ({ onNavigate }) => {
-  // Güncel Sektör Haberleri
+export const NewsTicker: React.FC<NewsTickerProps> = () => {
   const headlines = [
     "SON DAKİKA: Konut kredisi faizleri %3.50 seviyesini aştı, Tasarruf Finansman'a talep %45 arttı.",
     "BDDK RAPORU: Tasarruf Finansman şirketlerinin aktif büyüklüğü 2024'te rekor seviyeye ulaştı.",
@@ -15,118 +15,118 @@ export const NewsTicker: React.FC<NewsTickerProps> = ({ onNavigate }) => {
     "ANALİZ: Banka kredilerine erişim zorlaşırken, Faizsiz Finansman tek alternatif haline geldi."
   ];
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const tickerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-advance every 5 seconds
+  // Check for reduced motion preference
   useEffect(() => {
-    if (isPaused) return;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
 
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % headlines.length);
-    }, 5000);
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [isPaused, headlines.length]);
-
-  const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + headlines.length) % headlines.length);
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % headlines.length);
-  };
+  // Combined ticker text for seamless loop
+  const tickerText = headlines.join('  •  ');
 
   return (
-    <div className="bg-[#210CAE] text-white border-b border-[#1a0890] relative overflow-hidden">
+    <div
+      className="bg-black text-white"
+      role="marquee"
+      aria-label="Sektör haberleri"
+    >
       <div className="container mx-auto">
-        <div className="flex items-center h-10 md:h-12">
+        <div className="flex items-center h-9 md:h-10">
 
           {/* Sol - Label */}
-          <div className="flex items-center gap-2 px-3 md:px-4 h-full flex-shrink-0">
-            <TrendingUp size={16} className="animate-pulse hidden md:block" />
-            <AlertCircle size={14} className="md:hidden" />
-            <span className="font-bold tracking-wide uppercase text-xs md:text-sm">
-              <span className="hidden md:inline">SEKTÖR GÜNDEMİ</span>
-              <span className="md:hidden">GÜNDEM</span>
+          <div className="flex items-center gap-2 px-3 md:px-4 h-full flex-shrink-0 bg-white/5">
+            <span className="font-bold tracking-wide uppercase text-[11px] md:text-xs">
+              <span className="hidden sm:inline">SEKTÖR GÜNDEMİ</span>
+              <span className="sm:hidden">GÜNDEM</span>
             </span>
           </div>
 
-          {/* Sol Ok */}
-          <button
-            onClick={handlePrev}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            className="flex items-center justify-center w-8 h-full hover:bg-white/10 transition-colors flex-shrink-0"
-            aria-label="Önceki haber"
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          {/* Haber İçeriği */}
+          {/* Ticker Content */}
           <div
-            className="flex-1 px-4 flex items-center overflow-hidden"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
+            ref={tickerRef}
+            className="flex-1 overflow-hidden relative mx-3"
           >
-            <div className="relative w-full">
-              {headlines.map((headline, index) => (
-                <div
-                  key={index}
-                  className={`transition-all duration-500 absolute inset-0 flex items-center ${index === currentIndex
-                      ? 'opacity-100 translate-x-0'
-                      : index < currentIndex
-                        ? 'opacity-0 -translate-x-full'
-                        : 'opacity-0 translate-x-full'
-                    }`}
-                  style={{ position: index === currentIndex ? 'relative' : 'absolute' }}
-                >
-                  <span className="w-1.5 h-1.5 bg-[#4DC9E6] rounded-full mr-3 flex-shrink-0"></span>
-                  <span className="text-xs md:text-sm text-white/95 line-clamp-1">
-                    {headline}
+            {prefersReducedMotion ? (
+              // Reduced motion: horizontal scroll or truncate
+              <div
+                className="overflow-x-auto scrollbar-hide whitespace-nowrap py-1"
+                title={tickerText}
+              >
+                <span className="text-xs md:text-sm text-white/90">
+                  {tickerText}
+                </span>
+              </div>
+            ) : (
+              // Animated ticker
+              <div className="ticker-wrapper flex items-center">
+                <div className="ticker-content animate-ticker whitespace-nowrap">
+                  <span className="text-xs md:text-sm text-white/90 inline-block">
+                    {tickerText}
+                  </span>
+                  <span className="text-xs md:text-sm text-white/90 inline-block ml-16">
+                    {tickerText}
                   </span>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Sağ Ok */}
-          <button
-            onClick={handleNext}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            className="flex items-center justify-center w-8 h-full hover:bg-white/10 transition-colors flex-shrink-0"
-            aria-label="Sonraki haber"
+          {/* Tüm Haberler Link */}
+          <Link
+            to="/sektor-haberleri"
+            className="flex items-center gap-1 px-3 md:px-4 h-full flex-shrink-0 
+                       text-white hover:text-white/80 hover:bg-white/5
+                       transition-all duration-200
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            aria-label="Tüm sektör haberlerini görüntüle"
           >
-            <ChevronRight size={18} />
-          </button>
-
-          {/* Tüm Haberler Butonu (Desktop) */}
-          <button
-            onClick={() => onNavigate && onNavigate('news')}
-            className="hidden md:flex items-center px-4 h-full bg-white/5 hover:bg-white/10 transition-colors border-l border-white/10"
-          >
-            <span className="text-xs font-bold uppercase mr-1.5">TÜM HABERLER</span>
-            <ChevronRight size={14} />
-          </button>
+            <span className="text-[11px] md:text-xs font-semibold uppercase tracking-wide">
+              TÜM HABERLER
+            </span>
+            <ChevronRight size={14} className="opacity-70" />
+          </Link>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
-        <div
-          className="h-full bg-[#4DC9E6] transition-all"
-          style={{
-            width: isPaused ? '100%' : '0%',
-            animation: isPaused ? 'none' : 'progress 5s linear infinite',
-          }}
-        />
-      </div>
-
+      {/* Ticker Animation Styles */}
       <style>{`
-        @keyframes progress {
-          from { width: 0%; }
-          to { width: 100%; }
+        @keyframes ticker {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        
+        .animate-ticker {
+          animation: ticker 30s linear infinite;
+        }
+        
+        .animate-ticker:hover {
+          animation-play-state: paused;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          .animate-ticker {
+            animation: none;
+          }
         }
       `}</style>
     </div>

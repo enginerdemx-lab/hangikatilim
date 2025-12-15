@@ -2,6 +2,8 @@ import { supabase } from '../supabaseClient';
 import type { TickerItem } from '../../types/database';
 
 export interface TickerItemFormData {
+    label?: string;
+    title?: string;
     text: string;
     link?: string;
     sort_order: number;

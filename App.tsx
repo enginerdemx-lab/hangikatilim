@@ -1,21 +1,58 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import MainApp from './MainApp';
+
+// Admin imports
 import { AdminLogin } from './src/pages/admin/AdminLogin';
 import { AdminDashboard } from './src/pages/admin/AdminDashboard';
-import { Campaigns } from './src/pages/admin/Campaigns';
-import { Companies } from './src/pages/admin/Companies';
+import { Campaigns as AdminCampaigns } from './src/pages/admin/Campaigns';
+import { Companies as AdminCompanies } from './src/pages/admin/Companies';
 import { SiteSettings } from './src/pages/admin/SiteSettings';
-import { Blog } from './src/pages/admin/Blog';
+import { Blog as AdminBlog } from './src/pages/admin/Blog';
 import { HomeHeroSettings } from './src/pages/admin/HomeHeroSettings';
 import { Navigation } from './src/pages/admin/Navigation';
 import { Ticker } from './src/pages/admin/Ticker';
-import { Calculator } from './src/pages/admin/Calculator';
-import { News } from './src/pages/admin/News';
-import { Contact } from './src/pages/admin/Contact';
+import { Calculator as AdminCalculator } from './src/pages/admin/Calculator';
+import { News as AdminNews } from './src/pages/admin/News';
+import { Contact as AdminContact } from './src/pages/admin/Contact';
 import { Media } from './src/pages/admin/Media';
 import { HomeContent } from './src/pages/admin/HomeContent';
 import { AdminLayout } from './src/components/admin/AdminLayout';
+
+// Public Layout and Pages
+import { PublicLayout } from './src/layouts/PublicLayout';
+
+// Lazy loaded public pages for code splitting
+const HomePage = lazy(() => import('./src/pages/public/HomePage'));
+const CampaignsPage = lazy(() => import('./src/pages/public/CampaignsPage'));
+const CompaniesPage = lazy(() => import('./src/pages/public/CompaniesPage'));
+const NewsPage = lazy(() => import('./src/pages/public/NewsPage'));
+const NewsDetailPage = lazy(() => import('./src/pages/public/NewsDetailPage'));
+const BlogPage = lazy(() => import('./src/pages/public/BlogPage'));
+const BlogDetailPage = lazy(() => import('./src/pages/public/BlogDetailPage'));
+const ContactPage = lazy(() => import('./src/pages/public/ContactPage'));
+
+// Loading component
+const PageLoader: React.FC = () => (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Yükleniyor...</p>
+        </div>
+    </div>
+);
+
+// 404 Page
+const NotFoundPage: React.FC = () => (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+            <h1 className="text-6xl font-bold text-gray-300">404</h1>
+            <p className="text-xl text-gray-600 mt-4">Sayfa bulunamadı</p>
+            <a href="/" className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Ana Sayfaya Dön
+            </a>
+        </div>
+    </div>
+);
 
 const App: React.FC = () => {
     return (
@@ -30,21 +67,87 @@ const App: React.FC = () => {
                     <Route path="navigation" element={<Navigation />} />
                     <Route path="ticker" element={<Ticker />} />
                     <Route path="home-hero" element={<HomeHeroSettings />} />
-                    <Route path="calculator" element={<Calculator />} />
-                    <Route path="companies" element={<Companies />} />
-                    <Route path="campaigns" element={<Campaigns />} />
-                    <Route path="news" element={<News />} />
-                    <Route path="blog" element={<Blog />} />
-                    <Route path="contact" element={<Contact />} />
+                    <Route path="calculator" element={<AdminCalculator />} />
+                    <Route path="companies" element={<AdminCompanies />} />
+                    <Route path="campaigns" element={<AdminCampaigns />} />
+                    <Route path="news" element={<AdminNews />} />
+                    <Route path="blog" element={<AdminBlog />} />
+                    <Route path="contact" element={<AdminContact />} />
                     <Route path="media" element={<Media />} />
                 </Route>
 
-                {/* Public Routes - All other routes go to MainApp */}
-                <Route path="/*" element={<MainApp />} />
+                {/* Public Routes with Layout */}
+                <Route path="/" element={<PublicLayout />}>
+                    <Route
+                        index
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <HomePage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="kampanyalar"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <CampaignsPage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="katilim-firmalari"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <CompaniesPage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="sektor-haberleri"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <NewsPage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="sektor-haberleri/:slug"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <NewsDetailPage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="blog"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <BlogPage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="blog/:slug"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <BlogDetailPage />
+                            </Suspense>
+                        }
+                    />
+                    <Route
+                        path="iletisim"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <ContactPage />
+                            </Suspense>
+                        }
+                    />
+                    {/* 404 for unknown public routes */}
+                    <Route path="*" element={<NotFoundPage />} />
+                </Route>
             </Routes>
         </BrowserRouter>
     );
 };
 
 export default App;
-

@@ -36,8 +36,14 @@ export const SiteSettings: React.FC = () => {
         // App Store Links
         app_store_url: '',
         google_play_url: '',
+        app_gallery_url: '',
         app_store_badge_url: '',
         google_play_badge_url: '',
+        app_gallery_badge_url: '',
+        // App Store Badge Visibility
+        show_app_store_badge: true,
+        show_google_play_badge: true,
+        show_app_gallery_badge: true,
         // Legal Texts
         kvkk_text: 'KVKK Aydınlatma Metni',
         privacy_text: 'Gizlilik Politikası',
@@ -82,8 +88,13 @@ export const SiteSettings: React.FC = () => {
                     footer_address: data.footer_address || '',
                     app_store_url: data.app_store_url || '',
                     google_play_url: data.google_play_url || '',
+                    app_gallery_url: data.app_gallery_url || '',
                     app_store_badge_url: data.app_store_badge_url || '',
                     google_play_badge_url: data.google_play_badge_url || '',
+                    app_gallery_badge_url: data.app_gallery_badge_url || '',
+                    show_app_store_badge: data.show_app_store_badge !== false,
+                    show_google_play_badge: data.show_google_play_badge !== false,
+                    show_app_gallery_badge: data.show_app_gallery_badge !== false,
                     kvkk_text: data.kvkk_text || 'KVKK Aydınlatma Metni',
                     privacy_text: data.privacy_text || 'Gizlilik Politikası',
                     terms_text: data.terms_text || 'Kullanım Koşulları',
@@ -570,7 +581,19 @@ export const SiteSettings: React.FC = () => {
 
                 {/* App Store */}
                 <div className="border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">📱 App Store</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">📱 App Store</h3>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.show_app_store_badge}
+                                onChange={(e) => handleFormChange({ show_app_store_badge: e.target.checked })}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className="ml-3 text-sm font-medium text-gray-700">{formData.show_app_store_badge ? 'Aktif' : 'Pasif'}</span>
+                        </label>
+                    </div>
 
                     <div className="space-y-4">
                         <div>
@@ -600,7 +623,19 @@ export const SiteSettings: React.FC = () => {
 
                 {/* Google Play */}
                 <div className="border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">🤖 Google Play</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">🤖 Google Play</h3>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.show_google_play_badge}
+                                onChange={(e) => handleFormChange({ show_google_play_badge: e.target.checked })}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className="ml-3 text-sm font-medium text-gray-700">{formData.show_google_play_badge ? 'Aktif' : 'Pasif'}</span>
+                        </label>
+                    </div>
 
                     <div className="space-y-4">
                         <div>
@@ -624,6 +659,48 @@ export const SiteSettings: React.FC = () => {
                                 label="Google Play Badge"
                             />
                             <p className="text-sm text-gray-500 mt-2">Google Play indirme butonu görseli</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* App Gallery */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900">🏪 App Gallery (Huawei)</h3>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.show_app_gallery_badge}
+                                onChange={(e) => handleFormChange({ show_app_gallery_badge: e.target.checked })}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span className="ml-3 text-sm font-medium text-gray-700">{formData.show_app_gallery_badge ? 'Aktif' : 'Pasif'}</span>
+                        </label>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">App Gallery URL</label>
+                            <input
+                                type="url"
+                                value={formData.app_gallery_url}
+                                onChange={(e) => handleFormChange({ app_gallery_url: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="https://appgallery.huawei.com/app/..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-4">App Gallery Badge (Görsel)</label>
+                            <ImageUpload
+                                folder="badges"
+                                currentImageUrl={formData.app_gallery_badge_url}
+                                onUploadComplete={(url) => handleFormChange({ app_gallery_badge_url: url })}
+                                onDelete={() => handleFormChange({ app_gallery_badge_url: '' })}
+                                label="App Gallery Badge"
+                            />
+                            <p className="text-sm text-gray-500 mt-2">App Gallery indirme butonu görseli</p>
                         </div>
                     </div>
                 </div>

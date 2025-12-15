@@ -32,6 +32,12 @@ export interface SiteSettings {
   // App Store Badges
   app_store_badge_url?: string;
   google_play_badge_url?: string;
+  app_gallery_url?: string;
+  app_gallery_badge_url?: string;
+  // App Store Badge Visibility
+  show_app_store_badge?: boolean;
+  show_google_play_badge?: boolean;
+  show_app_gallery_badge?: boolean;
   // Social media
   facebook_url?: string;
   twitter_url?: string;
@@ -55,6 +61,8 @@ export interface NavItem {
 
 export interface TickerItem {
   id: string;
+  label?: string; // SON_DAKIKA, ANALIZ, RAPOR, SEKTOR, GUNDEM
+  title?: string;
   text: string;
   link?: string;
   sort_order: number;
@@ -112,8 +120,8 @@ export interface Campaign {
   company_id: string;
   title: string;
   badge_type?: BadgeType;
-  vade_months: number;
-  amount_tl: number;
+  vade_months?: number | null;
+  amount_tl?: number | null;
   bullet_points?: string[];
   application_link?: string;
   terms_link?: string;
@@ -134,6 +142,7 @@ export type PostStatus = 'draft' | 'published';
 export interface NewsPost {
   id: string;
   title: string;
+  slug?: string;
   category?: NewsCategory;
   cover_image_url?: string;
   summary?: string;
@@ -237,8 +246,8 @@ export interface CampaignFormData {
   company_id: string;
   title: string;
   badge_type?: BadgeType;
-  vade_months: number;
-  amount_tl: number;
+  vade_months?: number | null;
+  amount_tl?: number | null;
   bullet_points?: string[];
   application_link?: string;
   terms_link?: string;

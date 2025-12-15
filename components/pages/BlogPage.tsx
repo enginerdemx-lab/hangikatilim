@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, User, ArrowRight, TrendingUp, BookOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calendar, User, ArrowRight, BookOpen } from 'lucide-react';
 import { blogApi } from '../../src/services/api/blog';
 import type { BlogPost } from '../../src/types/database';
 
@@ -28,6 +29,11 @@ export const BlogPage: React.FC = () => {
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  // Generate URL: prefer slug, fallback to id
+  const getPostUrl = (post: BlogPost) => {
+    return `/blog/${post.slug || post.id}`;
   };
 
   if (loading) {
@@ -66,7 +72,11 @@ export const BlogPage: React.FC = () => {
             {/* Featured Post (First one) */}
             {featuredPost && (
               <div className="mb-16">
-                <div className="group relative rounded-3xl overflow-hidden shadow-2xl h-[400px] md:h-[500px]">
+                <Link
+                  to={getPostUrl(featuredPost)}
+                  className="group relative rounded-3xl overflow-hidden shadow-2xl h-[400px] md:h-[500px] block focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                  aria-label={`${featuredPost.title} yazısını oku`}
+                >
                   {featuredPost.cover_image_url ? (
                     <>
                       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${featuredPost.cover_image_url})` }}></div>
@@ -77,7 +87,10 @@ export const BlogPage: React.FC = () => {
                   )}
 
                   <div className="absolute bottom-0 left-0 p-8 md:p-12 max-w-4xl">
-                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
+                    <span className="bg-primary-600 text-white px-3 py-1 rounded-lg text-xs font-bold uppercase mb-4 inline-block shadow-lg">
+                      Öne Çıkan
+                    </span>
+                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight group-hover:text-primary-200 transition-colors">
                       {featuredPost.title}
                     </h2>
                     {featuredPost.excerpt && (
@@ -97,7 +110,7 @@ export const BlogPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </div>
             )}
 
@@ -105,7 +118,12 @@ export const BlogPage: React.FC = () => {
             {otherPosts.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {otherPosts.map((post) => (
-                  <div key={post.id} className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-slate-700 shadow-lg hover:shadow-xl transition-all group flex flex-col h-full">
+                  <Link
+                    key={post.id}
+                    to={getPostUrl(post)}
+                    className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-slate-700 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                    aria-label={`${post.title} yazısını oku`}
+                  >
                     <div className="h-56 overflow-hidden relative">
                       {post.cover_image_url ? (
                         <img src={post.cover_image_url} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -129,12 +147,12 @@ export const BlogPage: React.FC = () => {
                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
                           <User size={12} /> {post.author}
                         </span>
-                        <button className="text-primary-600 dark:text-primary-400 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
+                        <span className="text-primary-600 dark:text-primary-400 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">
                           Oku <ArrowRight size={16} />
-                        </button>
+                        </span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

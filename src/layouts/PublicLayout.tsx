@@ -1,0 +1,284 @@
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation, NavLink } from 'react-router-dom';
+import { Facebook, Twitter, Instagram, Linkedin, Mail, ChevronRight } from 'lucide-react';
+import { PublicNavbar } from '../components/PublicNavbar';
+import { NewsTicker } from '../../components/NewsTicker';
+import { Chatbot } from '../../components/Chatbot';
+import { LegalModal, LegalType } from '../../components/LegalModal';
+import { siteSettingsApi } from '../services/api/siteSettings';
+import type { SiteSettings } from '../types/database';
+
+export const PublicLayout: React.FC = () => {
+    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalModalType, setLegalModalType] = useState<LegalType>('KVKK');
+    const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+    const location = useLocation();
+
+    useEffect(() => {
+        // FORCE light mode on every page load
+        localStorage.removeItem('theme');
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+        setTheme('light');
+
+        // Load site settings (favicon + footer data)
+        const loadSiteSettings = async () => {
+            try {
+                const settings = await siteSettingsApi.getSettings();
+                console.log('[DEBUG] Site settings fetched:', settings);
+                console.log('[DEBUG] App Store Badge URL:', settings?.app_store_badge_url);
+                console.log('[DEBUG] Google Play Badge URL:', settings?.google_play_badge_url);
+                console.log('[DEBUG] App Gallery Badge URL:', settings?.app_gallery_badge_url);
+                if (settings) {
+                    setSiteSettings(settings);
+                    // Set favicon
+                    if (settings.favicon_url) {
+                        const existingFavicon = document.querySelector('link[rel="icon"]');
+                        if (existingFavicon) existingFavicon.remove();
+
+                        const link = document.createElement('link');
+                        link.rel = 'icon';
+                        link.href = settings.favicon_url;
+                        link.type = 'image/x-icon';
+                        document.head.appendChild(link);
+                    }
+                }
+            } catch (error) {
+                console.error('Site ayarları yüklenemedi:', error);
+            }
+        };
+        loadSiteSettings();
+    }, []);
+
+
+    // Scroll to top on route change
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.pathname]);
+
+    const toggleTheme = () => {
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+        if (newTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    };
+
+    const handleOpenLegal = (type: LegalType) => {
+        setLegalModalType(type);
+        setLegalModalOpen(true);
+    };
+
+    // Helper function to render app store badge
+    // ONLY uses database URL - NO fallbacks
+    const renderAppBadge = (
+        enabled: boolean | undefined,
+        storeUrl: string | undefined,
+        badgeUrl: string | undefined,
+        altText: string
+    ) => {
+        // Don't render if explicitly disabled (null/undefined = enabled)
+        if (enabled === false) return null;
+
+        // Get the image source from database ONLY - no fallbacks
+        const imgSrc = (badgeUrl || '').trim();
+
+        // Don't render if no badge URL from database
+        if (!imgSrc) {
+            console.log(`[DEBUG] Badge skipped (no URL): ${altText}`);
+            return null;
+        }
+
+        console.log(`[DEBUG] Badge rendering: ${altText}`, imgSrc);
+
+        const imgElement = (
+            <img
+                src={imgSrc}
+                alt={altText}
+                className="h-10 w-auto object-contain cursor-pointer"
+                style={{ minWidth: '100px', maxWidth: '140px' }}
+                onLoad={() => console.log(`[DEBUG] Badge LOADED: ${altText}`, imgSrc)}
+                onError={(e) => {
+                    console.error(`[DEBUG] Badge FAILED: ${altText}`, imgSrc);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                }}
+            />
+        );
+
+        // If store URL exists, wrap in link; otherwise just show image
+        if (storeUrl?.trim()) {
+            return (
+                <a
+                    href={storeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:scale-105 transition-transform inline-block"
+                >
+                    {imgElement}
+                </a>
+            );
+        }
+
+        // No store URL but badge exists - show without link
+        return (
+            <div className="inline-block">
+                {imgElement}
+            </div>
+        );
+    };
+
+
+    return (
+        <div className="min-h-screen bg-gray-50 dark:bg-slate-900 font-sans text-gray-900 dark:text-gray-100 selection:bg-primary-200 selection:text-primary-900 transition-colors duration-300 relative flex flex-col">
+            <NewsTicker />
+            <PublicNavbar theme={theme} toggleTheme={toggleTheme} />
+
+            <main className="flex-grow">
+                <Outlet context={{ theme }} />
+            </main>
+
+            <LegalModal
+                isOpen={legalModalOpen}
+                type={legalModalType}
+                onClose={() => setLegalModalOpen(false)}
+            />
+
+            <Chatbot />
+
+            {/* Footer */}
+            <footer className="bg-gray-900 dark:bg-slate-950 text-gray-400 pt-16 pb-12 border-t border-gray-800 dark:border-slate-900 transition-colors duration-300">
+                <div className="container mx-auto px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+                        <div className="text-center md:text-left">
+                            <h3 className="text-xl font-bold text-white mb-4">{siteSettings?.site_name || 'Hangi Katılım'}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-500 leading-relaxed mb-6">
+                                {siteSettings?.footer_description || "Türkiye'nin en kapsamlı tasarruf finansmanı hesaplama ve karşılaştırma platformu. Hayallerinize faizsiz ulaşın."}
+                            </p>
+                            <div className="flex justify-center md:justify-start gap-4">
+                                {siteSettings?.facebook_url && (
+                                    <a href={siteSettings.facebook_url} target="_blank" rel="noopener noreferrer" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                        <Facebook size={18} />
+                                    </a>
+                                )}
+                                {siteSettings?.twitter_url && (
+                                    <a href={siteSettings.twitter_url} target="_blank" rel="noopener noreferrer" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                        <Twitter size={18} />
+                                    </a>
+                                )}
+                                {siteSettings?.instagram_url && (
+                                    <a href={siteSettings.instagram_url} target="_blank" rel="noopener noreferrer" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                        <Instagram size={18} />
+                                    </a>
+                                )}
+                                {siteSettings?.linkedin_url && (
+                                    <a href={siteSettings.linkedin_url} target="_blank" rel="noopener noreferrer" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                        <Linkedin size={18} />
+                                    </a>
+                                )}
+                                {!siteSettings?.facebook_url && !siteSettings?.twitter_url && !siteSettings?.instagram_url && !siteSettings?.linkedin_url && (
+                                    <>
+                                        <a href="#" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                            <Facebook size={18} />
+                                        </a>
+                                        <a href="#" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                            <Twitter size={18} />
+                                        </a>
+                                        <a href="#" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                            <Instagram size={18} />
+                                        </a>
+                                        <a href="#" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
+                                            <Linkedin size={18} />
+                                        </a>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="text-center md:text-left">
+                            <h3 className="text-lg font-bold text-white mb-6">Hızlı Erişim</h3>
+                            <ul className="space-y-3">
+                                <li>
+                                    <NavLink to="/" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> Ana Sayfa
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/kampanyalar" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> Güncel Kampanyalar
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/katilim-firmalari" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> Katılım Firmaları
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/blog" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> Blog & Haberler
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/iletisim" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> İletişim
+                                    </NavLink>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="text-center md:text-left">
+                            <h3 className="text-lg font-bold text-white mb-6">Bize Ulaşın</h3>
+                            <ul className="space-y-4">
+                                <li className="flex items-center justify-center md:justify-start gap-3 text-sm">
+                                    <Mail size={18} className="text-primary-500" />
+                                    <span>{siteSettings?.footer_email || 'info@hangikatilim.com'}</span>
+                                </li>
+                            </ul>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-6">
+                                {/* App Store Badge */}
+                                {renderAppBadge(
+                                    siteSettings?.show_app_store_badge,
+                                    siteSettings?.app_store_url,
+                                    siteSettings?.app_store_badge_url,
+                                    'App Store'
+                                )}
+
+                                {/* Google Play Badge */}
+                                {renderAppBadge(
+                                    siteSettings?.show_google_play_badge,
+                                    siteSettings?.google_play_url,
+                                    siteSettings?.google_play_badge_url,
+                                    'Google Play'
+                                )}
+
+                                {/* App Gallery Badge */}
+                                {renderAppBadge(
+                                    siteSettings?.show_app_gallery_badge,
+                                    siteSettings?.app_gallery_url,
+                                    siteSettings?.app_gallery_badge_url,
+                                    'App Gallery'
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <p className="text-sm font-medium text-gray-400">{siteSettings?.copyright_text || 'Hangi Katılım Platformu © 2025'}</p>
+                        <div className="flex gap-6 text-xs text-gray-500">
+                            <button onClick={() => handleOpenLegal('TERMS')} className="hover:text-white transition-colors">Kullanım Şartları</button>
+                            <button onClick={() => handleOpenLegal('KVKK')} className="hover:text-white transition-colors">Aydınlatma Metni</button>
+                            <button onClick={() => handleOpenLegal('CONSENT')} className="hover:text-white transition-colors">Açık Rıza Metni</button>
+                        </div>
+                    </div>
+
+                    <p className="text-[10px] text-gray-600 dark:text-gray-700 text-center mt-6 max-w-4xl mx-auto leading-relaxed">
+                        Bu uygulama bilgilendirme amaçlıdır. Hesaplanan tutarlar ve teslimat tarihleri, seçilen parametrelere göre tahmini olarak sunulmaktadır. Kesin sonuçlar için ilgili tasarruf finansman şirketleri ile görüşülmelidir.
+                    </p>
+                </div>
+            </footer>
+        </div>
+    );
+};

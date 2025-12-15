@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat } from "@google/genai";
 import { MessageCircle, X, Send, Sparkles, User, Bot } from 'lucide-react';
@@ -8,6 +7,9 @@ interface Message {
   role: 'user' | 'model';
   text: string;
 }
+
+// API Key - Production için environment variable kullanılmalı
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyC7l2bfz4h8aHW83c2d6tceuu5IHB2gajA';
 
 export const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,16 +22,24 @@ export const Chatbot: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const aiRef = useRef<GoogleGenAI | null>(null);
 
-  // Initialize Chat Session
+  // Initialize AI and Chat Session
   useEffect(() => {
-    if (!chatSessionRef.current && process.env.API_KEY) {
+    const initializeChat = async () => {
+      if (!GEMINI_API_KEY) {
+        setError('API anahtarı bulunamadı');
+        return;
+      }
+
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        chatSessionRef.current = ai.chats.create({
-          model: 'gemini-3-pro-preview',
+        aiRef.current = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+        chatSessionRef.current = aiRef.current.chats.create({
+          model: 'gemini-2.0-flash',
           config: {
             systemInstruction: `Sen "Hangi Katılım" web sitesi için çalışan yardımsever, profesyonel ve bilgili bir yapay zeka asistanısın. 
             
@@ -43,11 +53,18 @@ export const Chatbot: React.FC = () => {
             Kısa, net ve okunabilir cevaplar ver. Kullanıcıyı sıkmadan bilgilendir.`,
           },
         });
-      } catch (error) {
-        console.error("Chat başlatılamadı:", error);
+
+        setError(null);
+      } catch (err) {
+        console.error("Chat başlatılamadı:", err);
+        setError('Bağlantı kurulamadı');
       }
+    };
+
+    if (isOpen && !chatSessionRef.current) {
+      initializeChat();
     }
-  }, []);
+  }, [isOpen]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -67,6 +84,7 @@ export const Chatbot: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setError(null);
 
     try {
       if (chatSessionRef.current) {
@@ -80,19 +98,29 @@ export const Chatbot: React.FC = () => {
         };
         setMessages(prev => [...prev, botMessage]);
       } else {
-        // Fallback if API key is missing or init failed
-        setTimeout(() => {
+        // Try to reinitialize
+        if (aiRef.current) {
+          chatSessionRef.current = aiRef.current.chats.create({
+            model: 'gemini-2.0-flash',
+            config: {
+              systemInstruction: `Sen "Hangi Katılım" web sitesi için çalışan yardımsever bir asistansın. Türkçe yanıt ver, kısa ve net ol.`,
+            },
+          });
+
+          const result = await chatSessionRef.current.sendMessage({ message: userMessage.text });
+          const responseText = result.text;
+
           setMessages(prev => [...prev, {
-            id: Date.now().toString(),
+            id: (Date.now() + 1).toString(),
             role: 'model',
-            text: "Asistan bağlantısı şu anda kurulamadı. Lütfen daha sonra tekrar deneyin."
+            text: responseText || "Yanıt alınamadı."
           }]);
-          setIsLoading(false);
-        }, 1000);
-        return;
+        } else {
+          throw new Error('AI bağlantısı yok');
+        }
       }
-    } catch (error) {
-      console.error("Mesaj gönderilemedi:", error);
+    } catch (err) {
+      console.error("Mesaj gönderilemedi:", err);
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'model',
@@ -118,8 +146,8 @@ export const Chatbot: React.FC = () => {
               <div>
                 <h3 className="font-bold text-sm">Asistan</h3>
                 <p className="text-[10px] text-primary-50 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                  Çevrimiçi
+                  <span className={`w-1.5 h-1.5 rounded-full ${error ? 'bg-red-400' : 'bg-green-400 animate-pulse'}`}></span>
+                  {error ? 'Bağlantı hatası' : 'Çevrimiçi'}
                 </p>
               </div>
             </div>
@@ -139,15 +167,15 @@ export const Chatbot: React.FC = () => {
                 className={`flex items-start gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
-                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                    : 'bg-[#4DC9E6]/20 dark:bg-[#4DC9E6]/10 text-[#210CAE] dark:text-[#4DC9E6]'
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                  : 'bg-[#4DC9E6]/20 dark:bg-[#4DC9E6]/10 text-[#210CAE] dark:text-[#4DC9E6]'
                   }`}>
                   {msg.role === 'user' ? <User size={14} /> : <Sparkles size={14} />}
                 </div>
 
                 <div className={`max-w-[75%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                    ? 'bg-[#210CAE] text-white rounded-tr-none'
-                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-slate-700'
+                  ? 'bg-[#210CAE] text-white rounded-tr-none'
+                  : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-slate-700'
                   }`}>
                   {msg.text}
                 </div>
@@ -156,7 +184,7 @@ export const Chatbot: React.FC = () => {
 
             {isLoading && (
               <div className="flex items-start gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#4DC9E6]/20 dark:bg-[#4DC9E6]/10 text-[#210CAE] dark:text-[#4DC9E6] flex items-center justify-center flex-shrink-0">
                   <Sparkles size={14} />
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-slate-700">
@@ -200,8 +228,8 @@ export const Chatbot: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`group flex items-center gap-1.5 md:gap-2 h-11 md:h-14 px-3 md:px-4 rounded-full shadow-xl transition-all duration-300 hover:scale-105 ${isOpen
-            ? 'bg-red-500 hover:bg-red-600 text-white'
-            : 'bg-[linear-gradient(90deg,#4DC9E6,#210CAE)] hover:opacity-90 text-white'
+          ? 'bg-red-500 hover:bg-red-600 text-white'
+          : 'bg-[linear-gradient(90deg,#4DC9E6,#210CAE)] hover:opacity-90 text-white'
           }`}
       >
         {isOpen ? (

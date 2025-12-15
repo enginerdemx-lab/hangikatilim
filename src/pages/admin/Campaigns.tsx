@@ -20,8 +20,8 @@ export const Campaigns: React.FC = () => {
         company_id: '',
         title: '',
         badge_type: undefined,
-        vade_months: 12,
-        amount_tl: 50000,
+        vade_months: null,
+        amount_tl: null,
         bullet_points: [],
         application_link: '',
         terms_link: '',
@@ -75,8 +75,8 @@ export const Campaigns: React.FC = () => {
             company_id: campaign.company_id,
             title: campaign.title,
             badge_type: campaign.badge_type,
-            vade_months: campaign.vade_months,
-            amount_tl: campaign.amount_tl,
+            vade_months: campaign.vade_months ?? null,
+            amount_tl: campaign.amount_tl ?? null,
             bullet_points: campaign.bullet_points || [],
             application_link: campaign.application_link || '',
             terms_link: campaign.terms_link || '',
@@ -116,8 +116,8 @@ export const Campaigns: React.FC = () => {
             company_id: '',
             title: '',
             badge_type: undefined,
-            vade_months: 12,
-            amount_tl: 50000,
+            vade_months: null,
+            amount_tl: null,
             bullet_points: [],
             application_link: '',
             terms_link: '',
@@ -271,30 +271,29 @@ export const Campaigns: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Vade */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Vade (Ay)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Vade (Ay) <span className="text-gray-400 text-xs">(Opsiyonel)</span></label>
                                 <input
                                     type="number"
-                                    value={formData.vade_months}
-                                    onChange={(e) => setFormData({ ...formData, vade_months: parseInt(e.target.value) || 0 })}
+                                    value={formData.vade_months ?? ''}
+                                    onChange={(e) => setFormData({ ...formData, vade_months: e.target.value ? parseInt(e.target.value) : null })}
                                     min="1"
+                                    placeholder="Boş bırakılabilir"
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
 
                             {/* Amount */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Tutar (TL)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Tutar (TL) <span className="text-gray-400 text-xs">(Opsiyonel)</span></label>
                                 <input
                                     type="text"
-                                    value={formData.amount_tl.toLocaleString('tr-TR')}
+                                    value={formData.amount_tl ? formData.amount_tl.toLocaleString('tr-TR') : ''}
                                     onChange={(e) => {
-                                        const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                                        const val = e.target.value ? parseInt(e.target.value.replace(/\D/g, '')) : null;
                                         setFormData({ ...formData, amount_tl: val });
                                     }}
-                                    min="0"
-                                    step="1000"
+                                    placeholder="Boş bırakılabilir"
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Örn: 1.878.000"
                                 />
                             </div>
                         </div>
