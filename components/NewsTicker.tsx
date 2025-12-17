@@ -1,22 +1,84 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../src/services/supabaseClient';
+import { tickerApi } from '../src/services/api/ticker';
+import type { TickerItem } from '../src/types/database';
 
 interface NewsTickerProps {
   onNavigate?: (page: string) => void;
 }
 
-export const NewsTicker: React.FC<NewsTickerProps> = () => {
-  const headlines = [
-    "SON DAKİKA: Konut kredisi faizleri %3.50 seviyesini aştı, Tasarruf Finansman'a talep %45 arttı.",
-    "BDDK RAPORU: Tasarruf Finansman şirketlerinin aktif büyüklüğü 2024'te rekor seviyeye ulaştı.",
-    "SEKTÖR: İnşaat maliyet endeksindeki artış nedeniyle 'Sabit Taksitli' paketlere ilgi yoğunlaşıyor.",
-    "GÜNDEM: 2025 yılında 'Peşinatsız Konut' ediniminde yeni yasal düzenlemeler bekleniyor.",
-    "ANALİZ: Banka kredilerine erişim zorlaşırken, Faizsiz Finansman tek alternatif haline geldi."
-  ];
+// Loading skeleton component
+const TickerSkeleton: React.FC = () => (
+  <div className="flex items-center gap-4 animate-pulse">
+    <div className="h-3 bg-white/20 rounded w-64"></div>
+    <div className="h-3 bg-white/20 rounded w-48"></div>
+    <div className="h-3 bg-white/20 rounded w-56"></div>
+  </div>
+);
 
+export const NewsTicker: React.FC<NewsTickerProps> = () => {
+  const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const tickerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch active ticker items using the existing API
+  const fetchTickerItems = useCallback(async () => {
+    try {
+      console.log('[NewsTicker] Fetching ticker items...');
+      const data = await tickerApi.getActiveTickerItems();
+      console.log('[NewsTicker] Fetched items:', data?.length || 0, data);
+      setTickerItems(data || []);
+      setError(null);
+    } catch (err) {
+      console.error('[NewsTicker] Fetch error:', err);
+      setError('Veriler yüklenemedi');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial fetch + Realtime subscription + Polling
+  useEffect(() => {
+    // Initial fetch
+    fetchTickerItems();
+
+    // Supabase Realtime subscription for ticker_items table
+    const channel = supabase
+      .channel('ticker_items_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'ticker_items',
+        },
+        (payload) => {
+          console.log('[NewsTicker] Realtime event:', payload.eventType, payload);
+          // Refetch on any change to ensure consistency
+          fetchTickerItems();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[NewsTicker] Realtime subscription status:', status);
+      });
+
+    // Polling fallback: refetch every 60 seconds
+    const pollingInterval = setInterval(() => {
+      console.log('[NewsTicker] Polling refetch...');
+      fetchTickerItems();
+    }, 60000);
+
+    // Cleanup
+    return () => {
+      console.log('[NewsTicker] Cleaning up subscription...');
+      supabase.removeChannel(channel);
+      clearInterval(pollingInterval);
+    };
+  }, [fetchTickerItems]);
 
   // Check for reduced motion preference
   useEffect(() => {
@@ -28,8 +90,18 @@ export const NewsTicker: React.FC<NewsTickerProps> = () => {
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  // Combined ticker text for seamless loop
-  const tickerText = headlines.join('  •  ');
+  // Build ticker text from items
+  const tickerText = tickerItems.length > 0
+    ? tickerItems.map(item => {
+      // Format: LABEL: Title — Message (if label/title exist)
+      const labelPart = item.label ? `${item.label}: ` : '';
+      const titlePart = item.title ? `${item.title} — ` : '';
+      return `${labelPart}${titlePart}${item.text}`;
+    }).join('  •  ')
+    : '';
+
+  // Show minimal fallback if no items (but keep structure visible for debugging)
+  const showFallback = !loading && (tickerItems.length === 0 || error);
 
   return (
     <div
@@ -53,7 +125,13 @@ export const NewsTicker: React.FC<NewsTickerProps> = () => {
             ref={tickerRef}
             className="flex-1 overflow-hidden relative mx-3"
           >
-            {prefersReducedMotion ? (
+            {loading ? (
+              <TickerSkeleton />
+            ) : error ? (
+              <span className="text-xs text-yellow-400">⚠️ Gündem yüklenemedi</span>
+            ) : tickerItems.length === 0 ? (
+              <span className="text-xs text-white/50">Henüz gündem içeriği yok</span>
+            ) : prefersReducedMotion ? (
               // Reduced motion: horizontal scroll or truncate
               <div
                 className="overflow-x-auto scrollbar-hide whitespace-nowrap py-1"

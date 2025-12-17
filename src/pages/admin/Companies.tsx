@@ -2,16 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { companiesApi } from '../../services/api/companies';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
+import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
+import { SubmitButton } from '../../components/admin/SubmitButton';
 import type { Company, CompanyFormData } from '../../types/database';
+
+// Validation rules
+const validationRules: ValidationRules<CompanyFormData> = {
+    name: { required: 'Firma adı zorunludur' },
+};
 
 export const Companies: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const { success, error: showError } = useToast();
+    const { errors, validate, clearErrors, focusFirstError } = useFormValidation<CompanyFormData>();
 
     // Form state
     const [formData, setFormData] = useState<CompanyFormData>({
@@ -43,19 +52,29 @@ export const Companies: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Validate form
+        if (!validate(formData, validationRules)) {
+            focusFirstError();
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editingCompany) {
                 await companiesApi.updateCompany(editingCompany.id, formData);
-                success('Firma güncellendi');
+                success('Kaydedildi');
             } else {
                 await companiesApi.createCompany(formData);
-                success('Firma oluşturuldu');
+                success('Kaydedildi');
             }
 
             resetForm();
             loadData();
         } catch (err) {
-            showError(err instanceof Error ? err.message : 'İşlem başarısız');
+            const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen hata';
+            showError(`Kaydetme başarısız: ${errorMessage}`);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -268,16 +287,14 @@ export const Companies: React.FC = () => {
 
                         {/* Submit */}
                         <div className="flex gap-3 pt-4">
-                            <button
-                                type="submit"
-                                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700"
-                            >
+                            <SubmitButton loading={saving} className="flex-1">
                                 {editingCompany ? 'Güncelle' : 'Oluştur'}
-                            </button>
+                            </SubmitButton>
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
+                                disabled={saving}
+                                className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50"
                             >
                                 İptal
                             </button>
@@ -312,8 +329,8 @@ export const Companies: React.FC = () => {
                                                 }}
                                                 disabled={index === 0}
                                                 className={`p-1.5 rounded transition-all ${index === 0
-                                                        ? 'text-gray-300 cursor-not-allowed'
-                                                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95'
+                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95'
                                                     }`}
                                                 title="Yukarı Taşı"
                                             >
@@ -328,8 +345,8 @@ export const Companies: React.FC = () => {
                                                 }}
                                                 disabled={index === filteredCompanies.length - 1}
                                                 className={`p-1.5 rounded transition-all ${index === filteredCompanies.length - 1
-                                                        ? 'text-gray-300 cursor-not-allowed'
-                                                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95'
+                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:scale-95'
                                                     }`}
                                                 title="Aşağı Taşı"
                                             >

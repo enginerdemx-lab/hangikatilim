@@ -55,6 +55,7 @@ export interface NavItem {
   link: string;
   sort_order: number;
   is_active: boolean;
+  open_in_new_tab?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -251,6 +252,8 @@ export interface CampaignFormData {
   bullet_points?: string[];
   application_link?: string;
   terms_link?: string;
+  application_button_text?: string;
+  terms_button_text?: string;
   image_url?: string;
   mobile_image_url?: string;
   is_active: boolean;

@@ -2,16 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { blogApi } from '../../services/api/blog';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
+import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
+import { SubmitButton } from '../../components/admin/SubmitButton';
 import type { BlogPost, BlogPostFormData } from '../../types/database';
+
+// Validation rules
+const validationRules: ValidationRules<BlogPostFormData> = {
+    title: { required: 'Başlık zorunludur' },
+    slug: { required: 'URL slug zorunludur' },
+    author: { required: 'Yazar zorunludur' },
+    content: { required: 'İçerik zorunludur' },
+    published_at: { required: 'Yayın tarihi zorunludur' },
+};
 
 export const Blog: React.FC = () => {
     const [posts, setPosts] = useState<BlogPost[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const { success, error: showError } = useToast();
+    const { errors, validate, clearErrors, focusFirstError } = useFormValidation<BlogPostFormData>();
 
     // Form state
     const [formData, setFormData] = useState<BlogPostFormData>({
@@ -64,19 +77,29 @@ export const Blog: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Validate form
+        if (!validate(formData, validationRules)) {
+            focusFirstError();
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editingPost) {
                 await blogApi.updatePost(editingPost.id, formData);
-                success('Blog yazısı güncellendi');
+                success('Kaydedildi');
             } else {
                 await blogApi.createPost(formData);
-                success('Blog yazısı oluşturuldu');
+                success('Kaydedildi');
             }
 
             resetForm();
             loadData();
         } catch (err) {
-            showError(err instanceof Error ? err.message : 'İşlem başarısız');
+            const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen hata';
+            showError(`Kaydetme başarısız: ${errorMessage}`);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -318,16 +341,14 @@ export const Blog: React.FC = () => {
 
                         {/* Submit */}
                         <div className="flex gap-3 pt-4">
-                            <button
-                                type="submit"
-                                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700"
-                            >
+                            <SubmitButton loading={saving} className="flex-1">
                                 {editingPost ? 'Güncelle' : 'Yayınla'}
-                            </button>
+                            </SubmitButton>
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
+                                disabled={saving}
+                                className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50"
                             >
                                 İptal
                             </button>

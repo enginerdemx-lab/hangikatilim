@@ -3,7 +3,6 @@ import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, ChevronRight } from 'lucide-react';
 import { PublicNavbar } from '../components/PublicNavbar';
 import { NewsTicker } from '../../components/NewsTicker';
-import { Chatbot } from '../../components/Chatbot';
 import { LegalModal, LegalType } from '../../components/LegalModal';
 import { siteSettingsApi } from '../services/api/siteSettings';
 import type { SiteSettings } from '../types/database';
@@ -22,6 +21,12 @@ export const PublicLayout: React.FC = () => {
         document.body.classList.remove('dark');
         setTheme('light');
 
+        // Immediately set title from cache to prevent FOUC
+        const cachedSiteName = localStorage.getItem('cached_site_name');
+        if (cachedSiteName) {
+            document.title = `${cachedSiteName} | Tasarruf Finansmanı Hesaplayıcı`;
+        }
+
         // Load site settings (favicon + footer data)
         const loadSiteSettings = async () => {
             try {
@@ -32,6 +37,13 @@ export const PublicLayout: React.FC = () => {
                 console.log('[DEBUG] App Gallery Badge URL:', settings?.app_gallery_badge_url);
                 if (settings) {
                     setSiteSettings(settings);
+
+                    // Set document title with site name and cache it
+                    if (settings.site_name) {
+                        document.title = `${settings.site_name} | Tasarruf Finansmanı Hesaplayıcı`;
+                        localStorage.setItem('cached_site_name', settings.site_name);
+                    }
+
                     // Set favicon
                     if (settings.favicon_url) {
                         const existingFavicon = document.querySelector('link[rel="icon"]');
@@ -146,8 +158,6 @@ export const PublicLayout: React.FC = () => {
                 type={legalModalType}
                 onClose={() => setLegalModalOpen(false)}
             />
-
-            <Chatbot />
 
             {/* Footer */}
             <footer className="bg-gray-900 dark:bg-slate-950 text-gray-400 pt-16 pb-12 border-t border-gray-800 dark:border-slate-900 transition-colors duration-300">

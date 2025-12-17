@@ -17,6 +17,7 @@ import { Contact as AdminContact } from './src/pages/admin/Contact';
 import { Media } from './src/pages/admin/Media';
 import { HomeContent } from './src/pages/admin/HomeContent';
 import { AdminLayout } from './src/components/admin/AdminLayout';
+import { QuickLinks } from './src/pages/admin/QuickLinks';
 
 // Public Layout and Pages
 import { PublicLayout } from './src/layouts/PublicLayout';
@@ -74,6 +75,7 @@ const App: React.FC = () => {
                     <Route path="blog" element={<AdminBlog />} />
                     <Route path="contact" element={<AdminContact />} />
                     <Route path="media" element={<Media />} />
+                    <Route path="quick-links" element={<QuickLinks />} />
                 </Route>
 
                 {/* Public Routes with Layout */}
@@ -142,9 +144,10 @@ const App: React.FC = () => {
                             </Suspense>
                         }
                     />
-                    {/* 404 for unknown public routes */}
-                    <Route path="*" element={<NotFoundPage />} />
                 </Route>
+
+                {/* Global 404 - MUST be OUTSIDE of PublicLayout to not catch admin routes */}
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </BrowserRouter>
     );

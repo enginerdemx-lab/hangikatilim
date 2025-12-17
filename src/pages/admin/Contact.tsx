@@ -57,15 +57,16 @@ export const Contact: React.FC = () => {
         try {
             if (settings?.id) {
                 await contactApi.updateSettings(settings.id, formData);
-                showToast('İletişim ayarları güncellendi', 'success');
+                showToast('Kaydedildi', 'success');
             } else {
                 await contactApi.createSettings(formData);
-                showToast('İletişim ayarları kaydedildi', 'success');
+                showToast('Kaydedildi', 'success');
             }
             loadData();
         } catch (error) {
             console.error('Failed to save contact settings:', error);
-            showToast('Kaydetme başarısız', 'error');
+            const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+            showToast(`Kaydetme başarısız: ${errorMessage}`, 'error');
         } finally {
             setSaving(false);
         }
@@ -140,8 +141,8 @@ export const Contact: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('settings')}
                         className={`py-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === 'settings'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                     >
                         İletişim Ayarları
@@ -149,8 +150,8 @@ export const Contact: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('messages')}
                         className={`py-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === 'messages'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                     >
                         Gelen Mesajlar

@@ -3,17 +3,27 @@ import { campaignsApi } from '../../services/api/campaigns';
 import { companiesApi } from '../../services/api/companies';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
+import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
+import { SubmitButton } from '../../components/admin/SubmitButton';
 import type { Campaign, Company, CampaignFormData, BadgeType } from '../../types/database';
+
+// Validation rules
+const validationRules: ValidationRules<CampaignFormData> = {
+    company_id: { required: 'Firma seçimi zorunludur' },
+    title: { required: 'Kampanya başlığı zorunludur' },
+};
 
 export const Campaigns: React.FC = () => {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const { success, error: showError } = useToast();
+    const { errors, validate, clearErrors, focusFirstError } = useFormValidation<CampaignFormData>();
 
     // Form state
     const [formData, setFormData] = useState<CampaignFormData>({
@@ -25,6 +35,8 @@ export const Campaigns: React.FC = () => {
         bullet_points: [],
         application_link: '',
         terms_link: '',
+        application_button_text: 'Hemen Başvur',
+        terms_button_text: 'Koşulları İncele',
         image_url: '',
         mobile_image_url: '',
         is_active: true,
@@ -53,19 +65,29 @@ export const Campaigns: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Validate form
+        if (!validate(formData, validationRules)) {
+            focusFirstError();
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editingCampaign) {
                 await campaignsApi.updateCampaign(editingCampaign.id, formData);
-                success('Kampanya güncellendi');
+                success('Kaydedildi');
             } else {
                 await campaignsApi.createCampaign(formData);
-                success('Kampanya oluşturuldu');
+                success('Kaydedildi');
             }
 
             resetForm();
             loadData();
         } catch (err) {
-            showError(err instanceof Error ? err.message : 'İşlem başarısız');
+            const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen hata';
+            showError(`Kaydetme başarısız: ${errorMessage}`);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -121,6 +143,8 @@ export const Campaigns: React.FC = () => {
             bullet_points: [],
             application_link: '',
             terms_link: '',
+            application_button_text: 'Hemen Başvur',
+            terms_button_text: 'Koşulları İncele',
             image_url: '',
             mobile_image_url: '',
             is_active: true,
@@ -429,16 +453,14 @@ export const Campaigns: React.FC = () => {
 
                         {/* Submit */}
                         <div className="flex gap-3 pt-4">
-                            <button
-                                type="submit"
-                                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700"
-                            >
+                            <SubmitButton loading={saving} className="flex-1">
                                 {editingCampaign ? 'Güncelle' : 'Oluştur'}
-                            </button>
+                            </SubmitButton>
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
+                                disabled={saving}
+                                className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50"
                             >
                                 İptal
                             </button>

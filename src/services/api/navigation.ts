@@ -6,6 +6,7 @@ export interface NavItemFormData {
     link: string;
     sort_order: number;
     is_active: boolean;
+    open_in_new_tab?: boolean;
 }
 
 export const navigationApi = {

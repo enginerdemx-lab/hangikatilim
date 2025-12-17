@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { tickerApi, type TickerItemFormData } from '../../services/api/ticker';
 import { useToast } from '../../hooks/useToast';
+import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
+import { SubmitButton } from '../../components/admin/SubmitButton';
 import type { TickerItem } from '../../types/database';
+
+// Validation rules for ticker form
+const validationRules: ValidationRules<TickerItemFormData> = {
+    text: { required: 'Haber metni zorunludur' },
+};
 
 export const Ticker: React.FC = () => {
     const [items, setItems] = useState<TickerItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const { showToast } = useToast();
+    const { errors, validate, clearErrors, focusFirstError } = useFormValidation<TickerItemFormData>();
 
     const [formData, setFormData] = useState<TickerItemFormData>({
         text: '',
@@ -35,19 +44,30 @@ export const Ticker: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate form
+        if (!validate(formData, validationRules)) {
+            focusFirstError();
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editingId) {
                 await tickerApi.updateTickerItem(editingId, formData);
-                showToast('Gündem öğesi güncellendi', 'success');
+                showToast('Kaydedildi', 'success');
             } else {
                 await tickerApi.createTickerItem(formData);
-                showToast('Gündem öğesi eklendi', 'success');
+                showToast('Kaydedildi', 'success');
             }
             resetForm();
             loadData();
         } catch (error) {
             console.error('Failed to save ticker item:', error);
-            showToast('Kaydetme başarısız', 'error');
+            const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+            showToast(`Kaydetme başarısız: ${errorMessage}`, 'error');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -180,17 +200,32 @@ export const Ticker: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                📰 Haber Metni *
+                                📰 Haber Metni <span className="text-red-500">*</span>
                             </label>
                             <textarea
                                 value={formData.text}
-                                onChange={(e) => setFormData({ ...formData, text: e.target.value })}
-                                required
+                                onChange={(e) => {
+                                    setFormData({ ...formData, text: e.target.value });
+                                    if (errors.text) clearErrors();
+                                }}
                                 rows={3}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 transition ${errors.text
+                                        ? 'border-red-500 focus:ring-red-200 focus:border-red-500 bg-red-50'
+                                        : 'border-gray-300 focus:ring-purple-500 focus:border-transparent'
+                                    }`}
                                 placeholder="Örn: SON DAKİKA: Konut kredisi faizleri düştü..."
                             />
-                            <p className="text-xs text-gray-500 mt-1">Bu metin ticker'da görünecek</p>
+                            {errors.text && (
+                                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    {errors.text}
+                                </p>
+                            )}
+                            {!errors.text && (
+                                <p className="text-xs text-gray-500 mt-1">Bu metin ticker'da görünecek</p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -235,16 +270,14 @@ export const Ticker: React.FC = () => {
                         </div>
 
                         <div className="flex gap-3 pt-4 border-t border-gray-200">
-                            <button
-                                type="submit"
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition shadow-lg hover:shadow-xl font-semibold"
-                            >
+                            <SubmitButton loading={saving} className="flex-1">
                                 {editingId ? '💾 Güncelle' : '✨ Ekle'}
-                            </button>
+                            </SubmitButton>
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold"
+                                disabled={saving}
+                                className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold disabled:opacity-50"
                             >
                                 ✖️ İptal
                             </button>
@@ -276,8 +309,8 @@ export const Ticker: React.FC = () => {
                                         onClick={() => handleMoveUp(item, index)}
                                         disabled={index === 0}
                                         className={`p-1.5 rounded transition ${index === 0
-                                                ? 'text-gray-300 cursor-not-allowed'
-                                                : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                                            ? 'text-gray-300 cursor-not-allowed'
+                                            : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
                                             }`}
                                         title="Yukarı taşı"
                                     >
@@ -289,8 +322,8 @@ export const Ticker: React.FC = () => {
                                         onClick={() => handleMoveDown(item, index)}
                                         disabled={index === items.length - 1}
                                         className={`p-1.5 rounded transition ${index === items.length - 1
-                                                ? 'text-gray-300 cursor-not-allowed'
-                                                : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                                            ? 'text-gray-300 cursor-not-allowed'
+                                            : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
                                             }`}
                                         title="Aşağı taşı"
                                     >
@@ -330,8 +363,8 @@ export const Ticker: React.FC = () => {
                                     <button
                                         onClick={() => handleToggleActive(item.id, item.is_active)}
                                         className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 ${item.is_active
-                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                                             }`}
                                     >
                                         {item.is_active ? '✅ Aktif' : '⏸️ Pasif'}

@@ -7,7 +7,6 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { HomeContent } from './pages/admin/HomeContent';
 import { SiteSettings } from './pages/admin/SiteSettings';
-import { Navigation } from './pages/admin/Navigation';
 import { Ticker } from './pages/admin/Ticker';
 import { HomeHeroSettings } from './pages/admin/HomeHeroSettings';
 import { Calculator as AdminCalculator } from './pages/admin/Calculator';
@@ -17,6 +16,7 @@ import { Contact as AdminContact } from './pages/admin/Contact';
 import { Media } from './pages/admin/Media';
 import { Campaigns as AdminCampaigns } from './pages/admin/Campaigns';
 import { Companies as AdminCompanies } from './pages/admin/Companies';
+import { QuickLinks } from './pages/admin/QuickLinks';
 
 // Public Layout
 import { PublicLayout } from './layouts/PublicLayout';
@@ -58,13 +58,12 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Admin Routes */}
+        {/* Admin Routes - Must be BEFORE public routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="home-content" element={<HomeContent />} />
           <Route path="site-settings" element={<SiteSettings />} />
-          <Route path="navigation" element={<Navigation />} />
           <Route path="ticker" element={<Ticker />} />
           <Route path="home-hero" element={<HomeHeroSettings />} />
           <Route path="calculator" element={<AdminCalculator />} />
@@ -74,6 +73,7 @@ const App: React.FC = () => {
           <Route path="media" element={<Media />} />
           <Route path="campaigns" element={<AdminCampaigns />} />
           <Route path="companies" element={<AdminCompanies />} />
+          <Route path="quick-links" element={<QuickLinks />} />
         </Route>
 
         {/* Public Routes with Layout */}
@@ -142,9 +142,10 @@ const App: React.FC = () => {
               </Suspense>
             }
           />
-          {/* 404 for unknown public routes */}
-          <Route path="*" element={<NotFoundPage />} />
         </Route>
+
+        {/* Global 404 - Catches everything else */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

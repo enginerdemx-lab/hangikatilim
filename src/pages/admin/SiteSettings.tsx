@@ -135,12 +135,13 @@ export const SiteSettings: React.FC = () => {
             const updateData: Partial<SiteSettings> = { ...formData };
             if (settings?.id) {
                 await siteSettingsApi.updateSettings(settings.id, updateData);
-                success('Ayarlar başarıyla kaydedildi');
+                success('Kaydedildi');
             }
             setHasUnsavedChanges(false);
             await loadSettings();
         } catch (err) {
-            showError(err instanceof Error ? err.message : 'Kaydetme başarısız');
+            const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen hata';
+            showError(`Kaydetme başarısız: ${errorMessage}`);
         } finally {
             setSaving(false);
         }

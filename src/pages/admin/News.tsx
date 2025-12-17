@@ -2,14 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { newsApi, type NewsPostFormData } from '../../services/api/news';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
+import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
+import { SubmitButton } from '../../components/admin/SubmitButton';
 import type { NewsPost, NewsCategory, PostStatus } from '../../types/database';
+
+// Validation rules
+const validationRules: ValidationRules<NewsPostFormData> = {
+    title: { required: 'Başlık zorunludur' },
+};
 
 export const News: React.FC = () => {
     const [posts, setPosts] = useState<NewsPost[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const { showToast } = useToast();
+    const { errors, validate, clearErrors, focusFirstError } = useFormValidation<NewsPostFormData>();
 
     const [formData, setFormData] = useState<NewsPostFormData>({
         title: '',
@@ -39,19 +48,30 @@ export const News: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate form
+        if (!validate(formData, validationRules)) {
+            focusFirstError();
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editingId) {
                 await newsApi.updateNews(editingId, formData);
-                showToast('Haber güncellendi', 'success');
+                showToast('Kaydedildi', 'success');
             } else {
                 await newsApi.createNews(formData);
-                showToast('Haber eklendi', 'success');
+                showToast('Kaydedildi', 'success');
             }
             resetForm();
             loadData();
         } catch (error) {
             console.error('Failed to save news:', error);
-            showToast('Kaydetme başarısız', 'error');
+            const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+            showToast(`Kaydetme başarısız: ${errorMessage}`, 'error');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -288,16 +308,14 @@ export const News: React.FC = () => {
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 pt-4 border-t border-gray-200">
-                            <button
-                                type="submit"
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition shadow-lg hover:shadow-xl font-semibold"
-                            >
+                            <SubmitButton loading={saving} className="flex-1">
                                 {editingId ? '💾 Güncelle' : '✨ Haberi Ekle'}
-                            </button>
+                            </SubmitButton>
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold"
+                                disabled={saving}
+                                className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition font-semibold disabled:opacity-50"
                             >
                                 ✖️ İptal
                             </button>
@@ -349,8 +367,8 @@ export const News: React.FC = () => {
                                     <td className="px-6 py-4 text-sm">
                                         {post.category ? (
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${post.category === 'sirket' ? 'bg-blue-100 text-blue-800' :
-                                                    post.category === 'mevzuat' ? 'bg-purple-100 text-purple-800' :
-                                                        'bg-green-100 text-green-800'
+                                                post.category === 'mevzuat' ? 'bg-purple-100 text-purple-800' :
+                                                    'bg-green-100 text-green-800'
                                                 }`}>
                                                 {post.category === 'sirket' ? '🏢 Şirket' :
                                                     post.category === 'mevzuat' ? '📜 Mevzuat' :
@@ -362,8 +380,8 @@ export const News: React.FC = () => {
                                         <button
                                             onClick={() => handleUpdateStatus(post.id, post.status === 'draft' ? 'published' : 'draft')}
                                             className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 ${post.status === 'published'
-                                                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                                                 }`}
                                         >
                                             {post.status === 'published' ? '✅ Yayında' : '📝 Taslak'}
