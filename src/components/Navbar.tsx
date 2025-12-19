@@ -48,11 +48,11 @@ export const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, activePage, 
           {currentLogo ? (
             <img
               src={currentLogo}
-              alt="Hangi Katılım"
+              alt="Katılım Uzmanı"
               className="h-10 md:h-12 w-auto object-contain transition-all"
             />
           ) : (
-            <span className="text-xl font-bold text-gray-900 dark:text-white">Hangi Katılım</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white">Katılım Uzmanı</span>
           )}
         </div>
 

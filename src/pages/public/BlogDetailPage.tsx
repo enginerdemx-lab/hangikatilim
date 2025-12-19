@@ -19,7 +19,7 @@ const BlogDetailPage: React.FC = () => {
     // Update page title for SEO
     useEffect(() => {
         if (post) {
-            document.title = `${post.title} | Hangi Katılım Blog`;
+            document.title = `${post.title} | Katılım Uzmanı Blog`;
 
             // Update meta description
             const metaDescription = document.querySelector('meta[name="description"]');
@@ -34,7 +34,7 @@ const BlogDetailPage: React.FC = () => {
         }
 
         return () => {
-            document.title = 'Hangi Katılım';
+            document.title = 'Katılım Uzmanı';
         };
     }, [post]);
 

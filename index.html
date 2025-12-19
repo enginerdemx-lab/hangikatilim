@@ -1,83 +1,91 @@
 <!DOCTYPE html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hangi Katılım | Tasarruf Finansmanı Hesaplayıcı</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              primary: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                200: '#bae6fd',
-                300: '#7dd3fc',
-                400: '#4DC9E6', // Gradient Start
-                500: '#0ea5e9',
-                600: '#2563eb',
-                700: '#210CAE', // Gradient End (Main Brand)
-                800: '#1e40af',
-                900: '#1e3a8a',
-                950: '#172554',
-              },
-              // REPLACING GOLD WITH SECONDARY ACCENT (CYAN/TEAL MIX) TO MATCH GRADIENT
-              gold: {
-                50: '#ecfeff',
-                100: '#cffafe',
-                200: '#a5f3fc',
-                300: '#67e8f9',
-                400: '#4DC9E6', // Matches Gradient Start
-                500: '#06b6d4',
-                600: '#0891b2',
-                700: '#0e7490',
-                800: '#155e75',
-                900: '#164e63',
-              },
-              slate: {
-                850: '#1e293b', 
-                900: '#0f172a',
-              }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Katılım Uzmanı | Tasarruf Finansmanı Hesaplayıcı</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#4DC9E6', // Gradient Start
+              500: '#0ea5e9',
+              600: '#2563eb',
+              700: '#210CAE', // Gradient End (Main Brand)
+              800: '#1e40af',
+              900: '#1e3a8a',
+              950: '#172554',
             },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
+            // REPLACING GOLD WITH SECONDARY ACCENT (CYAN/TEAL MIX) TO MATCH GRADIENT
+            gold: {
+              50: '#ecfeff',
+              100: '#cffafe',
+              200: '#a5f3fc',
+              300: '#67e8f9',
+              400: '#4DC9E6', // Matches Gradient Start
+              500: '#06b6d4',
+              600: '#0891b2',
+              700: '#0e7490',
+              800: '#155e75',
+              900: '#164e63',
             },
+            slate: {
+              850: '#1e293b',
+              900: '#0f172a',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
           },
         },
-      }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-      html {
-        scroll-behavior: smooth;
-      }
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
-      }
-      .dark ::-webkit-scrollbar-track {
-        background: #1e293b; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
-        border-radius: 4px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #475569; 
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
-      }
-    </style>
+      },
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .dark ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -95,8 +103,10 @@
 </script>
 
 </head>
-  <body class="transition-colors duration-300">
-    <div id="root"></div>
+
+<body class="transition-colors duration-300">
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

@@ -5,6 +5,7 @@ import { Calculator } from '../../../components/Calculator';
 import { FAQ } from '../../../components/FAQ';
 import { CompanyLogos } from '../../../components/CompanyLogos';
 import { QuickLinksGrid } from '../../../components/QuickLinksGrid';
+import { SectorNewsCarousel } from '../../components/SectorNewsCarousel';
 import { homeHeroApi } from '../../services/api/homeHero';
 import type { HomeHero } from '../../types/database';
 
@@ -126,127 +127,188 @@ const HomePage: React.FC = () => {
 
     return (
         <>
-            {/* Quick Links Section - BEFORE Hero Banner */}
-            <section className="bg-gray-50 dark:bg-slate-900 pt-6 md:pt-8">
-                <div className="container mx-auto px-4">
+            {/* Quick Links Section */}
+            <section className="bg-gray-50 dark:bg-slate-900 pt-4 md:pt-5">
+                <div className="container mx-auto px-3 md:px-4 max-w-7xl">
                     <QuickLinksGrid isOverlay={false} />
                 </div>
             </section>
 
             {/* Hero Banner Section */}
-            <section className="bg-gray-50 dark:bg-slate-900 pt-4 md:pt-6 pb-8 md:pb-16">
-                <div className="container mx-auto px-4">
+            <section className="bg-gray-50 dark:bg-slate-900 py-3 md:py-5">
+                <div className="container mx-auto px-3 md:px-4 max-w-7xl">
                     <div className="relative">
                         {/* Show skeleton when loading AND no cached data */}
                         {isLoading && !heroSlides ? (
                             <HeroSkeleton />
                         ) : heroSlides && heroSlides.length > 0 && currentSlide ? (
-                            <div
-                                className="relative text-white overflow-visible rounded-3xl min-h-[320px] sm:min-h-[360px] md:min-h-[400px] lg:min-h-[440px] transition-all duration-300 flex"
-                                style={{
-                                    background: currentSlide.background_image_url
-                                        ? undefined
-                                        : `linear-gradient(90deg, ${currentSlide.background_gradient_start || '#4DC9E6'}, ${currentSlide.background_gradient_end || '#210CAE'})`
-                                }}
-                            >
-                                {/* Background Image */}
-                                {currentSlide.background_image_url && (
-                                    <div
-                                        className="absolute inset-0 bg-cover bg-center transition-opacity duration-500 rounded-3xl"
-                                        style={{ backgroundImage: `url(${currentSlide.background_image_url})` }}
-                                    />
-                                )}
-                                <div className="absolute inset-0 bg-black/10 rounded-3xl"></div>
-
-                                {/* Content Container - Flexbox for vertical centering */}
-                                <div className="relative z-10 w-full px-6 sm:px-8 md:px-12 lg:px-16 py-10 sm:py-12 md:py-14 lg:py-16 flex flex-col justify-center">
-                                    {/* Hero Content */}
-                                    <div className="max-w-3xl">
-                                        {/* Badge */}
-                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[10px] sm:text-xs font-medium text-white mb-4 sm:mb-5 animate-fade-in-up backdrop-blur-sm">
-                                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse"></span>
-                                            Hangi Katılım ile Geleceği Planla
-                                        </div>
-
-                                        {/* Title */}
-                                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight tracking-tight line-clamp-2">
-                                            {currentSlide.title}
-                                        </h1>
-
-                                        {/* Subtitle */}
-                                        {currentSlide.subtitle && (
-                                            <p className="text-sm sm:text-base md:text-lg text-gray-100 mt-3 sm:mt-4 max-w-xl leading-relaxed opacity-90 line-clamp-2">
-                                                {currentSlide.subtitle}
-                                            </p>
-                                        )}
-
-                                        {/* CTA Buttons - Only show if label exists, NO FALLBACK */}
-                                        <div className="flex flex-wrap gap-3 sm:gap-4 mt-6 sm:mt-8">
-                                            {currentSlide.cta1_label && (
-                                                <a
-                                                    href={currentSlide.cta1_link || '#calculator'}
-                                                    onClick={(e) => {
-                                                        const link = currentSlide.cta1_link || '#calculator';
-                                                        if (link.startsWith('#')) {
-                                                            scrollToSection(e, link.substring(1));
-                                                        }
+                            <>
+                                {/* Desktop Hero (hidden on mobile) */}
+                                <div
+                                    className="relative text-white overflow-hidden rounded-3xl transition-all duration-300 w-full max-w-full hidden sm:block"
+                                    style={{
+                                        aspectRatio: '12 / 5',
+                                        minHeight: '320px',
+                                        maxHeight: '520px',
+                                        background: `linear-gradient(90deg, ${currentSlide.background_gradient_start || '#4DC9E6'}, ${currentSlide.background_gradient_end || '#210CAE'})`
+                                    }}
+                                >
+                                    {/* Desktop Background Image */}
+                                    {currentSlide.background_image_url && (
+                                        <>
+                                            {currentSlide.image_fit_mode === 'contain' ? (
+                                                <div className="absolute inset-0 flex items-center justify-center rounded-3xl overflow-hidden">
+                                                    <img
+                                                        src={currentSlide.background_image_url}
+                                                        alt="Banner"
+                                                        className="max-w-full max-h-full object-contain transition-opacity duration-500"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    className="absolute inset-0 transition-opacity duration-500 rounded-3xl"
+                                                    style={{
+                                                        backgroundImage: `url(${currentSlide.background_image_url})`,
+                                                        backgroundSize: 'cover',
+                                                        backgroundPosition: `${currentSlide.object_position_x ?? 50}% ${currentSlide.object_position_y ?? 50}%`
                                                     }}
-                                                    className="bg-white text-[#210CAE] font-bold px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-105 text-sm sm:text-base"
-                                                >
-                                                    {currentSlide.cta1_label}
-                                                    <ArrowRight size={16} className="sm:w-5 sm:h-5" />
-                                                </a>
+                                                />
                                             )}
-                                            {currentSlide.cta2_label && (
-                                                <a
-                                                    href={currentSlide.cta2_link || '#info'}
-                                                    onClick={(e) => {
-                                                        const link = currentSlide.cta2_link || '#info';
-                                                        if (link.startsWith('#')) {
-                                                            scrollToSection(e, link.substring(1));
-                                                        }
-                                                    }}
-                                                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all transform hover:scale-105 text-sm sm:text-base backdrop-blur-sm"
-                                                >
-                                                    {currentSlide.cta2_label}
-                                                    <Info size={16} className="sm:w-5 sm:h-5" />
-                                                </a>
+                                        </>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/10 rounded-3xl pointer-events-none"></div>
+
+                                    {/* Desktop Content */}
+                                    <div className="relative z-10 w-full h-full px-6 md:px-8 py-8 md:py-10 flex flex-col justify-center">
+                                        <div className="max-w-xl space-y-3">
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-medium text-white mb-3 animate-fade-in-up backdrop-blur-sm">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                                Katılım Uzmanı ile Geleceği Planla
+                                            </div>
+                                            <h1 className="text-xl md:text-2xl font-semibold leading-snug tracking-tight line-clamp-2">
+                                                {currentSlide.title}
+                                            </h1>
+                                            {currentSlide.subtitle && (
+                                                <p className="text-sm md:text-base text-gray-100 max-w-lg leading-relaxed opacity-90 line-clamp-2">
+                                                    {currentSlide.subtitle}
+                                                </p>
                                             )}
+                                            <div className="flex flex-wrap gap-3">
+                                                {currentSlide.cta1_label && (
+                                                    <a
+                                                        href={currentSlide.cta1_link || '#calculator'}
+                                                        onClick={(e) => {
+                                                            const link = currentSlide.cta1_link || '#calculator';
+                                                            if (link.startsWith('#')) {
+                                                                scrollToSection(e, link.substring(1));
+                                                            }
+                                                        }}
+                                                        className="bg-white text-[#210CAE] font-semibold px-5 py-2.5 rounded-lg shadow-md flex items-center gap-2 transition-all hover:shadow-lg text-sm"
+                                                    >
+                                                        {currentSlide.cta1_label}
+                                                        <ArrowRight size={16} />
+                                                    </a>
+                                                )}
+                                                {currentSlide.cta2_label && (
+                                                    <a
+                                                        href={currentSlide.cta2_link || '#'}
+                                                        className="bg-white/10 hover:bg-white/20 backdrop-blur-sm font-semibold px-5 py-2.5 rounded-lg border border-white/20 flex items-center gap-2 transition-all text-sm"
+                                                    >
+                                                        {currentSlide.cta2_label}
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {/* Slider Navigation */}
-                                    {heroSlides.length > 1 && (
-                                        <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex items-center gap-1.5 sm:gap-2">
-                                            <button
-                                                onClick={() => setCurrentSlideIndex((prev: number) => (prev - 1 + heroSlides.length) % heroSlides.length)}
-                                                className="p-1.5 sm:p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-                                                aria-label="Önceki slide"
-                                            >
-                                                <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
-                                            </button>
-                                            <div className="flex gap-1.5 sm:gap-2">
-                                                {heroSlides.map((_, index) => (
-                                                    <button
-                                                        key={index}
-                                                        onClick={() => setCurrentSlideIndex(index)}
-                                                        className={`h-1.5 sm:h-2 rounded-full transition-all ${index === currentSlideIndex ? 'bg-white w-4 sm:w-6' : 'bg-white/50 w-1.5 sm:w-2'
-                                                            }`}
-                                                        aria-label={`Slide ${index + 1}`}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <button
-                                                onClick={() => setCurrentSlideIndex((prev: number) => (prev + 1) % heroSlides.length)}
-                                                className="p-1.5 sm:p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-                                                aria-label="Sonraki slide"
-                                            >
-                                                <ChevronRight size={16} className="sm:w-5 sm:h-5" />
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
+
+                                {/* Mobile Hero (visible only on mobile) */}
+                                <div
+                                    className="relative text-white overflow-hidden rounded-3xl transition-all duration-300 w-full max-w-full sm:hidden h-[280px]"
+                                    style={{
+                                        background: `linear-gradient(90deg, ${currentSlide.background_gradient_start || '#4DC9E6'}, ${currentSlide.background_gradient_end || '#210CAE'})`
+                                    }}
+                                >
+                                    {/* Mobile Background Image */}
+                                    {(currentSlide.mobile_image_url || currentSlide.background_image_url) && (
+                                        <div
+                                            className="absolute inset-0 transition-opacity duration-500 rounded-3xl"
+                                            style={{
+                                                backgroundImage: `url(${currentSlide.mobile_image_url || currentSlide.background_image_url})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: 'center center'
+                                            }}
+                                        />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/10 rounded-3xl pointer-events-none"></div>
+
+                                    {/* Mobile Content */}
+                                    <div className="relative z-10 w-full h-full px-4 py-4 flex flex-col justify-end">
+                                        <div className="space-y-2">
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[9px] font-medium text-white mb-2 animate-fade-in-up backdrop-blur-sm">
+                                                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                                                Katılım Uzmanı ile Geleceği Planla
+                                            </div>
+                                            <h1 className="text-lg font-semibold leading-snug tracking-tight line-clamp-2">
+                                                {currentSlide.title}
+                                            </h1>
+                                            {currentSlide.subtitle && (
+                                                <p className="text-xs text-gray-100 leading-relaxed opacity-90 line-clamp-2">
+                                                    {currentSlide.subtitle}
+                                                </p>
+                                            )}
+                                            <div className="flex flex-wrap gap-2 pt-2">
+                                                {currentSlide.cta1_label && (
+                                                    <a
+                                                        href={currentSlide.cta1_link || '#calculator'}
+                                                        onClick={(e) => {
+                                                            const link = currentSlide.cta1_link || '#calculator';
+                                                            if (link.startsWith('#')) {
+                                                                scrollToSection(e, link.substring(1));
+                                                            }
+                                                        }}
+                                                        className="bg-white text-[#210CAE] font-semibold px-4 py-2 rounded-lg shadow-md flex items-center gap-2 transition-all hover:shadow-lg text-xs"
+                                                    >
+                                                        {currentSlide.cta1_label}
+                                                        <ArrowRight size={14} />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Slider Navigation */}
+                                {heroSlides.length > 1 && (
+                                    <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex items-center gap-1.5 sm:gap-2 z-30 pointer-events-auto">
+                                        <button
+                                            onClick={() => setCurrentSlideIndex((prev: number) => (prev - 1 + heroSlides.length) % heroSlides.length)}
+                                            className="p-1.5 sm:p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+                                            aria-label="Önceki slide"
+                                        >
+                                            <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
+                                        </button>
+                                        <div className="flex gap-1.5 sm:gap-2">
+                                            {heroSlides.map((_, index) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => setCurrentSlideIndex(index)}
+                                                    className={`h-1.5 sm:h-2 rounded-full transition-all ${index === currentSlideIndex ? 'bg-white w-4 sm:w-6' : 'bg-white/50 w-1.5 sm:w-2'
+                                                        }`}
+                                                    aria-label={`Slide ${index + 1}`}
+                                                />
+                                            ))}
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentSlideIndex((prev: number) => (prev + 1) % heroSlides.length)}
+                                            className="p-1.5 sm:p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+                                            aria-label="Sonraki slide"
+                                        >
+                                            <ChevronRight size={16} className="sm:w-5 sm:h-5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             /* Fallback skeleton if no data at all */
                             <HeroSkeleton />
@@ -258,48 +320,51 @@ const HomePage: React.FC = () => {
             <Calculator theme={theme} />
 
             {/* Info Section */}
-            <section id="info" className="bg-white dark:bg-slate-850 py-16 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">
-                <div className="container mx-auto px-4">
-                    <div className="text-center max-w-3xl mx-auto mb-12">
-                        <h2 className="text-3xl font-bold text-primary-900 dark:text-white mb-4">Tasarruf Finansmanı (Evim Sistemleri) Nedir?</h2>
-                        <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+            <section id="info" className="bg-white dark:bg-slate-850 py-8 md:py-10 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">
+                <div className="container mx-auto px-3 md:px-4 max-w-5xl">
+                    <div className="text-center max-w-xl mx-auto mb-6 md:mb-8">
+                        <h2 className="text-base md:text-lg font-semibold text-primary-900 dark:text-white mb-2">Tasarruf Finansmanı (Evim Sistemleri) Nedir?</h2>
+                        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                             Tasarruf finansmanı, bireylerin ev veya araba gibi büyük ölçekli yatırımları, faiz maliyeti olmadan, dayanışma ve sıra sistemiyle finanse etmelerini sağlayan bir yöntemdir.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="bg-gray-50 dark:bg-slate-800 p-8 rounded-2xl border border-gray-100 dark:border-slate-700 text-center hover:shadow-lg transition-all">
-                            <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-primary-600 dark:text-primary-400">
-                                <Home size={28} />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                        <div className="bg-gray-50 dark:bg-slate-800 p-3 md:p-5 rounded-lg border border-gray-100 dark:border-slate-700 text-center hover:shadow-sm transition-all">
+                            <div className="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-primary-600 dark:text-primary-400">
+                                <Home size={18} />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Dayanışma Tasarrufu</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 mb-1.5">Dayanışma Tasarrufu</h3>
+                            <p className="text-[11px] md:text-xs text-gray-600 dark:text-gray-400">
                                 Belirli bir amaca yönelik bir araya gelen kişiler, her ay düzenli ödemeler yaparak finansal güçlerini birleştirirler.
                             </p>
                         </div>
 
-                        <div className="bg-gray-50 dark:bg-slate-800 p-8 rounded-2xl border border-gray-100 dark:border-slate-700 text-center hover:shadow-lg transition-all">
-                            <div className="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-primary-600 dark:text-primary-400">
-                                <Wallet size={28} />
+                        <div className="bg-gray-50 dark:bg-slate-800 p-3 md:p-5 rounded-lg border border-gray-100 dark:border-slate-700 text-center hover:shadow-sm transition-all">
+                            <div className="w-9 h-9 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-primary-600 dark:text-primary-400">
+                                <Wallet size={18} />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Faizsiz Sistem</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 mb-1.5">Faizsiz Sistem</h3>
+                            <p className="text-[11px] md:text-xs text-gray-600 dark:text-gray-400">
                                 Klasik kredi sistemlerinden farklı olarak, vade farkı veya faiz ödemezsiniz. Sadece organizasyon katılım bedeli alınır.
                             </p>
                         </div>
 
-                        <div className="bg-gray-50 dark:bg-slate-800 p-8 rounded-2xl border border-gray-100 dark:border-slate-700 text-center hover:shadow-lg transition-all">
-                            <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 dark:text-green-400">
-                                <Car size={28} />
+                        <div className="bg-gray-50 dark:bg-slate-800 p-3 md:p-5 rounded-lg border border-gray-100 dark:border-slate-700 text-center hover:shadow-sm transition-all">
+                            <div className="w-9 h-9 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 dark:text-green-400">
+                                <Car size={18} />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3">Erken Teslimat</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <h3 className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 mb-1.5">Erken Teslimat</h3>
+                            <p className="text-[11px] md:text-xs text-gray-600 dark:text-gray-400">
                                 Noter huzurunda yapılan çekilişlerle veya peşinatlı sistemlerle, vadeniz bitmeden evinizi veya aracınızı teslim alabilirsiniz.
                             </p>
                         </div>
                     </div>
                 </div>
             </section>
+
+            {/* Sector News Carousel */}
+            <SectorNewsCarousel maxItems={9} />
 
             <CompanyLogos />
             <FAQ />

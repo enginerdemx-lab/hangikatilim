@@ -18,7 +18,7 @@ export const SiteSettings: React.FC = () => {
 
     // Form state
     const [formData, setFormData] = useState({
-        site_name: 'Hangi Katılım',
+        site_name: 'Katılım Uzmanı',
         logo_url: '',
         dark_logo_url: '',
         favicon_url: '',
@@ -261,7 +261,7 @@ export const SiteSettings: React.FC = () => {
                         onChange={(e) => handleFormChange({ site_name: e.target.value })}
                         required
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Hangi Katılım"
+                        placeholder="Katılım Uzmanı"
                     />
                 </div>
 
@@ -425,7 +425,7 @@ export const SiteSettings: React.FC = () => {
                         value={formData.default_seo_title}
                         onChange={(e) => handleFormChange({ default_seo_title: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Hangi Katılım - Katılım Bankacılığı Karşılaştırma Platformu"
+                        placeholder="Katılım Uzmanı - Katılım Bankacılığı Karşılaştırma Platformu"
                     />
                 </div>
 
@@ -513,7 +513,7 @@ export const SiteSettings: React.FC = () => {
                         value={formData.copyright_text}
                         onChange={(e) => handleFormChange({ copyright_text: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="© 2025 Hangi Katılım. Tüm hakları saklıdır."
+                        placeholder="© 2025 Katılım Uzmanı. Tüm hakları saklıdır."
                     />
                 </div>
             </div>

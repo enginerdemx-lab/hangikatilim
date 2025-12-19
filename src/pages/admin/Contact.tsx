@@ -20,6 +20,8 @@ export const Contact: React.FC = () => {
         map_embed_url: '',
     });
 
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -50,17 +52,24 @@ export const Contact: React.FC = () => {
         }
     };
 
-    const handleSubmitSettings = async (e: React.FormEvent) => {
+    // Show confirmation modal
+    const handleShowConfirm = (e: React.FormEvent) => {
         e.preventDefault();
+        setShowConfirmModal(true);
+    };
+
+    // Perform actual save after confirmation
+    const handleConfirmSave = async () => {
+        setShowConfirmModal(false);
         setSaving(true);
 
         try {
             if (settings?.id) {
                 await contactApi.updateSettings(settings.id, formData);
-                showToast('Kaydedildi', 'success');
+                showToast('Değişiklikler başarıyla kaydedildi', 'success');
             } else {
                 await contactApi.createSettings(formData);
-                showToast('Kaydedildi', 'success');
+                showToast('Ayarlar başarıyla oluşturuldu', 'success');
             }
             loadData();
         } catch (error) {
@@ -168,7 +177,7 @@ export const Contact: React.FC = () => {
             {activeTab === 'settings' && (
                 <div className="bg-white rounded-lg shadow-lg p-6">
                     <h2 className="text-xl font-semibold mb-4">İletişim Bilgileri</h2>
-                    <form onSubmit={handleSubmitSettings} className="space-y-4">
+                    <form onSubmit={handleShowConfirm} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -246,6 +255,35 @@ export const Contact: React.FC = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            Değişiklikleri kaydetmek istiyor musunuz?
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-6">
+                            İletişim bilgilerindeki değişiklikler hemen siteye yansıyacaktır.
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowConfirmModal(false)}
+                                className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition"
+                            >
+                                Vazgeç
+                            </button>
+                            <button
+                                onClick={handleConfirmSave}
+                                disabled={saving}
+                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
+                            >
+                                {saving ? 'Kaydediliyor...' : 'Evet, Kaydet'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

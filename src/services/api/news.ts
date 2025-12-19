@@ -36,6 +36,35 @@ export const newsApi = {
         return data || [];
     },
 
+    // Get limited published news for homepage carousel
+    async getPublishedNewsLimit(limit: number = 9): Promise<NewsPost[]> {
+        const { data, error } = await supabase
+            .from('news_posts')
+            .select('*')
+            .eq('status', 'published')
+            .order('published_at', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    // Get news by slug (for detail page)
+    async getNewsBySlug(slug: string): Promise<NewsPost | null> {
+        const { data, error } = await supabase
+            .from('news_posts')
+            .select('*')
+            .eq('slug', slug)
+            .eq('status', 'published')
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // No rows found
+            throw error;
+        }
+        return data;
+    },
+
     // Get featured news
     async getFeaturedNews(): Promise<NewsPost[]> {
         const { data, error } = await supabase
@@ -61,11 +90,34 @@ export const newsApi = {
         return data;
     },
 
+    // Generate URL-friendly slug from title
+    generateSlug(title: string): string {
+        const turkishMap: Record<string, string> = {
+            'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+            'Ç': 'c', 'Ğ': 'g', 'İ': 'i', 'Ö': 'o', 'Ş': 's', 'Ü': 'u'
+        };
+
+        return title
+            .split('')
+            .map(char => turkishMap[char] || char)
+            .join('')
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .substring(0, 80);
+    },
+
     // Create new news post
     async createNews(newsData: NewsPostFormData): Promise<NewsPost> {
+        // Auto-generate slug if title exists
+        const slug = this.generateSlug(newsData.title);
+        const dataWithSlug = { ...newsData, slug };
+
         const { data, error } = await supabase
             .from('news_posts')
-            .insert([newsData])
+            .insert([dataWithSlug])
             .select()
             .single();
 
@@ -75,9 +127,14 @@ export const newsApi = {
 
     // Update news post
     async updateNews(id: string, newsData: Partial<NewsPostFormData>): Promise<NewsPost> {
+        // Regenerate slug if title is being updated
+        const updateData = newsData.title
+            ? { ...newsData, slug: this.generateSlug(newsData.title) }
+            : newsData;
+
         const { data, error } = await supabase
             .from('news_posts')
-            .update(newsData)
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();

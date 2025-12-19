@@ -19,7 +19,7 @@ const NewsDetailPage: React.FC = () => {
     // Update page title for SEO
     useEffect(() => {
         if (news) {
-            document.title = `${news.title} | Hangi Katılım Haberler`;
+            document.title = `${news.title} | Katılım Uzmanı Haberler`;
 
             // Update meta description
             const metaDescription = document.querySelector('meta[name="description"]');
@@ -34,7 +34,7 @@ const NewsDetailPage: React.FC = () => {
         }
 
         return () => {
-            document.title = 'Hangi Katılım';
+            document.title = 'Katılım Uzmanı';
         };
     }, [news]);
 

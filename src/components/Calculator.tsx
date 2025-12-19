@@ -40,6 +40,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
     interimMonth2: 24,
     installmentIncreaseRate: 0,
     increaseType: IncreaseType.NONE,
+    customIncreasePeriod: 4, // Default 4 months for CUSTOM
   });
 
   const [showInterim1, setShowInterim1] = useState(false);
@@ -153,6 +154,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
     if (increaseType === IncreaseType.ANNUAL) increasePeriod = 12;
     if (increaseType === IncreaseType.SIX_MONTHS) increasePeriod = 6;
     if (increaseType === IncreaseType.THREE_MONTHS) increasePeriod = 3;
+    if (increaseType === IncreaseType.CUSTOM && params.customIncreasePeriod) increasePeriod = params.customIncreasePeriod;
 
     while (accumulated < financingAmount && m < MAX_MONTHS) {
       m++;
@@ -196,6 +198,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
       if (increaseType === IncreaseType.ANNUAL) increasePeriod = 12;
       if (increaseType === IncreaseType.SIX_MONTHS) increasePeriod = 6;
       if (increaseType === IncreaseType.THREE_MONTHS) increasePeriod = 3;
+      if (increaseType === IncreaseType.CUSTOM && params.customIncreasePeriod) increasePeriod = params.customIncreasePeriod;
 
       if (increaseType === IncreaseType.POST_DELIVERY) {
         // First pass: flat
@@ -274,6 +277,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
     if (increaseType === IncreaseType.ANNUAL) increasePeriodLoop = 12;
     if (increaseType === IncreaseType.SIX_MONTHS) increasePeriodLoop = 6;
     if (increaseType === IncreaseType.THREE_MONTHS) increasePeriodLoop = 3;
+    if (increaseType === IncreaseType.CUSTOM && params.customIncreasePeriod) increasePeriodLoop = params.customIncreasePeriod;
 
     for (let i = 1; i <= months; i++) {
       let currentBaseInstallment = initialBaseMonthlyInstallment;
@@ -477,8 +481,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                     key={option.id}
                     onClick={() => handleAssetTypeChange(option.id)}
                     className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border-2 transition-all duration-300 ${params.assetType === option.id
-                        ? 'border-[#210CAE] bg-[#210CAE] text-white shadow-lg transform scale-105'
-                        : 'border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700'
+                      ? 'border-[#210CAE] bg-[#210CAE] text-white shadow-lg transform scale-105'
+                      : 'border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700'
                       }`}
                   >
                     <option.icon size={20} className={`mb-1 ${params.assetType === option.id ? 'text-white' : ''}`} />
@@ -493,8 +497,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
               <button
                 onClick={() => handleSystemTypeChange(SystemType.LOTTERY)}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${params.systemType === SystemType.LOTTERY
-                    ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-white shadow-md ring-1 ring-gray-200 dark:ring-slate-600'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-white shadow-md ring-1 ring-gray-200 dark:ring-slate-600'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
                   }`}
               >
                 <Shuffle size={18} className={params.systemType === SystemType.LOTTERY ? 'text-[#4DC9E6]' : ''} />
@@ -503,8 +507,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
               <button
                 onClick={() => handleSystemTypeChange(SystemType.NON_LOTTERY)}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${params.systemType === SystemType.NON_LOTTERY
-                    ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-white shadow-md ring-1 ring-gray-200 dark:ring-slate-600'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-white shadow-md ring-1 ring-gray-200 dark:ring-slate-600'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
                   }`}
               >
                 <Zap size={18} className={params.systemType === SystemType.NON_LOTTERY ? 'text-[#4DC9E6]' : ''} />
@@ -731,8 +735,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                         handleMonthsChange(val === '' ? 0 : Number(val));
                       }}
                       className={`w-full pl-2 pr-8 py-2 border rounded-lg outline-none text-center text-lg font-bold transition-all ${params.calculationMode === 'BY_MONTHS'
-                          ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900 text-primary-900 dark:text-white bg-white dark:bg-slate-800'
-                          : 'border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800'
+                        ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900 text-primary-900 dark:text-white bg-white dark:bg-slate-800'
+                        : 'border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800'
                         }`}
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">AY</span>
@@ -758,8 +762,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                     value={params.calculationMode === 'BY_MONTHS' && result ? formatInputNumber(Math.round(result.monthlyInstallment)) : formatInputNumber(params.targetMonthlyInstallment)}
                     onChange={(e) => handleInstallmentChange(parseInputNumber(e.target.value))}
                     className={`w-full pl-4 pr-12 py-3 border rounded-lg outline-none text-lg font-bold transition-all ${params.calculationMode === 'BY_INSTALLMENT'
-                        ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900 text-primary-900 dark:text-white bg-white dark:bg-slate-800'
-                        : 'border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800'
+                      ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900 text-primary-900 dark:text-white bg-white dark:bg-slate-800'
+                      : 'border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800'
                       }`}
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">TL</span>
@@ -781,8 +785,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                 <button
                   onClick={() => setParams({ ...params, feePaymentType: FeePaymentType.UPFRONT })}
                   className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all ${params.feePaymentType === FeePaymentType.UPFRONT
-                      ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
-                      : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
+                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
+                    : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
                     }`}
                 >
                   Peşin Ödeme
@@ -790,8 +794,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                 <button
                   onClick={() => setParams({ ...params, feePaymentType: FeePaymentType.SPLIT_HALF })}
                   className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all ${params.feePaymentType === FeePaymentType.SPLIT_HALF
-                      ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
-                      : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
+                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
+                    : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
                     }`}
                 >
                   Yarı Peşin / Yarı Taksit
@@ -799,8 +803,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                 <button
                   onClick={() => setParams({ ...params, feePaymentType: FeePaymentType.SPREAD })}
                   className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all ${params.feePaymentType === FeePaymentType.SPREAD
-                      ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
-                      : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
+                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
+                    : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
                     }`}
                 >
                   Taksitlere Böl
@@ -867,36 +871,60 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
                   <div className="mb-4">
                     <label className="text-xs font-bold text-primary-700 dark:text-primary-400 uppercase block mb-2">Artış Sıklığı</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
                       <button
                         onClick={() => setParams({ ...params, increaseType: IncreaseType.POST_DELIVERY })}
                         className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.POST_DELIVERY ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
                       >
-                        <CalendarCheck size={20} className="mb-1" />
+                        <CalendarCheck size={18} className="mb-1" />
                         Teslimattan Sonra
                       </button>
                       <button
                         onClick={() => setParams({ ...params, increaseType: IncreaseType.ANNUAL })}
                         className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.ANNUAL ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
                       >
-                        <Calendar size={20} className="mb-1" />
-                        Yılda Bir (12 Ay)
+                        <Calendar size={18} className="mb-1" />
+                        12 Ayda Bir
                       </button>
                       <button
                         onClick={() => setParams({ ...params, increaseType: IncreaseType.SIX_MONTHS })}
                         className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.SIX_MONTHS ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
                       >
-                        <Calendar size={20} className="mb-1" />
+                        <Calendar size={18} className="mb-1" />
                         6 Ayda Bir
                       </button>
                       <button
                         onClick={() => setParams({ ...params, increaseType: IncreaseType.THREE_MONTHS })}
                         className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.THREE_MONTHS ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
                       >
-                        <Zap size={20} className="mb-1" />
+                        <Zap size={18} className="mb-1" />
                         3 Ayda Bir
                       </button>
+                      <button
+                        onClick={() => setParams({ ...params, increaseType: IncreaseType.CUSTOM })}
+                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.CUSTOM ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
+                      >
+                        <Sparkles size={18} className="mb-1" />
+                        Özel Sıklık
+                      </button>
                     </div>
+
+                    {/* Custom Interval Input */}
+                    {params.increaseType === IncreaseType.CUSTOM && (
+                      <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-lg border border-primary-200 dark:border-primary-800 animate-fade-in">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Her</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={24}
+                          step={1}
+                          value={params.customIncreasePeriod || 4}
+                          onChange={(e) => setParams({ ...params, customIncreasePeriod: Math.max(1, Math.min(24, Number(e.target.value))) })}
+                          className="w-16 px-2 py-1.5 text-center text-sm font-bold bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg outline-none text-primary-700 dark:text-white focus:ring-2 focus:ring-primary-400"
+                        />
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">ayda bir artış uygula</label>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-lg border border-primary-100 dark:border-primary-900/30">
@@ -1115,8 +1143,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
                                 </span>
                               ) : (
                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${row.month > result.deliveryMonthIndex
-                                    ? 'border-orange-200 dark:border-orange-900/50 text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/10'
-                                    : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50'
+                                  ? 'border-orange-200 dark:border-orange-900/50 text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/10'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50'
                                   }`}>
                                   {row.month > result.deliveryMonthIndex ? 'SENET' : 'TAKSİT'}
                                 </span>

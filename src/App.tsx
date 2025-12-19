@@ -20,6 +20,7 @@ import { QuickLinks } from './pages/admin/QuickLinks';
 
 // Public Layout
 import { PublicLayout } from './layouts/PublicLayout';
+import { ScrollToHash } from './components/ScrollToHash';
 
 // Lazy loaded public pages for code splitting
 const HomePage = lazy(() => import('./pages/public/HomePage'));
@@ -57,6 +58,7 @@ const NotFoundPage: React.FC = () => (
 const App: React.FC = () => {
   return (
     <BrowserRouter>
+      <ScrollToHash />
       <Routes>
         {/* Admin Routes - Must be BEFORE public routes */}
         <Route path="/admin/login" element={<AdminLogin />} />

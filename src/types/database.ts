@@ -72,13 +72,19 @@ export interface TickerItem {
   updated_at: string;
 }
 
+export type ImageFitMode = 'cover' | 'contain';
+
 export interface HomeHero {
   id: string;
   title: string;
   subtitle?: string;
   background_image_url?: string;
+  mobile_image_url?: string; // Mobil için ayrı görsel
   background_gradient_start?: string;
   background_gradient_end?: string;
+  image_fit_mode?: ImageFitMode;
+  object_position_x?: number; // 0-100, default 50
+  object_position_y?: number; // 0-100, default 50
   cta1_label?: string;
   cta1_link?: string;
   cta2_label?: string;

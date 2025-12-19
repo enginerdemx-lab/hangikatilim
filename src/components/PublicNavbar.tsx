@@ -59,7 +59,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
                 <Link to="/" className="flex items-center">
                     <img
                         src={currentLogo}
-                        alt="Hangi Katılım"
+                        alt="Katılım Uzmanı"
                         className="h-10 md:h-12 w-auto object-contain transition-opacity duration-300"
                         style={{ opacity: logoLoaded ? 1 : 0 }}
                     />

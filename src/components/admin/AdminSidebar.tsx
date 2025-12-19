@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { supabase } from '../../services/supabaseClient';
 
 interface NavItem {
     label: string;
@@ -189,15 +190,52 @@ interface AdminSidebarProps {
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout }) => {
     const location = useLocation();
+    const [siteName, setSiteName] = useState<string>('Katılım Uzmanı'); // Default fallback
+    const [darkLogo, setDarkLogo] = useState<string>('');
+
+    // Fetch site name and logo from database
+    useEffect(() => {
+        const fetchSiteSettings = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('site_settings')
+                    .select('site_name, logo_dark_url')
+                    .limit(1)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error('Failed to fetch site settings:', error);
+                    return;
+                }
+
+                if (data?.site_name) {
+                    setSiteName(data.site_name);
+                }
+                if (data?.logo_dark_url) {
+                    setDarkLogo(data.logo_dark_url);
+                }
+            } catch (error) {
+                console.error('Failed to fetch site settings:', error);
+            }
+        };
+        fetchSiteSettings();
+    }, []);
 
     return (
         <div className="w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white h-screen flex flex-col fixed left-0 top-0">
             {/* Logo/Header */}
             <div className="p-6 border-b border-gray-700">
+                {darkLogo && (
+                    <img
+                        src={darkLogo}
+                        alt="Site Logo"
+                        className="h-10 w-auto object-contain mb-3"
+                    />
+                )}
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                     Admin Panel
                 </h1>
-                <p className="text-sm text-gray-400 mt-1">Hangi Katılım</p>
+                <p className="text-sm text-gray-400 mt-1">{siteName}</p>
             </div>
 
             {/* Navigation */}

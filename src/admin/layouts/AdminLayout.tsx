@@ -29,7 +29,7 @@ export const AdminLayout: React.FC = () => {
         {/* Header */}
         <div className="h-16 border-b border-slate-800 flex items-center justify-between px-4">
           <div className={`transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-            <h2 className="text-xl font-bold tracking-tight whitespace-nowrap">Hangi Katılım</h2>
+            <h2 className="text-xl font-bold tracking-tight whitespace-nowrap">Katılım Uzmanı</h2>
             <p className="text-xs text-slate-400 mt-1">Yönetim Paneli</p>
           </div>
 
@@ -52,8 +52,8 @@ export const AdminLayout: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all group ${isActive
-                    ? 'bg-primary-600 text-white'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`}
                 title={isCollapsed ? item.label : ''}
               >

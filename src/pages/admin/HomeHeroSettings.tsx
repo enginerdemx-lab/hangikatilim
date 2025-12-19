@@ -18,13 +18,23 @@ export const HomeHeroSettings: React.FC = () => {
         title: '',
         subtitle: '',
         background_image_url: '',
+        mobile_image_url: '', // Mobil görsel
         background_gradient_start: '#3B82F6',
         background_gradient_end: '#8B5CF6',
+        image_fit_mode: 'cover' as 'cover' | 'contain',
+        object_position_x: 50,
+        object_position_y: 50,
         cta1_label: '',
         cta1_link: '',
         cta2_label: '',
         cta2_link: '',
     });
+
+    // Preview mode state
+    const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+    // Save confirmation modal state
+    const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
     useEffect(() => {
         loadSlides();
@@ -41,22 +51,28 @@ export const HomeHeroSettings: React.FC = () => {
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    // Show confirmation modal before submit
+    const handleSubmitWithConfirm = (e: React.FormEvent) => {
         e.preventDefault();
+        setShowSaveConfirm(true);
+    };
 
+    // Actual submit logic after confirmation
+    const handleConfirmedSubmit = async () => {
+        setShowSaveConfirm(false);
         try {
             if (editingSlide) {
                 await homeHeroApi.updateSlide(editingSlide.id, formData);
-                success('Hero slide güncellendi');
+                success('Kaydedildi');
             } else {
                 await homeHeroApi.createSlide(formData);
-                success('Hero slide oluşturuldu');
+                success('Kaydedildi');
             }
 
             resetForm();
             loadSlides();
         } catch (err) {
-            showError(err instanceof Error ? err.message : 'İşlem başarısız');
+            showError('Kaydedilemedi: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
         }
     };
 
@@ -66,8 +82,12 @@ export const HomeHeroSettings: React.FC = () => {
             title: slide.title,
             subtitle: slide.subtitle || '',
             background_image_url: slide.background_image_url || '',
+            mobile_image_url: slide.mobile_image_url || '',
             background_gradient_start: slide.background_gradient_start || '#3B82F6',
             background_gradient_end: slide.background_gradient_end || '#8B5CF6',
+            image_fit_mode: slide.image_fit_mode || 'cover',
+            object_position_x: slide.object_position_x ?? 50,
+            object_position_y: slide.object_position_y ?? 50,
             cta1_label: slide.cta1_label || '',
             cta1_link: slide.cta1_link || '',
             cta2_label: slide.cta2_label || '',
@@ -93,8 +113,12 @@ export const HomeHeroSettings: React.FC = () => {
             title: '',
             subtitle: '',
             background_image_url: '',
+            mobile_image_url: '',
             background_gradient_start: '#3B82F6',
             background_gradient_end: '#8B5CF6',
+            image_fit_mode: 'cover',
+            object_position_x: 50,
+            object_position_y: 50,
             cta1_label: '',
             cta1_link: '',
             cta2_label: '',
@@ -138,6 +162,39 @@ export const HomeHeroSettings: React.FC = () => {
             </div>
 
             {/* Form */}
+            {/* Save Confirmation Modal */}
+            {showSaveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 animate-fade-in-up">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Değişiklikleri Kaydet</h3>
+                            <p className="text-gray-600 mb-6">Değişiklikleri kaydetmek istiyor musunuz?</p>
+                            <div className="flex gap-3 justify-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSaveConfirm(false)}
+                                    className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Hayır
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmedSubmit}
+                                    className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Evet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showForm && (
                 <div className="bg-white rounded-lg shadow-xl border-2 border-blue-100">
                     {/* Form Header */}
@@ -160,7 +217,7 @@ export const HomeHeroSettings: React.FC = () => {
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-8">
+                    <form onSubmit={handleSubmitWithConfirm} className="p-6 space-y-8">
                         {/* Section 1: Metin İçeriği */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 pb-3 border-b-2 border-blue-100">
@@ -228,12 +285,148 @@ export const HomeHeroSettings: React.FC = () => {
                                         currentImageUrl={formData.background_image_url}
                                         onUploadComplete={(url) => setFormData({ ...formData, background_image_url: url })}
                                         onDelete={() => setFormData({ ...formData, background_image_url: '' })}
-                                        label="Arka Plan"
+                                        label="Masaüstü Görsel"
                                     />
-                                    <p className="text-xs text-gray-500 mt-3 bg-blue-50 p-3 rounded border border-blue-200">
-                                        💡 <strong>İpucu:</strong> Görsel yoksa aşağıdaki gradient renkleri kullanılır. Önerilen boyut: 1920x800 px
-                                    </p>
+                                    <div className="mt-3 bg-blue-50 p-3 rounded border border-blue-200 space-y-1">
+                                        <p className="text-xs text-gray-600">
+                                            📐 <strong>Önerilen oran:</strong> 12:5 (örn: 1920×800, 2400×1000)
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            📏 <strong>Minimum boyut:</strong> 1920×800 piksel
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            💡 Oran uyduğu sürece daha büyük çözünürlükler kabul edilir.
+                                        </p>
+                                    </div>
                                 </div>
+
+                                {/* Mobile Image Upload */}
+                                <div className="bg-orange-50 p-6 rounded-lg border border-orange-200">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Image className="text-orange-600" size={20} />
+                                        <label className="text-sm font-semibold text-gray-700">
+                                            📱 Mobil Görsel (Opsiyonel)
+                                        </label>
+                                    </div>
+                                    <ImageUpload
+                                        folder="hero-backgrounds-mobile"
+                                        currentImageUrl={formData.mobile_image_url}
+                                        onUploadComplete={(url) => setFormData({ ...formData, mobile_image_url: url })}
+                                        onDelete={() => setFormData({ ...formData, mobile_image_url: '' })}
+                                        label="Mobil Görsel"
+                                    />
+                                    <div className="mt-3 bg-orange-100 p-3 rounded border border-orange-300 space-y-1">
+                                        <p className="text-xs text-gray-600">
+                                            📐 <strong>Önerilen oran:</strong> 4:5 veya 9:16 (dikey)
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            📏 <strong>Önerilen boyut:</strong> 800×1000 veya 1080×1920 piksel
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            💡 Mobil görsel yüklenmezse masaüstü görsel kullanılır.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Image Fit Mode */}
+                                {formData.background_image_url && (
+                                    <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Image className="text-purple-600" size={20} />
+                                            <label className="text-sm font-semibold text-gray-700">
+                                                🖼️ Görsel Sığdırma Modu
+                                            </label>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.image_fit_mode === 'cover'
+                                                ? 'border-purple-500 bg-purple-100'
+                                                : 'border-gray-200 bg-white hover:border-purple-300'
+                                                }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="image_fit_mode"
+                                                    value="cover"
+                                                    checked={formData.image_fit_mode === 'cover'}
+                                                    onChange={() => setFormData({ ...formData, image_fit_mode: 'cover' })}
+                                                    className="mr-3"
+                                                />
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">Doldur (Cover)</div>
+                                                    <div className="text-xs text-gray-500">Alanı tamamen kaplar, kenarlar kırpılabilir</div>
+                                                </div>
+                                            </label>
+
+                                            <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${formData.image_fit_mode === 'contain'
+                                                ? 'border-purple-500 bg-purple-100'
+                                                : 'border-gray-200 bg-white hover:border-purple-300'
+                                                }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="image_fit_mode"
+                                                    value="contain"
+                                                    checked={formData.image_fit_mode === 'contain'}
+                                                    onChange={() => setFormData({ ...formData, image_fit_mode: 'contain' })}
+                                                    className="mr-3"
+                                                />
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">Tam Sığdır (Contain)</div>
+                                                    <div className="text-xs text-gray-500">Görsel tamamen görünür, boşluklar gradient ile doldurulur</div>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        {/* Object Position (only for cover mode) */}
+                                        {formData.image_fit_mode === 'cover' && (
+                                            <div className="mt-4 p-4 bg-white rounded-lg border border-purple-200">
+                                                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                                    🎯 Odak Noktası (Kırpma Pozisyonu)
+                                                </label>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                            Yatay Pozisyon: {formData.object_position_x}%
+                                                        </label>
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="100"
+                                                            value={formData.object_position_x}
+                                                            onChange={(e) => setFormData({ ...formData, object_position_x: parseInt(e.target.value) })}
+                                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                                        />
+                                                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                                            <span>Sol</span>
+                                                            <span>Orta</span>
+                                                            <span>Sağ</span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                                                            Dikey Pozisyon: {formData.object_position_y}%
+                                                        </label>
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="100"
+                                                            value={formData.object_position_y}
+                                                            onChange={(e) => setFormData({ ...formData, object_position_y: parseInt(e.target.value) })}
+                                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                                        />
+                                                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                                            <span>Üst</span>
+                                                            <span>Orta</span>
+                                                            <span>Alt</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-3">
+                                                    💡 Kırpma sırasında hangi bölgenin görünmesini istiyorsanız o tarafa kaydırın.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Gradient Colors */}
                                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-gray-200">
@@ -374,45 +567,210 @@ export const HomeHeroSettings: React.FC = () => {
                                 <div className="bg-yellow-100 p-2 rounded-lg">
                                     <Eye className="text-yellow-600" size={24} />
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <h3 className="text-lg font-bold text-gray-900">Canlı Önizleme</h3>
                                     <p className="text-sm text-gray-500">Slide'ınızın nasıl görüneceğini görün</p>
+                                </div>
+
+                                {/* Preview Mode Tabs */}
+                                <div className="flex bg-gray-100 p-1 rounded-lg">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewMode('desktop')}
+                                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${previewMode === 'desktop'
+                                            ? 'bg-white text-blue-600 shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'}`}
+                                    >
+                                        🖥️ Masaüstü
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewMode('mobile')}
+                                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${previewMode === 'mobile'
+                                            ? 'bg-white text-orange-600 shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'}`}
+                                    >
+                                        📱 Mobil
+                                    </button>
                                 </div>
                             </div>
 
                             <div className="pl-4">
-                                <div
-                                    className="relative h-80 rounded-xl overflow-hidden shadow-2xl border-4 border-gray-200"
-                                    style={{
-                                        background: formData.background_image_url
-                                            ? `url(${formData.background_image_url}) center/cover`
-                                            : `linear-gradient(to right, ${formData.background_gradient_start}, ${formData.background_gradient_end})`
-                                    }}
-                                >
-                                    <div className="absolute inset-0 bg-black/30"></div>
-                                    <div className="relative h-full flex flex-col items-center justify-center text-center px-8 text-white">
-                                        <h2 className="text-4xl font-bold mb-4 drop-shadow-lg">
-                                            {formData.title || 'Başlık buraya gelecek'}
-                                        </h2>
-                                        {formData.subtitle && (
-                                            <p className="text-lg mb-8 max-w-2xl drop-shadow-md opacity-90">
-                                                {formData.subtitle}
-                                            </p>
+                                {previewMode === 'desktop' ? (
+                                    // Desktop Preview
+                                    <div
+                                        className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-gray-200"
+                                        style={{
+                                            aspectRatio: '12 / 5',
+                                            minHeight: '320px',
+                                            maxHeight: '520px',
+                                            background: formData.background_image_url
+                                                ? `linear-gradient(90deg, ${formData.background_gradient_start}, ${formData.background_gradient_end})`
+                                                : `linear-gradient(90deg, ${formData.background_gradient_start}, ${formData.background_gradient_end})`
+                                        }}
+                                    >
+                                        {/* Background Image with fit mode */}
+                                        {formData.background_image_url && (
+                                            <>
+                                                {formData.image_fit_mode === 'contain' ? (
+                                                    // Contain mode - show full image with gradient backdrop
+                                                    <div className="absolute inset-0 flex items-center justify-center rounded-3xl">
+                                                        <img
+                                                            src={formData.background_image_url}
+                                                            alt="Banner"
+                                                            className="max-w-full max-h-full object-contain"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    // Cover mode - fill with object position
+                                                    <div
+                                                        className="absolute inset-0 rounded-3xl"
+                                                        style={{
+                                                            backgroundImage: `url(${formData.background_image_url})`,
+                                                            backgroundSize: 'cover',
+                                                            backgroundPosition: `${formData.object_position_x}% ${formData.object_position_y}%`
+                                                        }}
+                                                    />
+                                                )}
+                                            </>
                                         )}
-                                        <div className="flex gap-4">
-                                            {formData.cta1_label && (
-                                                <div className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold shadow-lg">
-                                                    {formData.cta1_label}
+                                        <div className="absolute inset-0 bg-black/10 rounded-3xl"></div>
+
+                                        {/* Content Container - Same as public site */}
+                                        <div className="relative z-10 w-full h-full px-6 sm:px-8 md:px-12 lg:px-16 py-10 sm:py-12 md:py-14 lg:py-16 flex flex-col justify-center text-white">
+                                            {/* Hero Content - Left aligned */}
+                                            <div className="max-w-3xl">
+                                                {/* Badge */}
+                                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-medium text-white mb-4 backdrop-blur-sm">
+                                                    <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                                                    Katılım Uzmanı ile Geleceği Planla
                                                 </div>
-                                            )}
-                                            {formData.cta2_label && (
-                                                <div className="bg-white/20 backdrop-blur-sm text-white border-2 border-white px-6 py-3 rounded-lg font-bold">
-                                                    {formData.cta2_label}
+
+                                                {/* Title */}
+                                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight tracking-tight">
+                                                    {formData.title || 'Başlık buraya gelecek'}
+                                                </h2>
+
+                                                {/* Subtitle */}
+                                                {formData.subtitle && (
+                                                    <p className="text-sm sm:text-base md:text-lg text-gray-100 mt-3 sm:mt-4 max-w-xl leading-relaxed opacity-90">
+                                                        {formData.subtitle}
+                                                    </p>
+                                                )}
+
+                                                {/* CTA Buttons - Left aligned */}
+                                                <div className="flex flex-wrap gap-3 sm:gap-4 mt-6 sm:mt-8">
+                                                    {formData.cta1_label && (
+                                                        <div className="bg-white text-[#210CAE] font-bold px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl shadow-lg flex items-center gap-2 text-sm sm:text-base cursor-default">
+                                                            {formData.cta1_label}
+                                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                            </svg>
+                                                        </div>
+                                                    )}
+                                                    {formData.cta2_label && (
+                                                        <div className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl flex items-center gap-2 text-sm sm:text-base backdrop-blur-sm cursor-default">
+                                                            {formData.cta2_label}
+                                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            </div>
+                                        </div>
+
+                                        {/* Fit Mode Indicator */}
+                                        <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">
+                                            {formData.image_fit_mode === 'cover' ? 'Cover' : 'Contain'}
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    // Mobile Preview
+                                    <div className="flex flex-col items-center">
+                                        {/* Phone Frame */}
+                                        <div
+                                            className="relative bg-gray-900 rounded-[2.5rem] p-3 shadow-2xl"
+                                            style={{ width: '320px' }}
+                                        >
+                                            {/* Phone Notch */}
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-gray-900 rounded-b-xl z-20"></div>
+
+                                            {/* Screen */}
+                                            <div
+                                                className="relative rounded-[2rem] overflow-hidden bg-white"
+                                                style={{ width: '294px', height: '520px' }}
+                                            >
+                                                {/* Banner Preview */}
+                                                <div
+                                                    className="relative w-full overflow-hidden"
+                                                    style={{
+                                                        height: '340px',
+                                                        background: `linear-gradient(90deg, ${formData.background_gradient_start}, ${formData.background_gradient_end})`
+                                                    }}
+                                                >
+                                                    {/* Mobile Background Image */}
+                                                    {(formData.mobile_image_url || formData.background_image_url) && (
+                                                        <div
+                                                            className="absolute inset-0"
+                                                            style={{
+                                                                backgroundImage: `url(${formData.mobile_image_url || formData.background_image_url})`,
+                                                                backgroundSize: 'cover',
+                                                                backgroundPosition: 'center center'
+                                                            }}
+                                                        />
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/10"></div>
+
+                                                    {/* Content */}
+                                                    <div className="relative z-10 p-4 h-full flex flex-col justify-end text-white">
+                                                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[8px] font-medium mb-2 w-fit">
+                                                            <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                                                            Katılım Uzmanı
+                                                        </div>
+                                                        <h3 className="text-sm font-bold leading-tight line-clamp-2">
+                                                            {formData.title || 'Başlık'}
+                                                        </h3>
+                                                        {formData.subtitle && (
+                                                            <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">
+                                                                {formData.subtitle}
+                                                            </p>
+                                                        )}
+                                                        {formData.cta1_label && (
+                                                            <div className="mt-3 bg-white text-[#210CAE] font-bold px-3 py-1.5 rounded-lg text-[10px] w-fit flex items-center gap-1">
+                                                                {formData.cta1_label}
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Mock content below banner */}
+                                                <div className="p-3 space-y-2">
+                                                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                                                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                                    <div className="h-8 bg-gray-100 rounded mt-3"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Image indicator */}
+                                        <div className="mt-3 flex items-center gap-2 text-xs">
+                                            {formData.mobile_image_url ? (
+                                                <span className="text-green-600 font-medium">✅ Mobil görsel kullanılıyor</span>
+                                            ) : formData.background_image_url ? (
+                                                <span className="text-orange-500 font-medium">⚠️ Masaüstü görsel kullanılıyor (mobil yok)</span>
+                                            ) : (
+                                                <span className="text-gray-500">Görsel yüklenmedi</span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1 text-center">
+                                            ↑ Mobil cihazlarda bu şekilde görünecek
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -433,97 +791,101 @@ export const HomeHeroSettings: React.FC = () => {
                             </button>
                         </div>
                     </form>
-                </div>
+                </div >
             )}
 
             {/* Slides List */}
-            {!showForm && slides.length > 0 && (
-                <div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">Mevcut Slide'lar ({slides.length})</h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {slides.map((slide, index) => (
-                            <div key={slide.id} className="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-100 hover:border-blue-300 transition-all">
-                                {/* Preview */}
-                                <div className="relative">
-                                    <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
-                                        Slide #{index + 1}
+            {
+                !showForm && slides.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Mevcut Slide'lar ({slides.length})</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {slides.map((slide, index) => (
+                                <div key={slide.id} className="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-100 hover:border-blue-300 transition-all">
+                                    {/* Preview */}
+                                    <div className="relative">
+                                        <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+                                            Slide #{index + 1}
+                                        </div>
+                                        <div
+                                            className="h-56 flex items-center justify-center text-white p-6"
+                                            style={{
+                                                background: slide.background_image_url
+                                                    ? `url(${slide.background_image_url}) center/cover`
+                                                    : `linear-gradient(to right, ${slide.background_gradient_start}, ${slide.background_gradient_end})`
+                                            }}
+                                        >
+                                            <div className="absolute inset-0 bg-black/20"></div>
+                                            <div className="relative text-center">
+                                                <h3 className="text-2xl font-bold mb-2 drop-shadow-lg">{slide.title}</h3>
+                                                {slide.subtitle && (
+                                                    <p className="text-sm opacity-90 line-clamp-2 drop-shadow-md">{slide.subtitle}</p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div
-                                        className="h-56 flex items-center justify-center text-white p-6"
-                                        style={{
-                                            background: slide.background_image_url
-                                                ? `url(${slide.background_image_url}) center/cover`
-                                                : `linear-gradient(to right, ${slide.background_gradient_start}, ${slide.background_gradient_end})`
-                                        }}
-                                    >
-                                        <div className="absolute inset-0 bg-black/20"></div>
-                                        <div className="relative text-center">
-                                            <h3 className="text-2xl font-bold mb-2 drop-shadow-lg">{slide.title}</h3>
-                                            {slide.subtitle && (
-                                                <p className="text-sm opacity-90 line-clamp-2 drop-shadow-md">{slide.subtitle}</p>
+
+                                    {/* Info & Actions */}
+                                    <div className="p-4 bg-gray-50">
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {slide.cta1_label && (
+                                                <span className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold">
+                                                    🔵 {slide.cta1_label}
+                                                </span>
                                             )}
+                                            {slide.cta2_label && (
+                                                <span className="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">
+                                                    🟣 {slide.cta2_label}
+                                                </span>
+                                            )}
+                                            {!slide.cta1_label && !slide.cta2_label && (
+                                                <span className="text-xs text-gray-400 italic">Buton yok</span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleEdit(slide)}
+                                                className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:text-white hover:bg-blue-600 font-semibold py-2.5 border-2 border-blue-600 rounded-lg transition-all"
+                                            >
+                                                <Edit size={16} />
+                                                Düzenle
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(slide.id)}
+                                                className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:text-white hover:bg-red-600 font-semibold py-2.5 border-2 border-red-600 rounded-lg transition-all"
+                                            >
+                                                <Trash2 size={16} />
+                                                Sil
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Info & Actions */}
-                                <div className="p-4 bg-gray-50">
-                                    <div className="flex flex-wrap gap-2 mb-4">
-                                        {slide.cta1_label && (
-                                            <span className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold">
-                                                🔵 {slide.cta1_label}
-                                            </span>
-                                        )}
-                                        {slide.cta2_label && (
-                                            <span className="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">
-                                                🟣 {slide.cta2_label}
-                                            </span>
-                                        )}
-                                        {!slide.cta1_label && !slide.cta2_label && (
-                                            <span className="text-xs text-gray-400 italic">Buton yok</span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleEdit(slide)}
-                                            className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:text-white hover:bg-blue-600 font-semibold py-2.5 border-2 border-blue-600 rounded-lg transition-all"
-                                        >
-                                            <Edit size={16} />
-                                            Düzenle
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(slide.id)}
-                                            className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:text-white hover:bg-red-600 font-semibold py-2.5 border-2 border-red-600 rounded-lg transition-all"
-                                        >
-                                            <Trash2 size={16} />
-                                            Sil
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Empty State */}
-            {slides.length === 0 && !showForm && (
-                <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <div className="text-6xl mb-4">🎨</div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Henüz Hero Slide Yok</h3>
-                    <p className="text-gray-600 mb-6">
-                        Ana sayfanızda görünecek etkileyici banner'lar oluşturmaya başlayın
-                    </p>
-                    <button
-                        onClick={() => setShowForm(true)}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 shadow-lg inline-flex items-center gap-2"
-                    >
-                        <Plus size={20} />
-                        İlk Slide'ı Oluştur
-                    </button>
-                </div>
-            )}
-        </div>
+            {
+                slides.length === 0 && !showForm && (
+                    <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                        <div className="text-6xl mb-4">🎨</div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Henüz Hero Slide Yok</h3>
+                        <p className="text-gray-600 mb-6">
+                            Ana sayfanızda görünecek etkileyici banner'lar oluşturmaya başlayın
+                        </p>
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 shadow-lg inline-flex items-center gap-2"
+                        >
+                            <Plus size={20} />
+                            İlk Slide'ı Oluştur
+                        </button>
+                    </div>
+                )
+            }
+        </div >
     );
 };

@@ -2,8 +2,18 @@ Options -MultiViews
 RewriteEngine On
 RewriteBase /
 
+# ===== CRITICAL: Exclude static assets from SPA fallback =====
+# If request is for a real file or directory, serve it directly
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
+# If request is for /assets/ and file doesn't exist, return 404 (NOT index.html)
+RewriteCond %{REQUEST_URI} ^/assets/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ - [R=404,L]
+
+# ===== SPA Routing Fallback =====
+# For all other routes (non-existing files), serve index.html
+# This enables React Router client-side routing
 RewriteRule ^ index.html [L]

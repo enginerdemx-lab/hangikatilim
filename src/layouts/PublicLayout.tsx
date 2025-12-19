@@ -157,6 +157,7 @@ export const PublicLayout: React.FC = () => {
                 isOpen={legalModalOpen}
                 type={legalModalType}
                 onClose={() => setLegalModalOpen(false)}
+                siteSettings={siteSettings}
             />
 
             {/* Footer */}
@@ -164,7 +165,7 @@ export const PublicLayout: React.FC = () => {
                 <div className="container mx-auto px-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                         <div className="text-center md:text-left">
-                            <h3 className="text-xl font-bold text-white mb-4">{siteSettings?.site_name || 'Hangi Katılım'}</h3>
+                            <h3 className="text-xl font-bold text-white mb-4">{siteSettings?.site_name || 'Katılım Uzmanı'}</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-500 leading-relaxed mb-6">
                                 {siteSettings?.footer_description || "Türkiye'nin en kapsamlı tasarruf finansmanı hesaplama ve karşılaştırma platformu. Hayallerinize faizsiz ulaşın."}
                             </p>
@@ -276,11 +277,37 @@ export const PublicLayout: React.FC = () => {
                     </div>
 
                     <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <p className="text-sm font-medium text-gray-400">{siteSettings?.copyright_text || 'Hangi Katılım Platformu © 2025'}</p>
-                        <div className="flex gap-6 text-xs text-gray-500">
-                            <button onClick={() => handleOpenLegal('TERMS')} className="hover:text-white transition-colors">Kullanım Şartları</button>
-                            <button onClick={() => handleOpenLegal('KVKK')} className="hover:text-white transition-colors">Aydınlatma Metni</button>
-                            <button onClick={() => handleOpenLegal('CONSENT')} className="hover:text-white transition-colors">Açık Rıza Metni</button>
+                        <p className="text-sm font-medium text-gray-400">{siteSettings?.copyright_text || 'Katılım Uzmanı Platformu © 2025'}</p>
+                        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                            {/* Dynamic legal links from siteSettings */}
+                            {siteSettings?.terms_text && (
+                                <button onClick={() => handleOpenLegal('TERMS')} className="hover:text-white transition-colors">
+                                    {siteSettings.terms_text}
+                                </button>
+                            )}
+                            {siteSettings?.kvkk_text && (
+                                <button onClick={() => handleOpenLegal('KVKK')} className="hover:text-white transition-colors">
+                                    {siteSettings.kvkk_text}
+                                </button>
+                            )}
+                            {siteSettings?.privacy_text && (
+                                <button onClick={() => handleOpenLegal('CONSENT')} className="hover:text-white transition-colors">
+                                    {siteSettings.privacy_text}
+                                </button>
+                            )}
+                            {siteSettings?.cookie_text && (
+                                <button onClick={() => handleOpenLegal('COMMERCIAL')} className="hover:text-white transition-colors">
+                                    {siteSettings.cookie_text}
+                                </button>
+                            )}
+                            {/* Fallback if no siteSettings */}
+                            {!siteSettings && (
+                                <>
+                                    <button onClick={() => handleOpenLegal('TERMS')} className="hover:text-white transition-colors">Kullanım Şartları</button>
+                                    <button onClick={() => handleOpenLegal('KVKK')} className="hover:text-white transition-colors">Aydınlatma Metni</button>
+                                    <button onClick={() => handleOpenLegal('CONSENT')} className="hover:text-white transition-colors">Açık Rıza Metni</button>
+                                </>
+                            )}
                         </div>
                     </div>
 

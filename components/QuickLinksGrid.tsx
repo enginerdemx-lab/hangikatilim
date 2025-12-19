@@ -21,13 +21,13 @@ const getIconComponent = (iconName: string): LucideIcon => {
     return iconMap[iconName] || Home;
 };
 
-// Skeleton loader
+// Skeleton loader - matches actual card size to prevent FOUC
 const QuickLinksSkeleton: React.FC = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-        {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 md:p-6 shadow-lg animate-pulse">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 rounded-xl mx-auto mb-2 md:mb-3"></div>
-                <div className="h-3 md:h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 md:gap-2">
+        {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-slate-800 rounded-lg p-2 shadow-sm animate-pulse">
+                <div className="w-6 h-6 bg-gray-200 dark:bg-slate-700 rounded mx-auto mb-1"></div>
+                <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded w-3/4 mx-auto"></div>
             </div>
         ))}
     </div>
@@ -62,8 +62,17 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
         }
     };
 
+    // Show skeleton immediately while loading (prevents FOUC)
+    if (loading) {
+        return (
+            <div className={`w-full ${className}`}>
+                <QuickLinksSkeleton />
+            </div>
+        );
+    }
+
     // Don't render if disabled or no items
-    if (!loading && (!settings?.is_enabled || items.length === 0)) {
+    if (!settings?.is_enabled || items.length === 0) {
         return null;
     }
 
@@ -73,45 +82,45 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
             <div className={`w-full ${className}`}>
                 {/* Section Header - Left Aligned */}
                 {settings && (settings.section_title || settings.section_subtitle) && (
-                    <div className="text-left mb-4 md:mb-6">
+                    <div className="text-left mb-2 md:mb-3">
                         {settings.section_title && (
-                            <h2 className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white">
+                            <h2 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">
                                 {settings.section_title}
                             </h2>
                         )}
                         {settings.section_subtitle && (
-                            <p className="text-gray-600 dark:text-gray-400 text-sm md:text-base mt-1">
+                            <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-0.5">
                                 {settings.section_subtitle}
                             </p>
                         )}
                     </div>
                 )}
 
-                {/* Quick Links Grid */}
+                {/* Quick Links Grid - 30% smaller */}
                 {loading ? (
                     <QuickLinksSkeleton />
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 md:gap-2">
                         {items.map((item) => {
                             const IconComponent = getIconComponent(item.icon);
                             const isExternal = item.is_external || item.link_url.startsWith('http');
 
                             const cardContent = (
-                                <div className="group bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl p-3 md:p-5 shadow-lg border border-gray-100 dark:border-slate-700 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-600 transition-all duration-300 cursor-pointer text-center relative overflow-hidden hover:-translate-y-1">
+                                <div className="group bg-white dark:bg-slate-800 rounded-lg p-1.5 md:p-2 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:-translate-y-0.5">
                                     {/* Badge */}
                                     {item.badge_text && (
-                                        <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 px-1.5 py-0.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[8px] md:text-[10px] font-bold rounded-full">
+                                        <span className="absolute top-0.5 right-0.5 md:top-1 md:right-1 px-1 py-0.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[6px] md:text-[8px] font-bold rounded-full">
                                             {item.badge_text}
                                         </span>
                                     )}
 
-                                    {/* Icon */}
-                                    <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg md:rounded-xl flex items-center justify-center mx-auto mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300">
-                                        <IconComponent className="w-5 h-5 md:w-7 md:h-7 text-blue-600 dark:text-blue-400" />
+                                    {/* Icon - 30% smaller */}
+                                    <div className="w-6 h-6 md:w-7 md:h-7 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded flex items-center justify-center mx-auto mb-0.5 md:mb-1 group-hover:scale-105 transition-transform duration-200">
+                                        <IconComponent className="w-3 h-3 md:w-4 md:h-4 text-blue-600 dark:text-blue-400" />
                                     </div>
 
-                                    {/* Title */}
-                                    <h3 className="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                                    {/* Title - smaller */}
+                                    <h3 className="text-[8px] md:text-[10px] font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
                                         {item.title}
                                     </h3>
                                 </div>
@@ -131,7 +140,39 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
                                 );
                             }
 
-                            // Internal link
+                            // Hash link (same page scroll)
+                            if (item.link_url.startsWith('#') || item.link_url.startsWith('/#')) {
+                                const handleHashClick = (e: React.MouseEvent) => {
+                                    e.preventDefault();
+                                    const hash = item.link_url.replace('/', '').replace('#', '');
+
+                                    // If we're not on homepage, navigate first
+                                    if (window.location.pathname !== '/') {
+                                        window.location.href = `/#${hash}`;
+                                        return;
+                                    }
+
+                                    // Smooth scroll to element
+                                    const element = document.getElementById(hash);
+                                    if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        // Update URL hash without scroll
+                                        window.history.pushState(null, '', `#${hash}`);
+                                    }
+                                };
+
+                                return (
+                                    <a
+                                        key={item.id}
+                                        href={item.link_url}
+                                        onClick={handleHashClick}
+                                    >
+                                        {cardContent}
+                                    </a>
+                                );
+                            }
+
+                            // Internal route link
                             return (
                                 <Link key={item.id} to={item.link_url}>
                                     {cardContent}
@@ -146,49 +187,49 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
 
     // Standalone section version (below hero)
     return (
-        <section className={`py-8 md:py-12 ${className}`}>
+        <section className={`py-4 md:py-6 ${className}`}>
             <div className="container mx-auto px-4">
                 {/* Section Header - Left Aligned */}
                 {settings && (settings.section_title || settings.section_subtitle) && (
-                    <div className="text-left mb-6 md:mb-8">
+                    <div className="text-left mb-2 md:mb-3">
                         {settings.section_title && (
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                            <h2 className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">
                                 {settings.section_title}
                             </h2>
                         )}
                         {settings.section_subtitle && (
-                            <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg mt-1">
+                            <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-0.5">
                                 {settings.section_subtitle}
                             </p>
                         )}
                     </div>
                 )}
 
-                {/* Quick Links Grid */}
+                {/* Quick Links Grid - 30% smaller */}
                 {loading ? (
                     <QuickLinksSkeleton />
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 md:gap-2">
                         {items.map((item) => {
                             const IconComponent = getIconComponent(item.icon);
                             const isExternal = item.is_external || item.link_url.startsWith('http');
 
                             const cardContent = (
-                                <div className="group bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-600 transition-all duration-300 cursor-pointer text-center relative overflow-hidden hover:-translate-y-1">
+                                <div className="group bg-white dark:bg-slate-800 rounded-lg p-1.5 md:p-2 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:-translate-y-0.5">
                                     {/* Badge */}
                                     {item.badge_text && (
-                                        <span className="absolute top-2 right-2 px-2 py-0.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] font-bold rounded-full">
+                                        <span className="absolute top-0.5 right-0.5 md:top-1 md:right-1 px-1 py-0.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[6px] md:text-[8px] font-bold rounded-full">
                                             {item.badge_text}
                                         </span>
                                     )}
 
-                                    {/* Icon */}
-                                    <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
-                                        <IconComponent className="w-6 h-6 md:w-7 md:h-7 text-blue-600 dark:text-blue-400" />
+                                    {/* Icon - 30% smaller */}
+                                    <div className="w-6 h-6 md:w-7 md:h-7 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded flex items-center justify-center mx-auto mb-0.5 md:mb-1 group-hover:scale-105 transition-transform duration-200">
+                                        <IconComponent className="w-3 h-3 md:w-4 md:h-4 text-blue-600 dark:text-blue-400" />
                                     </div>
 
-                                    {/* Title */}
-                                    <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                    {/* Title - smaller */}
+                                    <h3 className="text-[8px] md:text-[10px] font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
                                         {item.title}
                                     </h3>
                                 </div>
@@ -208,7 +249,39 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
                                 );
                             }
 
-                            // Internal link
+                            // Hash link (same page scroll)
+                            if (item.link_url.startsWith('#') || item.link_url.startsWith('/#')) {
+                                const handleHashClick = (e: React.MouseEvent) => {
+                                    e.preventDefault();
+                                    const hash = item.link_url.replace('/', '').replace('#', '');
+
+                                    // If we're not on homepage, navigate first
+                                    if (window.location.pathname !== '/') {
+                                        window.location.href = `/#${hash}`;
+                                        return;
+                                    }
+
+                                    // Smooth scroll to element
+                                    const element = document.getElementById(hash);
+                                    if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        // Update URL hash without scroll
+                                        window.history.pushState(null, '', `#${hash}`);
+                                    }
+                                };
+
+                                return (
+                                    <a
+                                        key={item.id}
+                                        href={item.link_url}
+                                        onClick={handleHashClick}
+                                    >
+                                        {cardContent}
+                                    </a>
+                                );
+                            }
+
+                            // Internal route link
                             return (
                                 <Link key={item.id} to={item.link_url}>
                                     {cardContent}

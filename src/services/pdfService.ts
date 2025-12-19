@@ -156,7 +156,7 @@ export const generatePDF = async (params: CalculationParams, result: Calculation
           <div style="position: absolute; bottom: 15px; left: 40px; right: 40px; border-top: 2px solid #e2e8f0; padding-top: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div style="font-size: 8px; color: #64748b;">
-                <p style="margin: 0; font-weight: 600;">Hangi Katılım | Tasarruf Finansman Hesaplama Planı</p>
+                <p style="margin: 0; font-weight: 600;">Katılım Uzmanı | Tasarruf Finansman Hesaplama Planı</p>
                 <p style="margin: 2px 0 0 0; font-size: 7px;">⚠️ Bu belge bilgilendirme amaçlıdır - www.hangikatilim.com</p>
               </div>
               <div style="font-size: 9px; color: #1e40af; font-weight: 700;">
