@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Share2, Tag, Clock } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
+import { BlogContent } from '../../components/BlogContent';
 import type { BlogPost } from '../../types/database';
 
 const BlogDetailPage: React.FC = () => {
@@ -208,15 +209,7 @@ const BlogDetailPage: React.FC = () => {
                     )}
 
                     {/* Content */}
-                    <div
-                        className="prose prose-lg dark:prose-invert max-w-none
-                            prose-headings:text-gray-900 dark:prose-headings:text-white
-                            prose-p:text-gray-600 dark:prose-p:text-gray-300
-                            prose-a:text-primary-600 dark:prose-a:text-primary-400
-                            prose-strong:text-gray-900 dark:prose-strong:text-white
-                            prose-img:rounded-xl prose-img:shadow-lg"
-                        dangerouslySetInnerHTML={{ __html: post.content }}
-                    />
+                    <BlogContent html={post.content} />
 
                     {/* Footer */}
                     <div className="mt-12 pt-8 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { blogApi } from '../../services/api/blog';
 import { ImageUpload } from '../../components/admin/ImageUpload';
+import { RichTextEditor } from '../../components/admin/RichTextEditor';
+import { BlogContent } from '../../components/BlogContent';
 import { useToast } from '../../hooks/useToast';
 import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
 import { SubmitButton } from '../../components/admin/SubmitButton';
@@ -300,18 +302,48 @@ export const Blog: React.FC = () => {
                             />
                         </div>
 
-                        {/* İçerik */}
+                        {/* İçerik - Rich Text Editor */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">İçerik *</label>
-                            <textarea
-                                value={formData.content}
-                                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                required
-                                rows={10}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                placeholder="Blog yazısı içeriği..."
+                            <RichTextEditor
+                                content={formData.content}
+                                onChange={(html) => setFormData({ ...formData, content: html })}
+                                placeholder="Blog yazısı içeriğini buraya yazın..."
                             />
+                            <p className="text-xs text-gray-500 mt-2">
+                                💡 Görselleri sürükle-bırak veya kopyala-yapıştır ile ekleyebilirsiniz
+                            </p>
                         </div>
+
+                        {/* Canlı Önizleme */}
+                        {formData.content && (
+                            <div className="border-t pt-6">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                    👁️ Canlı Önizleme
+                                </h3>
+                                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                                    {formData.cover_image_url && (
+                                        <img
+                                            src={formData.cover_image_url}
+                                            alt="Kapak"
+                                            className="w-full h-48 object-cover rounded-lg mb-4"
+                                        />
+                                    )}
+                                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                                        {formData.title || 'Başlık'}
+                                    </h1>
+                                    <div className="text-sm text-gray-500 mb-4">
+                                        {formData.author && <span>{formData.author}</span>}
+                                        {formData.published_at && (
+                                            <span className="ml-2">
+                                                • {new Date(formData.published_at).toLocaleDateString('tr-TR')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <BlogContent html={formData.content} />
+                                </div>
+                            </div>
+                        )}
 
                         {/* Kapak Görseli */}
                         <div className="border-t pt-6">

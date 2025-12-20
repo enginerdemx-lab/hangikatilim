@@ -39,6 +39,25 @@ export const mediaApi = {
         return data.publicUrl;
     },
 
+    // Upload an image to storage
+    async uploadImage(file: File, folder: string = 'blog-content'): Promise<string> {
+        const fileExt = file.name.split('.').pop() || 'webp';
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${folder}/${fileName}`;
+
+        const { error } = await supabase
+            .storage
+            .from('media')
+            .upload(filePath, file, {
+                cacheControl: '31536000',
+                upsert: false,
+            });
+
+        if (error) throw error;
+
+        return this.getPublicUrl(filePath);
+    },
+
     // Delete a file
     async deleteFile(filePath: string): Promise<void> {
         const { error } = await supabase
