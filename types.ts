@@ -86,3 +86,60 @@ export interface LeadForm {
   name: string;
   phone: string;
 }
+
+// ============================================
+// USER PROFILE TYPES
+// ============================================
+
+export interface UserProfile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfileUpdate {
+  full_name?: string;
+  phone?: string;
+  avatar_url?: string | null;
+}
+
+export interface NotificationPreferences {
+  user_id: string;
+  email_enabled: boolean;
+  sms_enabled: boolean;
+  marketing_allowed: boolean;
+  updated_at: string;
+}
+
+export interface UserAgreements {
+  user_id: string;
+  membership_accepted: boolean;
+  kvkk_accepted: boolean;
+  open_consent_accepted: boolean;
+  terms_accepted: boolean;
+  accepted_at: string | null;
+}
+
+export interface SavedCalculationData {
+  id: string;
+  user_id: string;
+  type: 'ev' | 'arac' | 'isyeri' | 'tumu';
+  data_json: {
+    params: CalculationParams;
+    result: CalculationResult;
+  };
+  pdf_path: string;
+  created_at: string;
+}
+
+export type CalculationType = 'ev' | 'arac' | 'isyeri' | 'tumu';
+
+export interface CalculationSaveRequest {
+  type: CalculationType;
+  params: CalculationParams;
+  result: CalculationResult;
+  pdfBlob: Blob;
+}

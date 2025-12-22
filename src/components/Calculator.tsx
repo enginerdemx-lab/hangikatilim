@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus } from 'lucide-react';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
-import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType } from '../types';
-import { getFinancialAdvice } from '../services/geminiService';
-import { generatePDF } from '../services/pdfService';
+import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../../types';
+import { generatePDF, generatePDFBlob } from '../services/pdfService';
+import { calculationService } from '../services/api/calculationService';
+import { useAuth } from '../contexts/AuthContext';
+import { LoginModal } from './auth/LoginModal';
+import { RegisterModal } from './auth/RegisterModal';
+import { PasswordResetModal } from './auth/PasswordResetModal';
+
 
 const MIN_TARGET = 50000;
 const MAX_TARGET = 5000000;
@@ -23,6 +29,10 @@ interface CalculatorProps {
 export const Calculator: React.FC<CalculatorProps> = ({
   theme = 'light',
 }) => {
+  // Auth & Navigation
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   // State
   const [params, setParams] = useState<CalculationParams>({
     assetType: AssetType.HOME, // Default Home
@@ -47,11 +57,80 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [showInterim2, setShowInterim2] = useState(false);
   const [showIncreaseSettings, setShowIncreaseSettings] = useState(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [aiAdvice, setAiAdvice] = useState<string>("");
+  const [aiAdvice, setAiAdvice] = useState<string>('');
+
+
+  // Auth modals state
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [savingCalculation, setSavingCalculation] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
+
+  // AI Cooldown State
+  const AI_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+  const COOLDOWN_KEY = 'aiCooldownUntil';
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
 
   // Schedule Accordion State - Default CLOSED
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+
+  // Cooldown Timer Effect
+  useEffect(() => {
+    // Check localStorage on mount
+    const checkCooldown = () => {
+      const cooldownUntil = localStorage.getItem(COOLDOWN_KEY);
+      if (cooldownUntil) {
+        const until = parseInt(cooldownUntil, 10);
+        const now = Date.now();
+        if (now < until) {
+          setCooldownRemaining(until - now);
+        } else {
+          localStorage.removeItem(COOLDOWN_KEY);
+          setCooldownRemaining(0);
+        }
+      }
+    };
+
+    checkCooldown();
+
+    // Update countdown every second
+    const interval = setInterval(() => {
+      const cooldownUntil = localStorage.getItem(COOLDOWN_KEY);
+      if (cooldownUntil) {
+        const until = parseInt(cooldownUntil, 10);
+        const now = Date.now();
+        const remaining = until - now;
+        if (remaining > 0) {
+          setCooldownRemaining(remaining);
+        } else {
+          localStorage.removeItem(COOLDOWN_KEY);
+          setCooldownRemaining(0);
+        }
+      }
+    }, 1000);
+
+    // Listen for storage changes (cross-tab sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === COOLDOWN_KEY) {
+        checkCooldown();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Format cooldown time as MM:SS
+  const formatCooldown = (ms: number): string => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
 
   // Check for prefill data from Campaigns page
   useEffect(() => {
@@ -398,9 +477,12 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const handleAiAdvice = async () => {
     if (!result) return;
     setLoadingAi(true);
-    const advice = await getFinancialAdvice(params, result);
-    setAiAdvice(advice);
-    setLoadingAi(false);
+    // TODO: Implement AI advice feature with Gemini API
+    // For now, show a placeholder message
+    setTimeout(() => {
+      setAiAdvice('AI tavsiye özelliği yakında aktif olacak. Şu anda hesaplamanızı kaydedebilir ve profil sayfanızdan görüntüleyebilirsiniz.');
+      setLoadingAi(false);
+    }, 1000);
   };
 
   const toggleIncreaseSettings = () => {
@@ -415,9 +497,62 @@ export const Calculator: React.FC<CalculatorProps> = ({
     }
   };
 
+  // Mevcut kod:
   const downloadPDF = () => {
     if (!result) return;
     generatePDF(params, result, 'Ziyaretçi');
+  };
+
+  // BURAYA EKLE - downloadPDF'in hemen altına:
+  // Helper to map AssetType to CalculationType
+  const mapAssetTypeToCalculationType = (assetType: AssetType): CalculationType => {
+    switch (assetType) {
+      case AssetType.HOME: return 'ev';
+      case AssetType.CAR: return 'arac';
+      case AssetType.WORKPLACE: return 'isyeri';
+      case AssetType.ALL: return 'tumu';
+      default: return 'tumu';
+    }
+  };
+
+  const handleSaveCalculation = async () => {
+    if (!result) return;
+
+    // If not logged in, redirect to login page
+    if (!user) {
+      navigate('/login', { state: { from: { pathname: '/', hash: '#calculator' } } });
+      return;
+    }
+
+    setSavingCalculation(true);
+
+    try {
+      const pdfBlob = await generatePDFBlob(params, result, user.email || 'Kullanıcı');
+
+      await calculationService.saveCalculation({
+        userId: user.id,
+        type: mapAssetTypeToCalculationType(params.assetType),
+        params,
+        result,
+        pdfBlob
+      });
+
+      // Success toast
+      showToast('Hesaplama başarıyla kaydedildi!', 'success');
+    } catch (error) {
+      console.error('Save calculation error:', error);
+      // Error toast
+      showToast('Hesaplama kaydedilemedi. Lütfen tekrar deneyin.', 'error');
+    } finally {
+      setSavingCalculation(false);
+    }
+  };
+
+  // Toast notification helper
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
   };
 
   // Asset Options Config
@@ -481,7 +616,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
                     key={option.id}
                     onClick={() => handleAssetTypeChange(option.id)}
                     className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border-2 transition-all duration-300 ${params.assetType === option.id
-                      ? 'border-[#210CAE] bg-[#210CAE] text-white shadow-lg transform scale-105'
+                      ? 'border-[#0855f8] bg-[#0855f8] text-white shadow-lg transform scale-105'
                       : 'border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700'
                       }`}
                   >
@@ -962,7 +1097,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
           {/* Results Card - Updated Gradient */}
           <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-slate-700 sticky top-24 transition-colors duration-300">
-            <div className="bg-[linear-gradient(90deg,#4DC9E6,#210CAE)] p-6 text-white relative overflow-hidden">
+            <div className="bg-[#0855f8] p-6 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
               <div className="relative z-10">
                 <h3 className="text-lg font-medium opacity-90 mb-1">Hesaplanan Teslimat Tarihi</h3>
@@ -988,7 +1123,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
                 </div>
 
                 {/* UPDATED: Total Payable with Thinner design and Glow Pulse Animation */}
-                <div className="relative overflow-hidden flex flex-row justify-between items-center p-4 bg-gradient-to-r from-[#4DC9E6] to-[#210CAE] rounded-xl animate-glow-pulse border border-white/30 group">
+                <div className="relative overflow-hidden flex flex-row justify-between items-center p-4 bg-[#0855f8] rounded-xl border border-white/20 group">
                   <div className="flex flex-col">
                     <span className="text-xs font-medium text-blue-50 uppercase tracking-wider mb-0.5">Toplam Geri Ödeme</span>
                   </div>
@@ -1000,6 +1135,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
               </div>
 
               <div className="flex gap-3 mb-6">
+                {/* Existing PDF Download Button */}
                 <button
                   onClick={downloadPDF}
                   className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-gray-500/20"
@@ -1007,14 +1143,49 @@ export const Calculator: React.FC<CalculatorProps> = ({
                   <FileDown size={18} />
                   PDF İndir
                 </button>
+                {/* YENİ: Hesaplamayı Kaydet butonu - PDF İndir butonunun yanına */}
+                <button
+                  onClick={handleSaveCalculation}
+                  disabled={savingCalculation}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingCalculation ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : user ? (
+                    <>
+                      <Save size={18} />
+                      Hesaplamayı Kaydet
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={18} />
+                      Üye Ol, Kaydet
+                    </>
+                  )}
+                </button>
 
                 <button
-                  onClick={handleAiAdvice}
-                  disabled={loadingAi}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[linear-gradient(90deg,#4DC9E6,#210CAE)] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-[#4DC9E6]/30 disabled:opacity-70"
+                  onClick={() => {
+                    if (cooldownRemaining > 0) return;
+                    const now = Date.now();
+                    const cooldownUntil = now + AI_COOLDOWN_MS;
+                    localStorage.setItem(COOLDOWN_KEY, String(cooldownUntil));
+                    setCooldownRemaining(AI_COOLDOWN_MS);
+                    handleAiAdvice();
+                  }}
+                  disabled={loadingAi || cooldownRemaining > 0}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#0855f8] hover:bg-[#0645d0] text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-[#0855f8]/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loadingAi ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Sparkles size={18} />}
-                  Yapay Zekaya Sor
+                  {loadingAi ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : cooldownRemaining > 0 ? (
+                    <span className="text-xs">Tekrar denemek için {formatCooldown(cooldownRemaining)}</span>
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      Yapay Zekaya Sor
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -1079,7 +1250,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
               onClick={() => setIsScheduleOpen(!isScheduleOpen)}
               className={`w-full p-6 flex items-center justify-between transition-all duration-500
                  ${isScheduleOpen
-                  ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-700 bg-[length:200%_auto] animate-gradient-xy text-white'
+                  ? 'bg-[#0855f8] text-white'
                   : 'hover:bg-gray-50 dark:hover:bg-slate-800'
                 }`}
             >
@@ -1176,6 +1347,57 @@ export const Calculator: React.FC<CalculatorProps> = ({
           </div>
         </div>
       )}
+
+      {/* Auth Modals */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchToRegister={() => {
+          setShowLoginModal(false);
+          setShowRegisterModal(true);
+        }}
+        onSwitchToReset={() => {
+          setShowLoginModal(false);
+          setShowResetModal(true);
+        }}
+      />
+
+      <RegisterModal
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onSwitchToLogin={() => {
+          setShowRegisterModal(false);
+          setShowLoginModal(true);
+        }}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[9999] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in ${toast.type === 'success'
+          ? 'bg-green-600 text-white'
+          : 'bg-red-600 text-white'
+          }`}>
+          {toast.type === 'success' ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <span className="font-medium">{toast.message}</span>
+        </div>
+      )}
+
+      <PasswordResetModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onSwitchToLogin={() => {
+          setShowResetModal(false);
+          setShowLoginModal(true);
+        }}
+      />
 
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, Share2, Tag, Building2, TrendingUp } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
+import { BlogContent } from '../../components/BlogContent';
 import type { NewsPost } from '../../types/database';
 
 const NewsDetailPage: React.FC = () => {
@@ -246,15 +247,7 @@ const NewsDetailPage: React.FC = () => {
 
                     {/* Content */}
                     {news.content ? (
-                        <div
-                            className="prose prose-lg dark:prose-invert max-w-none
-                                prose-headings:text-gray-900 dark:prose-headings:text-white
-                                prose-p:text-gray-600 dark:prose-p:text-gray-300
-                                prose-a:text-red-600 dark:prose-a:text-red-400
-                                prose-strong:text-gray-900 dark:prose-strong:text-white
-                                prose-img:rounded-xl prose-img:shadow-lg"
-                            dangerouslySetInnerHTML={{ __html: news.content }}
-                        />
+                        <BlogContent html={news.content} />
                     ) : (
                         <p className="text-gray-600 dark:text-gray-400">
                             {news.summary}

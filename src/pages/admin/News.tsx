@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { newsApi, type NewsPostFormData } from '../../services/api/news';
 import { ImageUpload } from '../../components/admin/ImageUpload';
+import { RichTextEditor } from '../../components/admin/RichTextEditor';
+import { BlogContent } from '../../components/BlogContent';
 import { useToast } from '../../hooks/useToast';
 import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
 import { SubmitButton } from '../../components/admin/SubmitButton';
@@ -256,7 +258,7 @@ export const News: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Content Section */}
+                        {/* Content Section - Rich Text Editor */}
                         <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                             <h3 className="font-semibold text-gray-700 flex items-center gap-2">
                                 <span className="text-purple-600">📄</span>
@@ -264,16 +266,42 @@ export const News: React.FC = () => {
                             </h3>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Haber İçeriği
+                                    Haber İçeriği *
                                 </label>
-                                <textarea
-                                    value={formData.content || ''}
-                                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                    rows={8}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition font-mono text-sm"
-                                    placeholder="Haber içeriğini buraya yazınız..."
+                                <RichTextEditor
+                                    content={formData.content || ''}
+                                    onChange={(html) => setFormData({ ...formData, content: html })}
+                                    placeholder="Haber içeriğini buraya yazın..."
                                 />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    💡 Görselleri sürükle-bırak veya kopyala-yapıştır ile ekleyebilirsiniz
+                                </p>
                             </div>
+
+                            {/* Live Preview */}
+                            {formData.content && (
+                                <div className="border-t pt-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        👁️ Canlı Önizleme
+                                    </h3>
+                                    <div className="bg-white rounded-lg p-6 border border-gray-200">
+                                        {formData.cover_image_url && (
+                                            <img
+                                                src={formData.cover_image_url}
+                                                alt="Kapak"
+                                                className="w-full h-48 object-cover rounded-lg mb-4"
+                                            />
+                                        )}
+                                        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                                            {formData.title || 'Başlık'}
+                                        </h1>
+                                        {formData.summary && (
+                                            <p className="text-gray-600 mb-4">{formData.summary}</p>
+                                        )}
+                                        <BlogContent html={formData.content} />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Media Section */}

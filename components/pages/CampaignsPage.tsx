@@ -242,7 +242,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                   <div className="w-full md:w-auto">
                      <button
                         onClick={handleCalculate}
-                        className="w-full md:w-auto bg-gradient-to-r from-[#4DC9E6] to-[#210CAE] hover:from-[#3ab5d3] hover:to-[#1a0987] text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-blue-500/20 transition-all transform hover:scale-105 whitespace-nowrap"
+                        className="w-full md:w-auto bg-[#0855f8] hover:bg-[#0645d0] text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-blue-500/20 transition-all transform hover:scale-105 whitespace-nowrap"
                      >
                         Ödeme Planı Hesapla
                      </button>
@@ -345,7 +345,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                            {/* Button Section */}
                            <div className="w-full md:w-auto flex-shrink-0 flex flex-col gap-2">
                               <button
-                                 className="w-full bg-white dark:bg-slate-700 border-2 border-[#210CAE] text-[#210CAE] hover:bg-gradient-to-r hover:from-[#4DC9E6] hover:to-[#210CAE] hover:text-white font-bold py-2.5 px-6 rounded-lg transition-all text-sm"
+                                 className="w-full bg-[#0855f8] hover:bg-[#0645d0] text-white font-bold py-2.5 px-6 rounded-lg transition-all text-sm"
                                  onClick={() => window.open(camp.application_link, '_blank')}
                               >
                                  {camp.application_button_text || 'Hemen Başvur'}

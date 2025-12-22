@@ -330,7 +330,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                                        href={camp.application_link}
                                        target="_blank"
                                        rel="noreferrer"
-                                       className="w-full bg-white dark:bg-white/10 border-2 border-[#ff6f00] dark:border-orange-400 text-[#ff6f00] dark:text-orange-400 hover:bg-[#ff6f00] hover:text-white dark:hover:bg-orange-500 dark:hover:text-white dark:hover:border-orange-500 font-bold py-2.5 px-6 rounded-lg transition-all text-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                                       className="w-full bg-[#0855f8] border-2 border-[#0855f8] text-white hover:bg-[#0645d0] hover:border-[#0645d0] font-bold py-2.5 px-6 rounded-lg transition-all text-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0855f8] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                                     >
                                        {camp.application_button_text || 'Hemen Başvur'}
                                     </a>
