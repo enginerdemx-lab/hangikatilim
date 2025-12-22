@@ -170,7 +170,7 @@ export const generatePDF = async (params: CalculationParams, result: Calculation
     document.body.appendChild(container);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const canvas = await html2canvas(container, {
         scale: 2,

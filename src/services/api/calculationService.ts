@@ -17,20 +17,19 @@ export const calculationService = {
         // 1. Generate unique ID for this calculation
         const calculationId = crypto.randomUUID();
 
-        // 2. Upload PDF to storage
+        // 2. Parallelize Upload and DB Insert
         const pdfPath = `${userId}/calculations/${calculationId}.pdf`;
 
-        const { error: uploadError } = await supabase.storage
+        // Create upload promise
+        const uploadPromise = supabase.storage
             .from('user-files')
             .upload(pdfPath, pdfBlob, {
                 contentType: 'application/pdf',
                 cacheControl: '3600',
             });
 
-        if (uploadError) throw uploadError;
-
-        // 3. Save calculation metadata to database
-        const { error: dbError } = await supabase
+        // Create DB insert promise
+        const dbPromise = supabase
             .from('calculations')
             .insert({
                 id: calculationId,
@@ -43,13 +42,20 @@ export const calculationService = {
                 pdf_path: pdfPath,
             });
 
-        if (dbError) {
-            // Rollback: delete the uploaded PDF if database insert fails
-            await supabase.storage
-                .from('user-files')
-                .remove([pdfPath]);
+        // Execute both in parallel
+        const [uploadResult, dbResult] = await Promise.all([uploadPromise, dbPromise]);
 
-            throw dbError;
+        // Check for errors
+        if (uploadResult.error) {
+            // If upload failed, try to cleanup DB just in case (though doubtful it finished if parallel, but good practice)
+            await supabase.from('calculations').delete().eq('id', calculationId);
+            throw uploadResult.error;
+        }
+
+        if (dbResult.error) {
+            // If DB failed, cleanup upload
+            await supabase.storage.from('user-files').remove([pdfPath]);
+            throw dbResult.error;
         }
 
         return calculationId;
