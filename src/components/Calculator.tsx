@@ -524,6 +524,13 @@ export const Calculator: React.FC<CalculatorProps> = ({
       return;
     }
 
+    // Check if email is confirmed
+    if (!user.email_confirmed_at) {
+      showToast('Hesaplama kaydedebilmek için lütfen e-posta adresinizi onaylayın.', 'error');
+      // Optional: Scroll to top or show detailed modal
+      return;
+    }
+
     setSavingCalculation(true);
 
     try {

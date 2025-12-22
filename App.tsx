@@ -19,6 +19,7 @@ import { Media } from './src/pages/admin/Media';
 import { HomeContent } from './src/pages/admin/HomeContent';
 import { AdminLayout } from './src/components/admin/AdminLayout';
 import { QuickLinks } from './src/pages/admin/QuickLinks';
+import { Users as AdminUsers } from './src/pages/admin/Members';
 
 // Public Layout and Pages
 import { PublicLayout } from './src/layouts/PublicLayout';
@@ -36,6 +37,7 @@ const ProfilePage = lazy(() => import('./src/pages/public/ProfilePage'));
 const SavedCalculationsPage = lazy(() => import('./src/pages/public/SavedCalculationsPage'));
 const LoginPage = lazy(() => import('./src/pages/public/LoginPage'));
 const RegisterPage = lazy(() => import('./src/pages/public/RegisterPage'));
+const AuthCallback = lazy(() => import('./src/pages/public/AuthCallback'));
 
 // Auth Guard
 import { RequireAuth } from './src/components/RequireAuth';
@@ -56,6 +58,16 @@ const App: React.FC = () => {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
+                    {/* Auth Callback Route - outside of PublicLayout for cleaner UI */}
+                    <Route
+                        path="/auth/callback"
+                        element={
+                            <Suspense fallback={<PageLoader />}>
+                                <AuthCallback />
+                            </Suspense>
+                        }
+                    />
+
                     {/* Admin Routes */}
                     <Route path="/admin/login" element={<AdminLogin />} />
                     <Route path="/admin" element={<AdminLayout />}>
@@ -73,6 +85,7 @@ const App: React.FC = () => {
                         <Route path="contact" element={<AdminContact />} />
                         <Route path="media" element={<Media />} />
                         <Route path="quick-links" element={<QuickLinks />} />
+                        <Route path="users" element={<AdminUsers />} />
                     </Route>
 
                     {/* Public Routes with Layout */}

@@ -136,8 +136,8 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
                                             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-50 dark:bg-slate-800 text-primary-700 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-slate-700 transition-all"
                                         >
                                             <User size={18} />
-                                            <span className="text-sm font-medium max-w-[100px] truncate">
-                                                {user.email?.split('@')[0] || 'Hesabım'}
+                                            <span className="text-sm font-medium max-w-[150px] truncate">
+                                                {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Hesabım'}
                                             </span>
                                             <ChevronDown size={16} className={`transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
                                         </button>

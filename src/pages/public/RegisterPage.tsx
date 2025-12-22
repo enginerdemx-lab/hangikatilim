@@ -1,20 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, UserPlus, User, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, UserPlus, User, CheckCircle, ArrowRight, RefreshCw, Smartphone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { isValidName, validateEmailForRegistration } from '../../utils/validation';
+import { LegalModal, LegalType } from '../../../components/LegalModal';
+import { authService } from '../../services/authService';
+import { siteSettingsApi } from '../../services/api/siteSettings';
+import { SiteSettings } from '../../types/database';
 
 export const RegisterPage: React.FC = () => {
+    // Form States
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [gender, setGender] = useState('');
+
+    // UI States
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // Legal Checkboxes State
+    const [agreements, setAgreements] = useState({
+        terms: false,
+        privacy: false,
+        kvkk: false,
+        consent: false,
+        commercial: false // Optional
+    });
+
+    // Legal Modal State
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalModalType, setLegalModalType] = useState<LegalType>('TERMS');
+    const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+
     const { user, signup } = useAuth();
     const navigate = useNavigate();
+
+    // Load Site Settings for Legal Text Titles
+    useEffect(() => {
+        const loadSettings = async () => {
+            const data = await siteSettingsApi.getSettings();
+            setSiteSettings(data);
+        };
+        loadSettings();
+    }, []);
 
     // Redirect if already logged in
     useEffect(() => {
@@ -28,38 +60,61 @@ export const RegisterPage: React.FC = () => {
         return null;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const translateError = (message: string): string => {
+        const translations: Record<string, string> = {
+            'User already registered': 'Bu e-posta adresi zaten kayıtlı.',
+            'Email already registered': 'Bu e-posta adresi zaten kayıtlı.',
+            'Password should be at least 6 characters': 'Şifre en az 6 karakter olmalıdır.',
+            'Invalid email': 'Geçersiz e-posta adresi.',
+            'Signup requires a valid password': 'Geçerli bir şifre gereklidir.',
+        };
+        return translations[message] || message || 'Kayıt olurken bir hata oluştu.';
+    };
+
+    const handleOpenLegal = (type: LegalType) => {
+        setLegalModalType(type);
+        setLegalModalOpen(true);
+    };
+
+    const handleLegalConfirm = () => {
+        switch (legalModalType) {
+            case 'TERMS': setAgreements(prev => ({ ...prev, terms: true })); break;
+            case 'PRIVACY': setAgreements(prev => ({ ...prev, privacy: true })); break;
+            case 'KVKK': setAgreements(prev => ({ ...prev, kvkk: true })); break;
+            case 'CONSENT': setAgreements(prev => ({ ...prev, consent: true })); break;
+            case 'COMMERCIAL': setAgreements(prev => ({ ...prev, commercial: true })); break;
+        }
+        setLegalModalOpen(false);
+    };
+
+    const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        // Validations
-        if (!fullName.trim()) {
-            setError('Lütfen adınızı ve soyadınızı girin.');
-            return;
-        }
+        // 1. Validation
+        const nameValidation = isValidName(fullName);
+        if (!nameValidation.valid) return setError(nameValidation.error!);
 
-        if (!email) {
-            setError('Lütfen e-posta adresinizi girin.');
-            return;
-        }
+        const emailValidation = validateEmailForRegistration(email);
+        if (!emailValidation.valid) return setError(emailValidation.error!);
 
         const passwordError = validatePassword(password);
-        if (passwordError) {
-            setError(passwordError);
-            return;
-        }
+        if (passwordError) return setError(passwordError);
 
-        if (password !== confirmPassword) {
-            setError('Şifreler eşleşmiyor.');
-            return;
-        }
+        if (password !== confirmPassword) return setError('Şifreler eşleşmiyor.');
+
+        // 2. Legal Checks
+        if (!agreements.terms) return setError('Lütfen Kullanıcı Sözleşmesini onaylayın.');
+        if (!agreements.privacy) return setError('Lütfen Gizlilik Politikasını onaylayın.');
+        if (!agreements.kvkk) return setError('Lütfen KVKK Aydınlatma Metnini onaylayın.');
+        if (!agreements.consent) return setError('Lütfen Açık Rıza Metnini onaylayın.');
 
         setLoading(true);
         try {
-            await signup(email, password, fullName);
+            await signup(email, password, fullName, gender);
             setSuccess(true);
         } catch (err: any) {
-            setError(err.message || 'Kayıt olurken bir hata oluştu.');
+            setError(translateError(err.message));
         } finally {
             setLoading(false);
         }
@@ -95,7 +150,14 @@ export const RegisterPage: React.FC = () => {
     return (
         <div className="container mx-auto px-4 py-12">
             <div className="max-w-md mx-auto">
-                {/* Page Title */}
+                <LegalModal
+                    isOpen={legalModalOpen}
+                    type={legalModalType}
+                    onClose={() => setLegalModalOpen(false)}
+                    onConfirm={handleLegalConfirm}
+                    siteSettings={siteSettings}
+                />
+
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                         Yeni Hesap Oluşturun
@@ -105,10 +167,8 @@ export const RegisterPage: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Form Card */}
                 <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-slate-700">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Error Alert */}
+                    <form onSubmit={handleSignup} className="space-y-5">
                         {error && (
                             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
                                 <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
@@ -116,56 +176,45 @@ export const RegisterPage: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Full Name Field */}
+                        {/* Name, Email, Password Fields - Same as before */}
                         <div>
-                            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Ad Soyad
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ad Soyad</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
-                                    id="fullName"
                                     type="text"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     placeholder="Adınız Soyadınız"
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                 />
                             </div>
                         </div>
 
-                        {/* Email Field */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                E-posta Adresi
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">E-posta Adresi</label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
-                                    id="email"
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="ornek@email.com"
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                 />
                             </div>
                         </div>
 
-                        {/* Password Field */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Şifre
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Şifre</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
-                                    id="password"
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="En az 6 karakter"
-                                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                 />
                                 <button
                                     type="button"
@@ -177,25 +226,93 @@ export const RegisterPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Confirm Password Field */}
                         <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Şifre Tekrar
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Şifre Tekrar</label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
-                                    id="confirmPassword"
                                     type={showPassword ? 'text' : 'password'}
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder="Şifrenizi tekrar girin"
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                 />
                             </div>
                         </div>
 
-                        {/* Submit Button */}
+                        {/* Legal Checkboxes */}
+                        <div className="space-y-3 pt-2">
+                            {/* Terms */}
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="terms"
+                                    checked={agreements.terms}
+                                    onChange={(e) => setAgreements(prev => ({ ...prev, terms: e.target.checked }))}
+                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                />
+                                <label htmlFor="terms" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <button type="button" onClick={() => handleOpenLegal('TERMS')} className="text-primary-600 hover:underline font-medium">Kullanıcı Sözleşmesi</button>'ni okudum ve onaylıyorum.
+                                </label>
+                            </div>
+
+                            {/* Privacy */}
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="privacy"
+                                    checked={agreements.privacy}
+                                    onChange={(e) => setAgreements(prev => ({ ...prev, privacy: e.target.checked }))}
+                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                />
+                                <label htmlFor="privacy" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <button type="button" onClick={() => handleOpenLegal('PRIVACY')} className="text-primary-600 hover:underline font-medium">Gizlilik Politikası</button>'nı okudum ve onaylıyorum.
+                                </label>
+                            </div>
+
+                            {/* KVKK */}
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="kvkk"
+                                    checked={agreements.kvkk}
+                                    onChange={(e) => setAgreements(prev => ({ ...prev, kvkk: e.target.checked }))}
+                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                />
+                                <label htmlFor="kvkk" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <button type="button" onClick={() => handleOpenLegal('KVKK')} className="text-primary-600 hover:underline font-medium">Aydınlatma Metni</button>'ni okudum ve anladım.
+                                </label>
+                            </div>
+
+                            {/* Copnsent */}
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="consent"
+                                    checked={agreements.consent}
+                                    onChange={(e) => setAgreements(prev => ({ ...prev, consent: e.target.checked }))}
+                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                />
+                                <label htmlFor="consent" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <button type="button" onClick={() => handleOpenLegal('CONSENT')} className="text-primary-600 hover:underline font-medium">Açık Rıza Metni</button>'ni okudum ve kişisel verilerimin işlenmesine ve paylaşılmasına onay veriyorum.
+                                </label>
+                            </div>
+
+                            {/* Commercial (Optional) */}
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="commercial"
+                                    checked={agreements.commercial}
+                                    onChange={(e) => setAgreements(prev => ({ ...prev, commercial: e.target.checked }))}
+                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                />
+                                <label htmlFor="commercial" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                                    <button type="button" onClick={() => handleOpenLegal('COMMERCIAL')} className="text-primary-600 hover:underline font-medium">Ticari Elektronik İleti Bilgilendirme Metni</button>'ni okudum ve tarafıma ileti gönderilmesini onaylıyorum.
+                                </label>
+                            </div>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
@@ -212,16 +329,6 @@ export const RegisterPage: React.FC = () => {
                         </button>
                     </form>
 
-                    {/* Terms Notice */}
-                    <p className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
-                        Kayıt olarak{' '}
-                        <a href="#" className="text-primary-600 hover:underline">Kullanım Şartları</a>
-                        {' '}ve{' '}
-                        <a href="#" className="text-primary-600 hover:underline">Gizlilik Politikası</a>
-                        'nı kabul etmiş olursunuz.
-                    </p>
-
-                    {/* Login Link */}
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                             Zaten hesabınız var mı?{' '}

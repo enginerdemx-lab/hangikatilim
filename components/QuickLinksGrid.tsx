@@ -209,27 +209,27 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
                 {loading ? (
                     <QuickLinksSkeleton />
                 ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 md:gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
                         {items.map((item) => {
                             const IconComponent = getIconComponent(item.icon);
                             const isExternal = item.is_external || item.link_url.startsWith('http');
 
                             const cardContent = (
-                                <div className="group bg-white dark:bg-slate-800 rounded-lg p-1.5 md:p-2 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:-translate-y-0.5">
+                                <div className="group bg-white dark:bg-slate-800 rounded-lg p-2 md:p-3 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:-translate-y-0.5">
                                     {/* Badge */}
                                     {item.badge_text && (
-                                        <span className="absolute top-0.5 right-0.5 md:top-1 md:right-1 px-1 py-0.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[6px] md:text-[8px] font-bold rounded-full">
+                                        <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[8px] md:text-[10px] font-bold rounded-full">
                                             {item.badge_text}
                                         </span>
                                     )}
 
-                                    {/* Icon - 30% smaller */}
-                                    <div className="w-6 h-6 md:w-7 md:h-7 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded flex items-center justify-center mx-auto mb-0.5 md:mb-1 group-hover:scale-105 transition-transform duration-200">
-                                        <IconComponent className="w-3 h-3 md:w-4 md:h-4 text-blue-600 dark:text-blue-400" />
+                                    {/* Icon */}
+                                    <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg flex items-center justify-center mx-auto mb-1.5 md:mb-2 group-hover:scale-105 transition-transform duration-200">
+                                        <IconComponent className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
                                     </div>
 
-                                    {/* Title - smaller */}
-                                    <h3 className="text-[8px] md:text-[10px] font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                                    {/* Title */}
+                                    <h3 className="text-[10px] md:text-xs font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
                                         {item.title}
                                     </h3>
                                 </div>

@@ -37,7 +37,19 @@ export const LoginPage: React.FC = () => {
             const from = (location.state as any)?.from?.pathname || '/';
             navigate(from, { replace: true });
         } catch (err: any) {
-            setError(err.message || 'Giriş yapılırken bir hata oluştu.');
+            // Translate Supabase error messages to Turkish
+            const translateError = (message: string): string => {
+                const translations: Record<string, string> = {
+                    'Email not confirmed': 'E-posta adresiniz henüz doğrulanmadı. Lütfen e-postanızı kontrol edin.',
+                    'Invalid login credentials': 'Geçersiz e-posta veya şifre.',
+                    'User not found': 'Kullanıcı bulunamadı.',
+                    'Invalid email or password': 'Geçersiz e-posta veya şifre.',
+                    'Too many requests': 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.',
+                    'Email already registered': 'Bu e-posta adresi zaten kayıtlı.',
+                };
+                return translations[message] || message || 'Giriş yapılırken bir hata oluştu.';
+            };
+            setError(translateError(err.message));
         } finally {
             setLoading(false);
         }

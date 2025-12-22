@@ -18,6 +18,9 @@ import { Campaigns as AdminCampaigns } from './pages/admin/Campaigns';
 import { Companies as AdminCompanies } from './pages/admin/Companies';
 import { QuickLinks } from './pages/admin/QuickLinks';
 
+// Inline test component
+const TestUsersPage = () => <div>TEST USERS PAGE WORKS</div>;
+
 // Public Layout
 import { PublicLayout } from './layouts/PublicLayout';
 import { ScrollToHash } from './components/ScrollToHash';
@@ -31,6 +34,10 @@ const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
 const BlogPage = lazy(() => import('./pages/public/BlogPage'));
 const BlogDetailPage = lazy(() => import('./pages/public/BlogDetailPage'));
 const ContactPage = lazy(() => import('./pages/public/ContactPage'));
+const LoginPage = lazy(() => import('./pages/public/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/public/RegisterPage'));
+const ProfilePage = lazy(() => import('./pages/public/ProfilePage'));
+const SavedCalculationsPage = lazy(() => import('./pages/public/SavedCalculationsPage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -64,6 +71,7 @@ const App: React.FC = () => {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="members" element={<TestUsersPage />} />
           <Route path="home-content" element={<HomeContent />} />
           <Route path="site-settings" element={<SiteSettings />} />
           <Route path="ticker" element={<Ticker />} />
@@ -141,6 +149,40 @@ const App: React.FC = () => {
             element={
               <Suspense fallback={<PageLoader />}>
                 <ContactPage />
+              </Suspense>
+            }
+          />
+          {/* Auth Routes */}
+          <Route
+            path="login"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <LoginPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="register"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RegisterPage />
+              </Suspense>
+            }
+          />
+          {/* Profile Routes */}
+          <Route
+            path="profil"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ProfilePage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="profil/hesaplamalar"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <SavedCalculationsPage />
               </Suspense>
             }
           />

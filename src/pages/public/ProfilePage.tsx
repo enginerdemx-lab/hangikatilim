@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     User, Bell, Shield, FileText, Loader2, Calculator, LogOut,
-    ChevronDown, ChevronUp, Camera, Check, X
+    ChevronDown, ChevronUp, Camera, Check, X, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { profileService } from '../../services/api/profileService';
@@ -191,12 +191,49 @@ export const ProfilePage: React.FC = () => {
                 {/* Profile Header Card */}
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 mb-6 border border-gray-100 dark:border-slate-700">
                     <div className="flex flex-col sm:flex-row items-center gap-5">
-                        {/* Avatar */}
+                        {/* Avatar with Upload */}
                         <div className="relative">
-                            <Avatar name={profile?.full_name || user?.email || ''} size="lg" />
-                            <button className="absolute bottom-0 right-0 p-2 bg-white dark:bg-slate-700 rounded-full shadow-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors">
+                            {profile?.avatar_url ? (
+                                <img
+                                    src={`${profile.avatar_url}?t=${new Date().getTime()}`}
+                                    alt="Profil Fotoğrafı"
+                                    className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-slate-700 shadow-lg"
+                                />
+                            ) : (
+                                <Avatar name={profile?.full_name || user?.email || ''} size="lg" />
+                            )}
+                            <input
+                                type="file"
+                                id="avatar-upload"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file || !user) return;
+
+                                    // 2MB Limit Check
+                                    if (file.size > 2 * 1024 * 1024) {
+                                        showToast('Dosya boyutu 2MB\'dan küçük olmalıdır.', 'error');
+                                        return;
+                                    }
+
+                                    try {
+                                        showToast('Fotoğraf yükleniyor...', 'success');
+                                        await profileService.uploadAvatar(user.id, file);
+                                        await loadUserData();
+                                        showToast('Profil fotoğrafı güncellendi!', 'success');
+                                    } catch (error) {
+                                        console.error('Avatar upload error:', error);
+                                        showToast('Fotoğraf yüklenemedi. Lütfen tekrar deneyin.', 'error');
+                                    }
+                                }}
+                            />
+                            <label
+                                htmlFor="avatar-upload"
+                                className="absolute bottom-0 right-0 p-2 bg-white dark:bg-slate-700 rounded-full shadow-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                            >
                                 <Camera size={16} className="text-gray-600 dark:text-gray-400" />
-                            </button>
+                            </label>
                         </div>
 
                         {/* User Info */}
@@ -211,6 +248,36 @@ export const ProfilePage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Email Verification Warning */}
+                {user && !user.email_confirmed_at && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 mb-6 flex items-start gap-3">
+                        <AlertTriangle className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" size={20} />
+                        <div className="flex-1">
+                            <h3 className="font-bold text-yellow-800 dark:text-yellow-300 mb-1">
+                                E-posta Adresinizi Onaylayın
+                            </h3>
+                            <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-2">
+                                Hesabınızı tam olarak kullanabilmek için e-posta adresinizi onaylamanız gerekmektedir.
+                                E-postanızı onaylayana kadar hesaplamalarınızı kaydedemezsiniz.
+                            </p>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const { authService } = await import('../../services/authService');
+                                        await authService.resendConfirmationEmail(user.email!);
+                                        showToast('Onay e-postası tekrar gönderildi!', 'success');
+                                    } catch (error) {
+                                        showToast('E-posta gönderilemedi. Lütfen daha sonra tekrar deneyin.', 'error');
+                                    }
+                                }}
+                                className="text-sm font-medium text-yellow-800 dark:text-yellow-300 underline hover:no-underline"
+                            >
+                                Onay E-postasını Tekrar Gönder
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
@@ -235,8 +302,18 @@ export const ProfilePage: React.FC = () => {
                 <div className="space-y-4">
 
                     {/* Personal Info Card */}
-                    <CollapsibleCard title="Kişisel Bilgiler" icon={<User size={20} />} defaultOpen={true}>
+                    <CollapsibleCard title="Kişisel Bilgiler" icon={<User size={20} />}>
                         <ProfileInfoForm
+                            profile={profile}
+                            userId={user!.id}
+                            onUpdate={loadUserData}
+                            showToast={showToast}
+                        />
+                    </CollapsibleCard>
+
+                    {/* General Info Card - Genel Bilgiler */}
+                    <CollapsibleCard title="Genel Bilgiler" icon={<FileText size={20} />}>
+                        <GeneralInfoForm
                             profile={profile}
                             userId={user!.id}
                             onUpdate={loadUserData}
@@ -275,7 +352,7 @@ export const ProfilePage: React.FC = () => {
     );
 };
 
-// Profile Info Form
+// Profile Info Form - Ad Soyad, Cinsiyet ve Telefon
 const ProfileInfoForm: React.FC<{
     profile: UserProfile | null;
     userId: string;
@@ -284,12 +361,27 @@ const ProfileInfoForm: React.FC<{
 }> = ({ profile, userId, onUpdate, showToast }) => {
     const [fullName, setFullName] = useState(profile?.full_name || '');
     const [phone, setPhone] = useState(profile?.phone || '');
+    const [gender, setGender] = useState((profile as any)?.gender || '');
     const [saving, setSaving] = useState(false);
+
+    // Sync form state when profile changes
+    useEffect(() => {
+        setFullName(profile?.full_name || '');
+        setPhone(profile?.phone || '');
+        setGender((profile as any)?.gender || '');
+    }, [profile]);
+
+    const genderOptions = [
+        { value: '', label: 'Seçiniz' },
+        { value: 'erkek', label: 'Erkek' },
+        { value: 'kadin', label: 'Kadın' },
+        { value: 'belirtmek_istemiyorum', label: 'Belirtmek İstemiyorum' },
+    ];
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            await profileService.updateProfile(userId, { full_name: fullName, phone });
+            await profileService.updateProfile(userId, { full_name: fullName, phone, gender } as any);
             showToast('Profil bilgileri güncellendi!', 'success');
             onUpdate();
         } catch (error) {
@@ -299,8 +391,11 @@ const ProfileInfoForm: React.FC<{
         }
     };
 
+    const inputClass = "w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors";
+
     return (
         <div className="space-y-4">
+            {/* Ad Soyad */}
             <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Ad Soyad
@@ -309,11 +404,22 @@ const ProfileInfoForm: React.FC<{
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors"
+                    className={inputClass}
                     placeholder="Adınız Soyadınız"
                 />
             </div>
 
+            {/* Cinsiyet */}
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Cinsiyet
+                </label>
+                <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
+                    {genderOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+
+            {/* Telefon */}
             <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Telefon
@@ -322,7 +428,7 @@ const ProfileInfoForm: React.FC<{
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors"
+                    className={inputClass}
                     placeholder="5XX XXX XX XX"
                 />
             </div>
@@ -405,8 +511,10 @@ const NotificationsForm: React.FC<{
 const SecurityForm: React.FC<{ showToast: (msg: string, type: 'success' | 'error') => void }> = ({ showToast }) => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [updating, setUpdating] = useState(false);
-    const { updatePassword } = useAuth();
+    const [newEmail, setNewEmail] = useState('');
+    const [updatingPassword, setUpdatingPassword] = useState(false);
+    const [updatingEmail, setUpdatingEmail] = useState(false);
+    const { user, updatePassword, updateEmail } = useAuth();
 
     const handlePasswordChange = async () => {
         if (newPassword !== confirmPassword) {
@@ -419,7 +527,7 @@ const SecurityForm: React.FC<{ showToast: (msg: string, type: 'success' | 'error
             return;
         }
 
-        setUpdating(true);
+        setUpdatingPassword(true);
         try {
             await updatePassword(newPassword);
             showToast('Şifre başarıyla güncellendi!', 'success');
@@ -428,44 +536,312 @@ const SecurityForm: React.FC<{ showToast: (msg: string, type: 'success' | 'error
         } catch (error) {
             showToast('Şifre güncellenemedi', 'error');
         } finally {
-            setUpdating(false);
+            setUpdatingPassword(false);
         }
     };
 
+    const handleEmailChange = async () => {
+        if (!newEmail || !newEmail.includes('@')) {
+            showToast('Geçerli bir e-posta adresi girin', 'error');
+            return;
+        }
+
+        if (newEmail === user?.email) {
+            showToast('Yeni e-posta mevcut e-posta ile aynı olamaz', 'error');
+            return;
+        }
+
+        setUpdatingEmail(true);
+        try {
+            await updateEmail(newEmail);
+            showToast('Doğrulama e-postası gönderildi! Yeni e-postanızı kontrol edin.', 'success');
+            setNewEmail('');
+        } catch (error: any) {
+            const errorMsg = error.message?.includes('already')
+                ? 'Bu e-posta adresi zaten kullanılıyor'
+                : 'E-posta güncellenemedi';
+            showToast(errorMsg, 'error');
+        } finally {
+            setUpdatingEmail(false);
+        }
+    };
+
+    const inputClass = "w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors";
+
+    return (
+        <div className="space-y-6">
+            {/* Email Change Section */}
+            <div className="space-y-4">
+                <h4 className="font-semibold text-gray-800 dark:text-gray-200">E-posta Değiştir</h4>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Mevcut E-posta
+                    </label>
+                    <input
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className={`${inputClass} opacity-60 cursor-not-allowed`}
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Yeni E-posta
+                    </label>
+                    <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className={inputClass}
+                        placeholder="yeni@email.com"
+                    />
+                </div>
+                <button
+                    onClick={handleEmailChange}
+                    disabled={updatingEmail}
+                    className="w-full py-3 bg-[#0855f8] hover:bg-[#0645d0] text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                >
+                    {updatingEmail ? 'Gönderiliyor...' : 'E-posta Değiştir'}
+                </button>
+            </div>
+
+            <hr className="border-gray-200 dark:border-slate-600" />
+
+            {/* Password Change Section */}
+            <div className="space-y-4">
+                <h4 className="font-semibold text-gray-800 dark:text-gray-200">Şifre Değiştir</h4>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Yeni Şifre
+                    </label>
+                    <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className={inputClass}
+                        placeholder="En az 6 karakter"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Yeni Şifre Tekrar
+                    </label>
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={inputClass}
+                        placeholder="Şifreyi tekrar girin"
+                    />
+                </div>
+
+                <button
+                    onClick={handlePasswordChange}
+                    disabled={updatingPassword}
+                    className="w-full py-3 bg-[#0855f8] hover:bg-[#0645d0] text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                >
+                    {updatingPassword ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// General Info Form - Genel Bilgiler
+const GeneralInfoForm: React.FC<{
+    profile: UserProfile | null;
+    userId: string;
+    onUpdate: () => void;
+    showToast: (msg: string, type: 'success' | 'error') => void;
+}> = ({ profile, userId, onUpdate, showToast }) => {
+    const [educationLevel, setEducationLevel] = useState(profile?.education_level || '');
+    const [employmentStatus, setEmploymentStatus] = useState(profile?.employment_status || '');
+    const [profession, setProfession] = useState(profile?.profession || '');
+    const [workExperience, setWorkExperience] = useState(profile?.work_experience || '');
+    const [monthlyIncome, setMonthlyIncome] = useState(profile?.monthly_income || '');
+    const [hasRent, setHasRent] = useState(profile?.has_rent || false);
+    const [rentAmount, setRentAmount] = useState(profile?.rent_amount?.toString() || '');
+    const [preferredFinanceCompany, setPreferredFinanceCompany] = useState(profile?.preferred_finance_company || '');
+    const [saving, setSaving] = useState(false);
+
+    // Options
+    const educationOptions = [
+        { value: '', label: 'Seçiniz' },
+        { value: 'ilkokul', label: 'İlkokul' },
+        { value: 'ortaokul', label: 'Ortaokul' },
+        { value: 'lise', label: 'Lise' },
+        { value: 'onlisans', label: 'Önlisans' },
+        { value: 'lisans', label: 'Lisans' },
+        { value: 'yukseklisans', label: 'Yüksek Lisans' },
+        { value: 'doktora', label: 'Doktora' },
+    ];
+
+    const employmentOptions = [
+        { value: '', label: 'Seçiniz' },
+        { value: 'ozel_sektor', label: 'Özel Sektör' },
+        { value: 'kamu', label: 'Kamu' },
+        { value: 'serbest', label: 'Serbest Meslek' },
+        { value: 'emekli', label: 'Emekli' },
+        { value: 'ogrenci', label: 'Öğrenci' },
+        { value: 'calismiyor', label: 'Çalışmıyor' },
+    ];
+
+    const workExperienceOptions = [
+        { value: '', label: 'Seçiniz' },
+        { value: '0-1', label: '0-1 Yıl' },
+        { value: '1-5', label: '1-5 Yıl' },
+        { value: '5-10', label: '5-10 Yıl' },
+        { value: '10-20', label: '10-20 Yıl' },
+        { value: '20+', label: '20+ Yıl' },
+    ];
+
+    const incomeOptions = [
+        { value: '', label: 'Seçiniz' },
+        { value: '0-15000', label: '0 - 15.000 TL' },
+        { value: '15000-30000', label: '15.000 - 30.000 TL' },
+        { value: '30000-50000', label: '30.000 - 50.000 TL' },
+        { value: '50000-75000', label: '50.000 - 75.000 TL' },
+        { value: '75000-100000', label: '75.000 - 100.000 TL' },
+        { value: '100000+', label: '100.000+ TL' },
+    ];
+
+    const financeCompanyOptions = [
+        { value: '', label: 'Seçiniz' },
+        { value: 'eminevim', label: 'Eminevim' },
+        { value: 'katilimevim', label: 'Katılımevim' },
+        { value: 'fuzul', label: 'Fuzul' },
+        { value: 'birevim', label: 'Birevim' },
+        { value: 'sinpas', label: 'Sinpaş Yapı Tasarruf Sandığı' },
+        { value: 'emlak_katilim', label: 'Emlak Katılım' },
+        { value: 'imece', label: 'İMECE' },
+        { value: 'albayrak', label: 'Albayrak Finans' },
+        { value: 'iyi_finans', label: 'İyi Finans' },
+    ];
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await profileService.updateProfile(userId, {
+                education_level: educationLevel || null,
+                employment_status: employmentStatus || null,
+                profession: profession || null,
+                work_experience: workExperience || null,
+                monthly_income: monthlyIncome || null,
+                has_rent: hasRent,
+                rent_amount: rentAmount ? parseInt(rentAmount) : null,
+                preferred_finance_company: preferredFinanceCompany || null,
+            } as any);
+            showToast('Genel bilgiler güncellendi!', 'success');
+            onUpdate();
+        } catch (error) {
+            showToast('Bilgiler güncellenemedi', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const selectClass = "w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors appearance-none cursor-pointer";
+    const inputClass = "w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors";
+
     return (
         <div className="space-y-4">
+            {/* Eğitim Durumu */}
             <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Yeni Şifre
+                    Eğitim Durumun
+                </label>
+                <select value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)} className={selectClass}>
+                    {educationOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+
+            {/* Çalışma Durumu */}
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Çalışma Durumun
+                </label>
+                <select value={employmentStatus} onChange={(e) => setEmploymentStatus(e.target.value)} className={selectClass}>
+                    {employmentOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+
+            {/* Meslek */}
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Mesleğin
                 </label>
                 <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors"
-                    placeholder="En az 6 karakter"
+                    type="text"
+                    value={profession}
+                    onChange={(e) => setProfession(e.target.value)}
+                    className={inputClass}
+                    placeholder="Örn: Mühendis, Öğretmen..."
                 />
             </div>
 
+            {/* Çalışma Süresi */}
             <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Yeni Şifre Tekrar
+                    Toplam Çalışma Süren
                 </label>
-                <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-[#0855f8] outline-none text-gray-900 dark:text-white transition-colors"
-                    placeholder="Şifreyi tekrar girin"
+                <select value={workExperience} onChange={(e) => setWorkExperience(e.target.value)} className={selectClass}>
+                    {workExperienceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+
+            {/* Aylık Gelir */}
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Aylık Gelirin
+                </label>
+                <select value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} className={selectClass}>
+                    {incomeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+
+            {/* Kira */}
+            <div>
+                <ToggleSwitch
+                    enabled={hasRent}
+                    onChange={setHasRent}
+                    label="Kira Ödüyor musun?"
+                    description="Aylık kira giderin var mı?"
                 />
+            </div>
+
+            {/* Kira Tutarı */}
+            {hasRent && (
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Kira Tutarın (TL)
+                    </label>
+                    <input
+                        type="number"
+                        value={rentAmount}
+                        onChange={(e) => setRentAmount(e.target.value)}
+                        className={inputClass}
+                        placeholder="Örn: 15000"
+                    />
+                </div>
+            )}
+
+            {/* Tercih Edilen Tasarruf Finansman Şirketi */}
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Tercih Ettiğin Tasarruf Finansman Şirketi
+                </label>
+                <select value={preferredFinanceCompany} onChange={(e) => setPreferredFinanceCompany(e.target.value)} className={selectClass}>
+                    {financeCompanyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
             </div>
 
             <button
-                onClick={handlePasswordChange}
-                disabled={updating}
+                onClick={handleSave}
+                disabled={saving}
                 className="w-full py-3 bg-[#0855f8] hover:bg-[#0645d0] text-white rounded-xl font-bold transition-colors disabled:opacity-50"
             >
-                {updating ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+                {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </button>
         </div>
     );

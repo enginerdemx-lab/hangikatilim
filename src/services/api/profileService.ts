@@ -39,12 +39,12 @@ export const profileService = {
 
         // Delete existing avatar if exists
         await supabase.storage
-            .from('user-files')
+            .from('avatars')
             .remove([fileName]);
 
         // Upload new avatar
         const { error: uploadError } = await supabase.storage
-            .from('user-files')
+            .from('avatars')
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: true,
@@ -54,7 +54,7 @@ export const profileService = {
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
-            .from('user-files')
+            .from('avatars')
             .getPublicUrl(fileName);
 
         // Update profile with avatar URL
@@ -68,7 +68,7 @@ export const profileService = {
         const fileName = `${userId}/avatar.png`;
 
         const { error } = await supabase.storage
-            .from('user-files')
+            .from('avatars')
             .remove([fileName]);
 
         if (error) throw error;

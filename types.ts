@@ -96,14 +96,33 @@ export interface UserProfile {
   full_name: string | null;
   phone: string | null;
   avatar_url: string | null;
+  gender: string | null;
   created_at: string;
   updated_at: string;
+  // Profile Details (Genel Bilgiler)
+  education_level: string | null;
+  employment_status: string | null;
+  profession: string | null;
+  work_experience: string | null;
+  monthly_income: string | null;
+  has_rent: boolean;
+  rent_amount: number | null;
+  preferred_finance_company: string | null;
 }
 
 export interface ProfileUpdate {
   full_name?: string;
   phone?: string;
   avatar_url?: string | null;
+  gender?: string;
+  education_level?: string | null;
+  employment_status?: string | null;
+  profession?: string | null;
+  work_experience?: string | null;
+  monthly_income?: string | null;
+  has_rent?: boolean;
+  rent_amount?: number | null;
+  preferred_finance_company?: string | null;
 }
 
 export interface NotificationPreferences {

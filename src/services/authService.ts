@@ -7,13 +7,14 @@ export const authService = {
     // ============================================
 
     // Sign up with email and password
-    async signup(email: string, password: string, fullName: string) {
+    async signup(email: string, password: string, fullName: string, gender?: string) {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
                     full_name: fullName,
+                    gender: gender || '',
                 },
                 emailRedirectTo: `${window.location.origin}/auth/callback`,
             },
@@ -53,10 +54,29 @@ export const authService = {
         if (error) throw error;
     },
 
+    // Resend confirmation email
+    async resendConfirmationEmail(email: string) {
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+        });
+
+        if (error) throw error;
+    },
+
     // Update password (user must be logged in)
     async updatePassword(newPassword: string) {
         const { error } = await supabase.auth.updateUser({
             password: newPassword,
+        });
+
+        if (error) throw error;
+    },
+
+    // Update email (user must be logged in, sends verification email)
+    async updateEmail(newEmail: string) {
+        const { error } = await supabase.auth.updateUser({
+            email: newEmail,
         });
 
         if (error) throw error;
@@ -128,6 +148,31 @@ export const authService = {
 
         if (error) throw error;
         return data;
+    },
+
+    // ============================================
+    // USER STATUS CHECKS
+    // ============================================
+
+    // Check if user is banned
+    async checkUserBanStatus(userId: string): Promise<{ isBanned: boolean; banReason: string | null }> {
+        // Query profile status directly
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('status, ban_reason')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Check ban status error:', error);
+            // If error, assume not banned
+            return { isBanned: false, banReason: null };
+        }
+
+        return {
+            isBanned: data?.status === 'banned',
+            banReason: data?.ban_reason || null
+        };
     },
 };
 
