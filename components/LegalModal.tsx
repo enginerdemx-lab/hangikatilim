@@ -88,7 +88,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ isOpen, type, onClose, o
         return {
           title: "Açık Rıza Metni",
           icon: <FileText size={24} className="text-primary-600" />,
-          content: siteSettings?.privacy_content || DEFAULT_CONTENT.consent,
+          content: siteSettings?.consent_content || DEFAULT_CONTENT.consent,
           showConfirmButton: true
         };
       case 'COMMERCIAL':

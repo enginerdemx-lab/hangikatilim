@@ -29,6 +29,7 @@ export interface SiteSettings {
   privacy_content?: string;
   terms_content?: string;
   cookie_content?: string;
+  consent_content?: string;
   // App Store Badges
   app_store_badge_url?: string;
   google_play_badge_url?: string;

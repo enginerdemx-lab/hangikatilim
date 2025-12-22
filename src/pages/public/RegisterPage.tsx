@@ -242,75 +242,156 @@ export const RegisterPage: React.FC = () => {
 
                         {/* Legal Checkboxes */}
                         <div className="space-y-3 pt-2">
-                            {/* Terms */}
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="terms"
-                                    checked={agreements.terms}
-                                    onChange={(e) => setAgreements(prev => ({ ...prev, terms: e.target.checked }))}
-                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                />
-                                <label htmlFor="terms" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    <button type="button" onClick={() => handleOpenLegal('TERMS')} className="text-primary-600 hover:underline font-medium">Kullanıcı Sözleşmesi</button>'ni okudum ve onaylıyorum.
-                                </label>
-                            </div>
+                            {/* Helper to handle checkbox clicks */}
+                            {(() => {
+                                const handleCheckboxClick = (e: React.MouseEvent, type: LegalType, checked: boolean, key: keyof typeof agreements) => {
+                                    e.preventDefault();
+                                    if (checked) {
+                                        setAgreements(prev => ({ ...prev, [key]: false }));
+                                    } else {
+                                        handleOpenLegal(type);
+                                    }
+                                };
 
-                            {/* Privacy */}
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="privacy"
-                                    checked={agreements.privacy}
-                                    onChange={(e) => setAgreements(prev => ({ ...prev, privacy: e.target.checked }))}
-                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                />
-                                <label htmlFor="privacy" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    <button type="button" onClick={() => handleOpenLegal('PRIVACY')} className="text-primary-600 hover:underline font-medium">Gizlilik Politikası</button>'nı okudum ve onaylıyorum.
-                                </label>
-                            </div>
+                                return (
+                                    <>
+                                        {/* Terms */}
+                                        <div
+                                            className="flex items-start gap-3 cursor-pointer group"
+                                            onClick={(e) => handleCheckboxClick(e, 'TERMS', agreements.terms, 'terms')}
+                                        >
+                                            <div className="relative mt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="terms"
+                                                    checked={agreements.terms}
+                                                    readOnly
+                                                    className="peer sr-only"
+                                                />
+                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
+                                                    ${agreements.terms
+                                                        ? 'bg-primary-600 border-primary-600'
+                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
+                                                    }`}
+                                                >
+                                                    {agreements.terms && <CheckCircle size={12} className="text-white" />}
+                                                </div>
+                                            </div>
+                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
+                                                <span className="font-medium text-primary-600 hover:underline">Kullanıcı Sözleşmesi</span>'ni okudum ve onaylıyorum.
+                                            </label>
+                                        </div>
 
-                            {/* KVKK */}
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="kvkk"
-                                    checked={agreements.kvkk}
-                                    onChange={(e) => setAgreements(prev => ({ ...prev, kvkk: e.target.checked }))}
-                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                />
-                                <label htmlFor="kvkk" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    <button type="button" onClick={() => handleOpenLegal('KVKK')} className="text-primary-600 hover:underline font-medium">Aydınlatma Metni</button>'ni okudum ve anladım.
-                                </label>
-                            </div>
+                                        {/* Privacy */}
+                                        <div
+                                            className="flex items-start gap-3 cursor-pointer group"
+                                            onClick={(e) => handleCheckboxClick(e, 'PRIVACY', agreements.privacy, 'privacy')}
+                                        >
+                                            <div className="relative mt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="privacy"
+                                                    checked={agreements.privacy}
+                                                    readOnly
+                                                    className="peer sr-only"
+                                                />
+                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
+                                                    ${agreements.privacy
+                                                        ? 'bg-primary-600 border-primary-600'
+                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
+                                                    }`}
+                                                >
+                                                    {agreements.privacy && <CheckCircle size={12} className="text-white" />}
+                                                </div>
+                                            </div>
+                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
+                                                <span className="font-medium text-primary-600 hover:underline">Gizlilik Politikası</span>'nı okudum ve onaylıyorum.
+                                            </label>
+                                        </div>
 
-                            {/* Copnsent */}
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="consent"
-                                    checked={agreements.consent}
-                                    onChange={(e) => setAgreements(prev => ({ ...prev, consent: e.target.checked }))}
-                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                />
-                                <label htmlFor="consent" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    <button type="button" onClick={() => handleOpenLegal('CONSENT')} className="text-primary-600 hover:underline font-medium">Açık Rıza Metni</button>'ni okudum ve kişisel verilerimin işlenmesine ve paylaşılmasına onay veriyorum.
-                                </label>
-                            </div>
+                                        {/* KVKK */}
+                                        <div
+                                            className="flex items-start gap-3 cursor-pointer group"
+                                            onClick={(e) => handleCheckboxClick(e, 'KVKK', agreements.kvkk, 'kvkk')}
+                                        >
+                                            <div className="relative mt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="kvkk"
+                                                    checked={agreements.kvkk}
+                                                    readOnly
+                                                    className="peer sr-only"
+                                                />
+                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
+                                                    ${agreements.kvkk
+                                                        ? 'bg-primary-600 border-primary-600'
+                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
+                                                    }`}
+                                                >
+                                                    {agreements.kvkk && <CheckCircle size={12} className="text-white" />}
+                                                </div>
+                                            </div>
+                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
+                                                <span className="font-medium text-primary-600 hover:underline">Aydınlatma Metni</span>'ni okudum ve anladım.
+                                            </label>
+                                        </div>
 
-                            {/* Commercial (Optional) */}
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="commercial"
-                                    checked={agreements.commercial}
-                                    onChange={(e) => setAgreements(prev => ({ ...prev, commercial: e.target.checked }))}
-                                    className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                />
-                                <label htmlFor="commercial" className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                                    <button type="button" onClick={() => handleOpenLegal('COMMERCIAL')} className="text-primary-600 hover:underline font-medium">Ticari Elektronik İleti Bilgilendirme Metni</button>'ni okudum ve tarafıma ileti gönderilmesini onaylıyorum.
-                                </label>
-                            </div>
+                                        {/* Consent */}
+                                        <div
+                                            className="flex items-start gap-3 cursor-pointer group"
+                                            onClick={(e) => handleCheckboxClick(e, 'CONSENT', agreements.consent, 'consent')}
+                                        >
+                                            <div className="relative mt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="consent"
+                                                    checked={agreements.consent}
+                                                    readOnly
+                                                    className="peer sr-only"
+                                                />
+                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
+                                                    ${agreements.consent
+                                                        ? 'bg-primary-600 border-primary-600'
+                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
+                                                    }`}
+                                                >
+                                                    {agreements.consent && <CheckCircle size={12} className="text-white" />}
+                                                </div>
+                                            </div>
+                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
+                                                <span className="font-medium text-primary-600 hover:underline">Açık Rıza Metni</span>'ni okudum ve kişisel verilerimin işlenmesine ve paylaşılmasına onay veriyorum.
+                                            </label>
+                                        </div>
+
+                                        {/* Commercial (Optional) */}
+                                        <div
+                                            className="flex items-start gap-3 cursor-pointer group"
+                                            onClick={(e) => handleCheckboxClick(e, 'COMMERCIAL', agreements.commercial, 'commercial')}
+                                        >
+                                            <div className="relative mt-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="commercial"
+                                                    checked={agreements.commercial}
+                                                    readOnly
+                                                    className="peer sr-only"
+                                                />
+                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
+                                                    ${agreements.commercial
+                                                        ? 'bg-primary-600 border-primary-600'
+                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
+                                                    }`}
+                                                >
+                                                    {agreements.commercial && <CheckCircle size={12} className="text-white" />}
+                                                </div>
+                                            </div>
+                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
+                                                <span className="font-medium text-primary-600 hover:underline">Ticari Elektronik İleti Bilgilendirme Metni</span>'ni okudum ve tarafıma ileti gönderilmesini onaylıyorum.
+                                            </label>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
 
                         <button
