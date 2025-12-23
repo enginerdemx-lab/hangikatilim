@@ -272,6 +272,20 @@ export const adminUserService = {
     },
 
     // ============================================
+    // HARD DELETE USER (Permanently remove)
+    // ============================================
+    async hardDeleteUser(userId: string): Promise<void> {
+        const { error } = await supabase.rpc('delete_user_permanently', {
+            target_user_id: userId
+        });
+
+        if (error) {
+            console.error('Hard delete user error:', error);
+            throw error;
+        }
+    },
+
+    // ============================================
     // EXPORT TO EXCEL
     // ============================================
     async exportToExcel(users: AdminUser[]): Promise<Blob> {

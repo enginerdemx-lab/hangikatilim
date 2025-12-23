@@ -188,6 +188,20 @@ export const Users: React.FC = () => {
         }
     };
 
+    const handleHardDeleteUser = async (userId: string) => {
+        if (!confirm('DİKKAT: Bu üyeyi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+
+        try {
+            await adminUserService.hardDeleteUser(userId);
+            alert('Üye kalıcı olarak silindi.');
+            loadUsers();
+            loadStats();
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Silme işlemi başarısız oldu. Yetkiniz olmayabilir.');
+        }
+    };
+
     const handleViewDetails = async (user: AdminUser) => {
         setDetailUser(user);
         setEditForm({
@@ -526,6 +540,13 @@ export const Users: React.FC = () => {
                                                         >
                                                             <Ban size={16} />
                                                         </button>
+                                                        <button
+                                                            onClick={() => handleHardDeleteUser(user.id)}
+                                                            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-700 bg-red-50 border border-red-200 ml-1"
+                                                            title="Kalıcı Olarak Sil"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
                                                     </>
                                                 )}
                                             </div>
@@ -567,308 +588,312 @@ export const Users: React.FC = () => {
             </div>
 
             {/* User Detail Modal */}
-            {detailUser && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-                        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-gray-900">
-                                {isEditing ? 'Üye Düzenle' : 'Üye Detayları'}
-                            </h2>
-                            <div className="flex items-center gap-2">
-                                {!isEditing ? (
-                                    <button
-                                        onClick={() => setIsEditing(true)}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-                                    >
-                                        Düzenle
-                                    </button>
-                                ) : (
-                                    <>
+            {
+                detailUser && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+                            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    {isEditing ? 'Üye Düzenle' : 'Üye Detayları'}
+                                </h2>
+                                <div className="flex items-center gap-2">
+                                    {!isEditing ? (
                                         <button
-                                            onClick={() => setIsEditing(false)}
-                                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                                            onClick={() => setIsEditing(true)}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                                         >
-                                            İptal
+                                            Düzenle
                                         </button>
-                                        <button
-                                            onClick={handleUpdateUser}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
-                                        >
-                                            Kaydet
-                                        </button>
-                                    </>
-                                )}
-                                <button
-                                    onClick={() => setDetailUser(null)}
-                                    className="p-2 hover:bg-gray-100 rounded-lg ml-2"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-                            {/* User Info & Avatar */}
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="relative">
-                                    {detailUser.avatar_url ? (
-                                        <img
-                                            src={detailUser.avatar_url}
-                                            alt="Avatar"
-                                            className="w-20 h-20 rounded-full object-cover border-4 border-blue-50"
-                                        />
-                                    ) : (
-                                        <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold">
-                                            {detailUser.full_name?.[0]?.toUpperCase() || '?'}
-                                        </div>
-                                    )}
-
-                                    {/* Remove Avatar Button */}
-                                    {detailUser.avatar_url && (
-                                        <button
-                                            onClick={handleRemoveAvatar}
-                                            className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 shadow-sm border border-white"
-                                            title="Fotoğrafı Kaldır"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="flex-1">
-                                    {isEditing ? (
-                                        <div className="space-y-2">
-                                            <input
-                                                type="text"
-                                                value={editForm.full_name || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-bold"
-                                                placeholder="Ad Soyad"
-                                            />
-                                            <div className="text-sm text-gray-500">Üye #{detailUser.member_number}</div>
-                                        </div>
                                     ) : (
                                         <>
-                                            <h3 className="text-xl font-bold text-gray-900">{detailUser.full_name || 'İsimsiz'}</h3>
-                                            <p className="text-gray-500">Üye #{detailUser.member_number}</p>
+                                            <button
+                                                onClick={() => setIsEditing(false)}
+                                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                                            >
+                                                İptal
+                                            </button>
+                                            <button
+                                                onClick={handleUpdateUser}
+                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                                            >
+                                                Kaydet
+                                            </button>
                                         </>
                                     )}
-                                    <div className="mt-1">{getStatusBadge(detailUser.status)}</div>
+                                    <button
+                                        onClick={() => setDetailUser(null)}
+                                        className="p-2 hover:bg-gray-100 rounded-lg ml-2"
+                                    >
+                                        <X size={20} />
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Info Grid */}
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div className="p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                                        <Mail size={14} /> E-posta
-                                    </div>
-                                    <div className="font-medium text-gray-900">{detailUser.email}</div>
-                                </div>
-                                <div className="p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                                        <Phone size={14} /> Telefon
-                                    </div>
-                                    {isEditing ? (
-                                        <input
-                                            type="text"
-                                            value={editForm.phone || ''}
-                                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                            className="w-full px-2 py-1 border rounded bg-white"
-                                        />
-                                    ) : (
-                                        <div className="font-medium text-gray-900">{detailUser.phone || '-'}</div>
-                                    )}
-                                </div>
-                                <div className="p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                                        <Calendar size={14} /> Kayıt Tarihi
-                                    </div>
-                                    <div className="font-medium text-gray-900">{formatDate(detailUser.created_at)}</div>
-                                </div>
-                                <div className="p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
-                                        <Activity size={14} /> Toplam Giriş
-                                    </div>
-                                    <div className="font-medium text-gray-900">{detailUser.login_count || 0}</div>
-                                </div>
-                            </div>
+                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                                {/* User Info & Avatar */}
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="relative">
+                                        {detailUser.avatar_url ? (
+                                            <img
+                                                src={detailUser.avatar_url}
+                                                alt="Avatar"
+                                                className="w-20 h-20 rounded-full object-cover border-4 border-blue-50"
+                                            />
+                                        ) : (
+                                            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold">
+                                                {detailUser.full_name?.[0]?.toUpperCase() || '?'}
+                                            </div>
+                                        )}
 
-                            {/* Genel Bilgiler Editable Section */}
-                            <div className="mb-6">
-                                <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                    📋 Genel Bilgiler
-                                </h4>
-                                {isEditing ? (
-                                    <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-xl">
-                                        <div className="col-span-2 md:col-span-1">
-                                            <label className="text-xs text-blue-600 block mb-1">Eğitim Durumu</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.education_level || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, education_level: e.target.value })}
-                                                className="w-full px-2 py-1 border rounded text-sm"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 md:col-span-1">
-                                            <label className="text-xs text-blue-600 block mb-1">Çalışma Durumu</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.employment_status || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, employment_status: e.target.value })}
-                                                className="w-full px-2 py-1 border rounded text-sm"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 md:col-span-1">
-                                            <label className="text-xs text-blue-600 block mb-1">Meslek</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.profession || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, profession: e.target.value })}
-                                                className="w-full px-2 py-1 border rounded text-sm"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 md:col-span-1">
-                                            <label className="text-xs text-blue-600 block mb-1">Aylık Gelir</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.monthly_income || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, monthly_income: e.target.value })}
-                                                className="w-full px-2 py-1 border rounded text-sm"
-                                            />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="flex items-center gap-2 mb-2">
+                                        {/* Remove Avatar Button */}
+                                        {detailUser.avatar_url && (
+                                            <button
+                                                onClick={handleRemoveAvatar}
+                                                className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 shadow-sm border border-white"
+                                                title="Fotoğrafı Kaldır"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        {isEditing ? (
+                                            <div className="space-y-2">
                                                 <input
-                                                    type="checkbox"
-                                                    checked={editForm.has_rent || false}
-                                                    onChange={(e) => setEditForm({ ...editForm, has_rent: e.target.checked })}
-                                                    className="rounded border-gray-300"
+                                                    type="text"
+                                                    value={editForm.full_name || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-bold"
+                                                    placeholder="Ad Soyad"
                                                 />
-                                                <span className="text-sm font-medium">Kira Gideri Var mı?</span>
-                                            </label>
-                                            {editForm.has_rent && (
+                                                <div className="text-sm text-gray-500">Üye #{detailUser.member_number}</div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <h3 className="text-xl font-bold text-gray-900">{detailUser.full_name || 'İsimsiz'}</h3>
+                                                <p className="text-gray-500">Üye #{detailUser.member_number}</p>
+                                            </>
+                                        )}
+                                        <div className="mt-1">{getStatusBadge(detailUser.status)}</div>
+                                    </div>
+                                </div>
+
+                                {/* Info Grid */}
+                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                    <div className="p-4 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                                            <Mail size={14} /> E-posta
+                                        </div>
+                                        <div className="font-medium text-gray-900">{detailUser.email}</div>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                                            <Phone size={14} /> Telefon
+                                        </div>
+                                        {isEditing ? (
+                                            <input
+                                                type="text"
+                                                value={editForm.phone || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                                className="w-full px-2 py-1 border rounded bg-white"
+                                            />
+                                        ) : (
+                                            <div className="font-medium text-gray-900">{detailUser.phone || '-'}</div>
+                                        )}
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                                            <Calendar size={14} /> Kayıt Tarihi
+                                        </div>
+                                        <div className="font-medium text-gray-900">{formatDate(detailUser.created_at)}</div>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                                            <Activity size={14} /> Toplam Giriş
+                                        </div>
+                                        <div className="font-medium text-gray-900">{detailUser.login_count || 0}</div>
+                                    </div>
+                                </div>
+
+                                {/* Genel Bilgiler Editable Section */}
+                                <div className="mb-6">
+                                    <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                        📋 Genel Bilgiler
+                                    </h4>
+                                    {isEditing ? (
+                                        <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-xl">
+                                            <div className="col-span-2 md:col-span-1">
+                                                <label className="text-xs text-blue-600 block mb-1">Eğitim Durumu</label>
                                                 <input
-                                                    type="number"
-                                                    value={editForm.rent_amount || ''}
-                                                    onChange={(e) => setEditForm({ ...editForm, rent_amount: parseInt(e.target.value) || 0 })}
-                                                    placeholder="Kira Tutarı"
+                                                    type="text"
+                                                    value={editForm.education_level || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, education_level: e.target.value })}
                                                     className="w-full px-2 py-1 border rounded text-sm"
                                                 />
-                                            )}
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="text-xs text-purple-600 block mb-1">Tercih Ettiği Finansman Şirketi</label>
-                                            <input
-                                                type="text"
-                                                value={editForm.preferred_finance_company || ''}
-                                                onChange={(e) => setEditForm({ ...editForm, preferred_finance_company: e.target.value })}
-                                                className="w-full px-2 py-1 border rounded text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {detailUser.education_level && (
-                                            <div className="p-3 bg-blue-50 rounded-lg">
-                                                <div className="text-xs text-blue-600 mb-1">Eğitim Durumu</div>
-                                                <div className="font-medium text-gray-900">{detailUser.education_level}</div>
                                             </div>
-                                        )}
-                                        {detailUser.employment_status && (
-                                            <div className="p-3 bg-blue-50 rounded-lg">
-                                                <div className="text-xs text-blue-600 mb-1">Çalışma Durumu</div>
-                                                <div className="font-medium text-gray-900">{detailUser.employment_status}</div>
+                                            <div className="col-span-2 md:col-span-1">
+                                                <label className="text-xs text-blue-600 block mb-1">Çalışma Durumu</label>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.employment_status || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, employment_status: e.target.value })}
+                                                    className="w-full px-2 py-1 border rounded text-sm"
+                                                />
                                             </div>
-                                        )}
-                                        {/* ... (Other existing fields) ... */}
-                                        <div className="p-3 bg-orange-50 rounded-lg col-span-2">
-                                            <div className="text-xs text-orange-600 mb-1">Genel Bilgiler</div>
-                                            <div className="font-medium text-gray-900 text-sm">
-                                                Diğer bilgiler için "Düzenle" moduna geçiniz.
+                                            <div className="col-span-2 md:col-span-1">
+                                                <label className="text-xs text-blue-600 block mb-1">Meslek</label>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.profession || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, profession: e.target.value })}
+                                                    className="w-full px-2 py-1 border rounded text-sm"
+                                                />
+                                            </div>
+                                            <div className="col-span-2 md:col-span-1">
+                                                <label className="text-xs text-blue-600 block mb-1">Aylık Gelir</label>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.monthly_income || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, monthly_income: e.target.value })}
+                                                    className="w-full px-2 py-1 border rounded text-sm"
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="flex items-center gap-2 mb-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={editForm.has_rent || false}
+                                                        onChange={(e) => setEditForm({ ...editForm, has_rent: e.target.checked })}
+                                                        className="rounded border-gray-300"
+                                                    />
+                                                    <span className="text-sm font-medium">Kira Gideri Var mı?</span>
+                                                </label>
+                                                {editForm.has_rent && (
+                                                    <input
+                                                        type="number"
+                                                        value={editForm.rent_amount || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, rent_amount: parseInt(e.target.value) || 0 })}
+                                                        placeholder="Kira Tutarı"
+                                                        className="w-full px-2 py-1 border rounded text-sm"
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="text-xs text-purple-600 block mb-1">Tercih Ettiği Finansman Şirketi</label>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.preferred_finance_company || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, preferred_finance_company: e.target.value })}
+                                                    className="w-full px-2 py-1 border rounded text-sm"
+                                                />
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Login History */}
-                            <div>
-                                <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                    <History size={16} /> Giriş Geçmişi
-                                </h4>
-                                {loadingHistory ? (
-                                    <div className="p-4 text-center text-gray-500">
-                                        <RefreshCw className="animate-spin mx-auto" size={20} />
-                                    </div>
-                                ) : loginHistory.length === 0 ? (
-                                    <p className="text-gray-500 text-sm">Henüz giriş kaydı yok</p>
-                                ) : (
-                                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                                        {loginHistory.slice(0, 10).map((log) => (
-                                            <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-medium">{log.browser} / {log.os}</span>
-                                                    <span className="text-gray-500">{log.device_type}</span>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {detailUser.education_level && (
+                                                <div className="p-3 bg-blue-50 rounded-lg">
+                                                    <div className="text-xs text-blue-600 mb-1">Eğitim Durumu</div>
+                                                    <div className="font-medium text-gray-900">{detailUser.education_level}</div>
                                                 </div>
-                                                <span className="text-gray-500">{formatDate(log.logged_in_at)}</span>
+                                            )}
+                                            {detailUser.employment_status && (
+                                                <div className="p-3 bg-blue-50 rounded-lg">
+                                                    <div className="text-xs text-blue-600 mb-1">Çalışma Durumu</div>
+                                                    <div className="font-medium text-gray-900">{detailUser.employment_status}</div>
+                                                </div>
+                                            )}
+                                            {/* ... (Other existing fields) ... */}
+                                            <div className="p-3 bg-orange-50 rounded-lg col-span-2">
+                                                <div className="text-xs text-orange-600 mb-1">Genel Bilgiler</div>
+                                                <div className="font-medium text-gray-900 text-sm">
+                                                    Diğer bilgiler için "Düzenle" moduna geçiniz.
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Login History */}
+                                <div>
+                                    <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                        <History size={16} /> Giriş Geçmişi
+                                    </h4>
+                                    {loadingHistory ? (
+                                        <div className="p-4 text-center text-gray-500">
+                                            <RefreshCw className="animate-spin mx-auto" size={20} />
+                                        </div>
+                                    ) : loginHistory.length === 0 ? (
+                                        <p className="text-gray-500 text-sm">Henüz giriş kaydı yok</p>
+                                    ) : (
+                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                            {loginHistory.slice(0, 10).map((log) => (
+                                                <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-medium">{log.browser} / {log.os}</span>
+                                                        <span className="text-gray-500">{log.device_type}</span>
+                                                    </div>
+                                                    <span className="text-gray-500">{formatDate(log.logged_in_at)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Ban Modal */}
-            {banModalUser && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-                        <div className="p-6 border-b border-gray-200">
-                            <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
-                                <Ban size={20} /> Kullanıcıyı Banla
-                            </h2>
-                        </div>
-                        <div className="p-6">
-                            <p className="text-gray-600 mb-4">
-                                <strong>{banModalUser.full_name || banModalUser.email}</strong> kullanıcısını banlamak istediğinize emin misiniz?
-                            </p>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Ban Sebebi *
-                                </label>
-                                <textarea
-                                    value={banReason}
-                                    onChange={(e) => setBanReason(e.target.value)}
-                                    placeholder="Ban sebebini yazın..."
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                    rows={3}
-                                />
+            {
+                banModalUser && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                            <div className="p-6 border-b border-gray-200">
+                                <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
+                                    <Ban size={20} /> Kullanıcıyı Banla
+                                </h2>
                             </div>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setBanModalUser(null);
-                                        setBanReason('');
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    onClick={handleBanUser}
-                                    disabled={!banReason.trim()}
-                                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Banla
-                                </button>
+                            <div className="p-6">
+                                <p className="text-gray-600 mb-4">
+                                    <strong>{banModalUser.full_name || banModalUser.email}</strong> kullanıcısını banlamak istediğinize emin misiniz?
+                                </p>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Ban Sebebi *
+                                    </label>
+                                    <textarea
+                                        value={banReason}
+                                        onChange={(e) => setBanReason(e.target.value)}
+                                        placeholder="Ban sebebini yazın..."
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                        rows={3}
+                                    />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setBanModalUser(null);
+                                            setBanReason('');
+                                        }}
+                                        className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
+                                    >
+                                        İptal
+                                    </button>
+                                    <button
+                                        onClick={handleBanUser}
+                                        disabled={!banReason.trim()}
+                                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Banla
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
