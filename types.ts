@@ -139,6 +139,8 @@ export interface UserAgreements {
   kvkk_accepted: boolean;
   open_consent_accepted: boolean;
   terms_accepted: boolean;
+  privacy_accepted: boolean; // Added
+  commercial_accepted: boolean; // Added
   accepted_at: string | null;
 }
 

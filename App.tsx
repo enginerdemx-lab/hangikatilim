@@ -19,6 +19,7 @@ import { Media } from './src/pages/admin/Media';
 import { HomeContent } from './src/pages/admin/HomeContent';
 import { AdminLayout } from './src/components/admin/AdminLayout';
 import { QuickLinks } from './src/pages/admin/QuickLinks';
+import { EmailNotifications } from './src/pages/admin/EmailNotifications';
 import { Users as AdminUsers } from './src/pages/admin/Members';
 
 // Public Layout and Pages
@@ -85,6 +86,7 @@ const App: React.FC = () => {
                         <Route path="contact" element={<AdminContact />} />
                         <Route path="media" element={<Media />} />
                         <Route path="quick-links" element={<QuickLinks />} />
+                        <Route path="email-notifications" element={<EmailNotifications />} />
                         <Route path="users" element={<AdminUsers />} />
                     </Route>
 

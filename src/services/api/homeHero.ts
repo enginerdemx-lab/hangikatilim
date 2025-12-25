@@ -16,6 +16,7 @@ const VALID_DB_COLUMNS = [
     'cta1_link',
     'cta2_label',
     'cta2_link',
+    'sort_order',
 ];
 
 // Filter payload to only include valid DB columns
@@ -39,6 +40,7 @@ export const homeHeroApi = {
         const { data, error } = await supabase
             .from('home_hero')
             .select('*')
+            .order('sort_order', { ascending: true })
             .order('created_at', { ascending: true });
 
         if (error) {
@@ -110,6 +112,26 @@ export const homeHeroApi = {
         if (error) {
             console.error('[homeHeroApi] deleteSlide error:', error);
             throw error;
+        }
+    },
+
+    // Update sort order for slides
+    async updateSortOrder(id: string, newOrder: number): Promise<void> {
+        const { error } = await supabase
+            .from('home_hero')
+            .update({ sort_order: newOrder })
+            .eq('id', id);
+
+        if (error) {
+            console.error('[homeHeroApi] updateSortOrder error:', error);
+            throw error;
+        }
+    },
+
+    // Reorder slides (swap two slides)
+    async reorderSlides(slides: { id: string; sort_order: number }[]): Promise<void> {
+        for (const slide of slides) {
+            await this.updateSortOrder(slide.id, slide.sort_order);
         }
     },
 };

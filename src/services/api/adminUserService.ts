@@ -163,25 +163,35 @@ export const adminUserService = {
     },
 
     // ============================================
-    // UPDATE USER (ADMIN)
+    // UPDATE USER (ADMIN) - Direct table update
     // ============================================
     async updateUser(userId: string, updates: AdminUserUpdate) {
-        const { error } = await supabase.rpc('update_user_admin', {
-            target_user_id: userId,
-            new_full_name: updates.full_name,
-            new_phone: updates.phone,
-            new_education_level: updates.education_level,
-            new_employment_status: updates.employment_status,
-            new_profession: updates.profession,
-            new_work_experience: updates.work_experience,
-            new_monthly_income: updates.monthly_income,
-            new_has_rent: updates.has_rent,
-            new_rent_amount: updates.rent_amount,
-            new_preferred_finance_company: updates.preferred_finance_company,
-            new_gender: updates.gender
-        });
+        // Build update object with only defined values
+        const updateData: Record<string, any> = {
+            updated_at: new Date().toISOString()
+        };
 
-        if (error) throw error;
+        if (updates.full_name !== undefined) updateData.full_name = updates.full_name;
+        if (updates.phone !== undefined) updateData.phone = updates.phone;
+        if (updates.education_level !== undefined) updateData.education_level = updates.education_level;
+        if (updates.employment_status !== undefined) updateData.employment_status = updates.employment_status;
+        if (updates.profession !== undefined) updateData.profession = updates.profession;
+        if (updates.work_experience !== undefined) updateData.work_experience = updates.work_experience;
+        if (updates.monthly_income !== undefined) updateData.monthly_income = updates.monthly_income;
+        if (updates.has_rent !== undefined) updateData.has_rent = updates.has_rent;
+        if (updates.rent_amount !== undefined) updateData.rent_amount = updates.rent_amount;
+        if (updates.preferred_finance_company !== undefined) updateData.preferred_finance_company = updates.preferred_finance_company;
+        if (updates.gender !== undefined) updateData.gender = updates.gender;
+
+        const { error } = await supabase
+            .from('profiles')
+            .update(updateData)
+            .eq('id', userId);
+
+        if (error) {
+            console.error('Update user error:', error);
+            throw error;
+        }
     },
 
     // ============================================
@@ -349,5 +359,34 @@ export const adminUserService = {
                 u.last_login_at && new Date(u.last_login_at) >= today
             ).length
         };
+    },
+
+    // ============================================
+    // SEND CONFIRMATION EMAIL (Resend)
+    // ============================================
+    async sendConfirmationEmail(email: string): Promise<void> {
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+        });
+
+        if (error) {
+            console.error('Send confirmation email error:', error);
+            throw error;
+        }
+    },
+
+    // ============================================
+    // SEND PASSWORD RESET EMAIL
+    // ============================================
+    async sendPasswordResetEmail(email: string): Promise<void> {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) {
+            console.error('Send password reset email error:', error);
+            throw error;
+        }
     }
 };

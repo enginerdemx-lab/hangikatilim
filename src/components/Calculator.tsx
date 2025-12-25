@@ -527,15 +527,16 @@ export const Calculator: React.FC<CalculatorProps> = ({
     // Check if email is confirmed
     if (!user.email_confirmed_at) {
       showToast('Hesaplama kaydedebilmek için lütfen e-posta adresinizi onaylayın.', 'error');
-      // Optional: Scroll to top or show detailed modal
       return;
     }
 
     setSavingCalculation(true);
 
     try {
+      // Generate PDF
       const pdfBlob = await generatePDFBlob(params, result, user.email || 'Kullanıcı');
 
+      // Save calculation with PDF (parallel upload + DB insert)
       await calculationService.saveCalculation({
         userId: user.id,
         type: mapAssetTypeToCalculationType(params.assetType),
@@ -544,11 +545,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
         pdfBlob
       });
 
-      // Success toast
+      // Success toast only after everything is saved
       showToast('Hesaplama başarıyla kaydedildi!', 'success');
     } catch (error) {
       console.error('Save calculation error:', error);
-      // Error toast
       showToast('Hesaplama kaydedilemedi. Lütfen tekrar deneyin.', 'error');
     } finally {
       setSavingCalculation(false);

@@ -7,7 +7,13 @@ export const authService = {
     // ============================================
 
     // Sign up with email and password
-    async signup(email: string, password: string, fullName: string, gender?: string) {
+    async signup(email: string, password: string, fullName: string, gender?: string, agreements?: {
+        terms: boolean;
+        privacy: boolean;
+        kvkk: boolean;
+        consent: boolean;
+        commercial: boolean;
+    }) {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -15,6 +21,12 @@ export const authService = {
                 data: {
                     full_name: fullName,
                     gender: gender || '',
+                    // Map agreements to metadata keys expected by trigger
+                    agreements_terms: agreements?.terms || false,
+                    agreements_privacy: agreements?.privacy || false,
+                    agreements_kvkk: agreements?.kvkk || false,
+                    agreements_consent: agreements?.consent || false,
+                    agreements_commercial: agreements?.commercial || false,
                 },
                 emailRedirectTo: `${window.location.origin}/auth/callback`,
             },

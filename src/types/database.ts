@@ -318,3 +318,57 @@ export interface PopularSearchFormData {
   is_active?: boolean;
 }
 
+
+export interface UserAgreements {
+  user_id: string;
+  membership_accepted: boolean;
+  terms_accepted: boolean;
+  kvkk_accepted: boolean;
+  open_consent_accepted: boolean;
+  privacy_accepted: boolean;
+  commercial_accepted: boolean;
+  accepted_at: string;
+}
+
+export interface UserProfile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  // email comes from auth user usually, but logic might vary
+  created_at: string;
+  updated_at: string;
+  // Details
+  education_level?: string;
+  employment_status?: string;
+  profession?: string;
+  work_experience?: string;
+  monthly_income?: string;
+  has_rent?: boolean;
+  rent_amount?: number;
+  preferred_finance_company?: string;
+  gender?: string;
+}
+
+export interface ProfileUpdate {
+  full_name?: string;
+  phone?: string;
+  avatar_url?: string | null;
+  education_level?: string | null;
+  employment_status?: string | null;
+  profession?: string | null;
+  work_experience?: string | null;
+  monthly_income?: string | null;
+  has_rent?: boolean;
+  rent_amount?: number | null;
+  preferred_finance_company?: string | null;
+  gender?: string | null;
+}
+
+export interface NotificationPreferences {
+  user_id: string;
+  email_enabled: boolean;
+  sms_enabled: boolean;
+  marketing_allowed: boolean;
+  updated_at: string;
+}

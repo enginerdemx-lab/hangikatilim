@@ -61,6 +61,48 @@ export const calculationService = {
         return calculationId;
     },
 
+    // FAST: Save calculation data only (no PDF) - for optimistic UI
+    async saveCalculationFast(request: { userId: string; type: string; params: any; result: any }): Promise<string> {
+        const { userId, type, params, result } = request;
+
+        // Generate unique ID
+        const calculationId = crypto.randomUUID();
+        const pdfPath = `${userId}/calculations/${calculationId}.pdf`;
+
+        // Insert only to DB (no PDF upload yet)
+        const { error } = await supabase
+            .from('calculations')
+            .insert({
+                id: calculationId,
+                user_id: userId,
+                type,
+                data_json: {
+                    params,
+                    result,
+                },
+                pdf_path: pdfPath, // Pre-set path for later upload
+            });
+
+        if (error) throw error;
+
+        return calculationId;
+    },
+
+    // Upload PDF for an existing calculation (for background upload)
+    async uploadCalculationPDF(calculationId: string, userId: string, pdfBlob: Blob): Promise<void> {
+        const pdfPath = `${userId}/calculations/${calculationId}.pdf`;
+
+        const { error } = await supabase.storage
+            .from('user-files')
+            .upload(pdfPath, pdfBlob, {
+                contentType: 'application/pdf',
+                cacheControl: '3600',
+                upsert: true, // Overwrite if exists
+            });
+
+        if (error) throw error;
+    },
+
     // ============================================
     // RETRIEVE CALCULATIONS
     // ============================================

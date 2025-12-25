@@ -83,6 +83,20 @@ const NewsDetailPage: React.FC = () => {
         });
     };
 
+    const formatDateTime = (dateString: string) => {
+        const date = new Date(dateString);
+        const dateStr = date.toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+        const timeStr = date.toLocaleTimeString('tr-TR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        return `${dateStr} - ${timeStr}`;
+    };
+
     const handleShare = async () => {
         const url = window.location.href;
 
@@ -220,7 +234,7 @@ const NewsDetailPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 dark:text-gray-400 mb-8 pb-8 border-b border-gray-200 dark:border-slate-700">
                         <div className="flex items-center gap-2">
                             <Calendar size={16} className="text-red-500" />
-                            {formatDate(news.published_at || news.created_at)}
+                            {formatDateTime(news.published_at || news.created_at)}
                         </div>
                         {news.content && (
                             <div className="flex items-center gap-2">
@@ -258,7 +272,7 @@ const NewsDetailPage: React.FC = () => {
                     <div className="mt-12 pt-8 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                                Yayınlanma: {formatDate(news.published_at || news.created_at)}
+                                Yayınlanma: {formatDateTime(news.published_at || news.created_at)}
                             </div>
                         </div>
 

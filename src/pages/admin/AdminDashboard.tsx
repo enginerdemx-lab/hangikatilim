@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { campaignsApi } from '../../services/api/campaigns';
 import { companiesApi } from '../../services/api/companies';
+import { adminUserService } from '../../services/api/adminUserService';
 import type { Campaign, Company } from '../../types/database';
 
 export const AdminDashboard: React.FC = () => {
@@ -10,6 +11,12 @@ export const AdminDashboard: React.FC = () => {
         activeCampaigns: 0,
         totalCompanies: 0,
         activeCompanies: 0,
+        // Member Stats
+        totalMembers: 0,
+        activeMembers: 0,
+        inactiveMembers: 0,
+        bannedMembers: 0,
+        todayLogins: 0,
     });
     const [loading, setLoading] = useState(true);
 
@@ -19,9 +26,10 @@ export const AdminDashboard: React.FC = () => {
 
     const loadStats = async () => {
         try {
-            const [campaigns, companies] = await Promise.all([
+            const [campaigns, companies, memberStats] = await Promise.all([
                 campaignsApi.getAllCampaigns(),
                 companiesApi.getAllCompanies(),
+                adminUserService.getStatistics(),
             ]);
 
             setStats({
@@ -29,6 +37,12 @@ export const AdminDashboard: React.FC = () => {
                 activeCampaigns: campaigns.filter((c) => c.is_active).length,
                 totalCompanies: companies.length,
                 activeCompanies: companies.filter((c) => c.is_active).length,
+                // Member Stats
+                totalMembers: memberStats.total,
+                activeMembers: memberStats.active,
+                inactiveMembers: memberStats.inactive,
+                bannedMembers: memberStats.banned,
+                todayLogins: memberStats.todayLogins,
             });
         } catch (error) {
             console.error('Failed to load stats:', error);
@@ -39,9 +53,28 @@ export const AdminDashboard: React.FC = () => {
 
     const statCards = [
         {
+            label: 'Toplam Üye',
+            value: stats.totalMembers,
+            active: stats.activeMembers,
+            activeLabel: 'aktif',
+            icon: '👥',
+            color: 'from-green-500 to-green-600',
+            link: '/admin/users',
+        },
+        {
+            label: 'Bugün Giriş',
+            value: stats.todayLogins,
+            active: stats.bannedMembers,
+            activeLabel: 'banlı',
+            icon: '📊',
+            color: 'from-amber-500 to-amber-600',
+            link: '/admin/users',
+        },
+        {
             label: 'Toplam Kampanya',
             value: stats.totalCampaigns,
             active: stats.activeCampaigns,
+            activeLabel: 'aktif',
             icon: '🎁',
             color: 'from-blue-500 to-blue-600',
             link: '/admin/campaigns',
@@ -50,6 +83,7 @@ export const AdminDashboard: React.FC = () => {
             label: 'Toplam Firma',
             value: stats.totalCompanies,
             active: stats.activeCompanies,
+            activeLabel: 'aktif',
             icon: '🏢',
             color: 'from-purple-500 to-purple-600',
             link: '/admin/companies',
@@ -99,7 +133,7 @@ export const AdminDashboard: React.FC = () => {
                         <h3 className="text-gray-600 text-sm font-medium">{stat.label}</h3>
                         <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
                         <p className="text-sm text-green-600 mt-1">
-                            {stat.active} aktif
+                            {stat.active} {stat.activeLabel || 'aktif'}
                         </p>
                     </Link>
                 ))}

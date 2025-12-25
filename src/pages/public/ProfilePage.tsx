@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     User, Bell, Shield, FileText, Loader2, Calculator, LogOut,
-    ChevronDown, ChevronUp, Camera, Check, X, AlertTriangle
+    ChevronDown, ChevronUp, Camera, Check, X, AlertTriangle, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { profileService } from '../../services/api/profileService';
-import type { UserProfile, NotificationPreferences } from '../../../types';
+import { siteSettingsApi } from '../../services/api/siteSettings';
+import { LegalModal, LegalType } from '../../../components/LegalModal';
+import type { UserProfile, NotificationPreferences, UserAgreements } from '../../../types';
+import type { SiteSettings } from '../../types/database';
 
 // Toast Component
 const Toast: React.FC<{ message: string; type: 'success' | 'error'; onClose: () => void }> = ({ message, type, onClose }) => {
@@ -338,9 +341,9 @@ export const ProfilePage: React.FC = () => {
 
                     {/* Agreements Card */}
                     <CollapsibleCard title="Sözleşmeler" icon={<FileText size={20} />}>
-                        <div className="text-gray-500 dark:text-gray-400 text-center py-4">
-                            Sözleşme kabul sistemi yakında eklenecektir.
-                        </div>
+                        <AgreementsList
+                            userId={user!.id}
+                        />
                     </CollapsibleCard>
 
                 </div>
@@ -352,7 +355,7 @@ export const ProfilePage: React.FC = () => {
     );
 };
 
-// Profile Info Form - Ad Soyad, Cinsiyet ve Telefon
+// Profile Info Form - Ad Soyad, Cinsiyet, Doğum Tarihi ve Telefon
 const ProfileInfoForm: React.FC<{
     profile: UserProfile | null;
     userId: string;
@@ -362,6 +365,7 @@ const ProfileInfoForm: React.FC<{
     const [fullName, setFullName] = useState(profile?.full_name || '');
     const [phone, setPhone] = useState(profile?.phone || '');
     const [gender, setGender] = useState((profile as any)?.gender || '');
+    const [birthDate, setBirthDate] = useState((profile as any)?.birth_date || '');
     const [saving, setSaving] = useState(false);
 
     // Sync form state when profile changes
@@ -369,6 +373,7 @@ const ProfileInfoForm: React.FC<{
         setFullName(profile?.full_name || '');
         setPhone(profile?.phone || '');
         setGender((profile as any)?.gender || '');
+        setBirthDate((profile as any)?.birth_date || '');
     }, [profile]);
 
     const genderOptions = [
@@ -381,7 +386,12 @@ const ProfileInfoForm: React.FC<{
     const handleSave = async () => {
         setSaving(true);
         try {
-            await profileService.updateProfile(userId, { full_name: fullName, phone, gender } as any);
+            await profileService.updateProfile(userId, {
+                full_name: fullName,
+                phone,
+                gender,
+                birth_date: birthDate || null
+            } as any);
             showToast('Profil bilgileri güncellendi!', 'success');
             onUpdate();
         } catch (error) {
@@ -417,6 +427,20 @@ const ProfileInfoForm: React.FC<{
                 <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
                     {genderOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
+            </div>
+
+            {/* Doğum Tarihi */}
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Doğum Tarihi
+                </label>
+                <input
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className={inputClass}
+                    max={new Date().toISOString().split('T')[0]}
+                />
             </div>
 
             {/* Telefon */}
@@ -844,6 +868,123 @@ const GeneralInfoForm: React.FC<{
                 {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </button>
         </div>
+    );
+};
+
+
+// Agreements List Component
+const AgreementsList: React.FC<{ userId: string }> = ({ userId }) => {
+    const [agreements, setAgreements] = useState<UserAgreements | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+    const [legalModalOpen, setLegalModalOpen] = useState(false);
+    const [legalModalType, setLegalModalType] = useState<LegalType>('TERMS');
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [agreementsData, settingsData] = await Promise.all([
+                    profileService.getAgreements(userId),
+                    siteSettingsApi.getSettings()
+                ]);
+                setAgreements(agreementsData);
+                setSiteSettings(settingsData);
+            } catch (error) {
+                console.error('Load agreements error:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
+    }, [userId]);
+
+    const handleOpenLegal = (type: LegalType) => {
+        setLegalModalType(type);
+        setLegalModalOpen(true);
+    };
+
+    if (loading) return <div className="text-center py-4 text-gray-500">Yükleniyor...</div>;
+
+    if (!agreements) return <div className="text-center py-4 text-gray-500">Sözleşme bilgisi bulunamadı.</div>;
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const AgreementItem = ({ label, accepted, date, type }: { label: string, accepted: boolean, date?: string, type: LegalType }) => (
+        <button
+            onClick={() => handleOpenLegal(type)}
+            className="w-full flex items-center justify-between py-3 border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-lg px-2 transition-colors text-left"
+        >
+            <div className="flex items-center gap-3">
+                <div className={`p-1.5 rounded-full ${accepted ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                    {accepted ? <Check size={14} /> : <X size={14} />}
+                </div>
+                <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{label}</p>
+                    {date && accepted && <p className="text-xs text-gray-500">Onay Tarihi: {formatDate(date)}</p>}
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                {accepted && (
+                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                        Onaylandı
+                    </span>
+                )}
+                <ChevronRight size={16} className="text-gray-400" />
+            </div>
+        </button>
+    );
+
+    return (
+        <>
+            <LegalModal
+                isOpen={legalModalOpen}
+                type={legalModalType}
+                onClose={() => setLegalModalOpen(false)}
+                onConfirm={() => setLegalModalOpen(false)}
+                siteSettings={siteSettings}
+            />
+            <div className="space-y-1">
+                <AgreementItem
+                    label="Kullanıcı Sözleşmesi"
+                    accepted={agreements.terms_accepted}
+                    date={agreements.accepted_at || undefined}
+                    type="TERMS"
+                />
+                <AgreementItem
+                    label="Gizlilik Politikası"
+                    accepted={agreements.privacy_accepted || agreements.membership_accepted}
+                    date={agreements.accepted_at || undefined}
+                    type="PRIVACY"
+                />
+                <AgreementItem
+                    label="KVKK Aydınlatma Metni"
+                    accepted={agreements.kvkk_accepted}
+                    date={agreements.accepted_at || undefined}
+                    type="KVKK"
+                />
+                <AgreementItem
+                    label="Açık Rıza Metni"
+                    accepted={agreements.open_consent_accepted}
+                    date={agreements.accepted_at || undefined}
+                    type="CONSENT"
+                />
+                <AgreementItem
+                    label="Ticari Elektronik İleti Onayı"
+                    accepted={agreements.commercial_accepted}
+                    date={agreements.accepted_at || undefined}
+                    type="COMMERCIAL"
+                />
+            </div>
+        </>
     );
 };
 

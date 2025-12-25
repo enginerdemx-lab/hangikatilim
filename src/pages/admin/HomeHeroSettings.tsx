@@ -3,7 +3,7 @@ import { homeHeroApi } from '../../services/api/homeHero';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { HomeHero } from '../../types/database';
-import { Image, Type, Link, Palette, Eye, Plus, Edit, Trash2 } from 'lucide-react';
+import { Image, Type, Link, Palette, Eye, Plus, Edit, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 
 export const HomeHeroSettings: React.FC = () => {
     const [slides, setSlides] = useState<HomeHero[]>([]);
@@ -105,6 +105,48 @@ export const HomeHeroSettings: React.FC = () => {
             loadSlides();
         } catch (err) {
             showError('Silme başarısız');
+        }
+    };
+
+    // Move slide up in order
+    const handleMoveUp = async (index: number) => {
+        if (index === 0) return; // Already at top
+
+        try {
+            const currentSlide = slides[index];
+            const prevSlide = slides[index - 1];
+
+            // Swap sort_order values
+            await homeHeroApi.reorderSlides([
+                { id: currentSlide.id, sort_order: index - 1 },
+                { id: prevSlide.id, sort_order: index }
+            ]);
+
+            success('Sıralama güncellendi');
+            loadSlides();
+        } catch (err) {
+            showError('Sıralama güncellenemedi');
+        }
+    };
+
+    // Move slide down in order
+    const handleMoveDown = async (index: number) => {
+        if (index >= slides.length - 1) return; // Already at bottom
+
+        try {
+            const currentSlide = slides[index];
+            const nextSlide = slides[index + 1];
+
+            // Swap sort_order values
+            await homeHeroApi.reorderSlides([
+                { id: currentSlide.id, sort_order: index + 1 },
+                { id: nextSlide.id, sort_order: index }
+            ]);
+
+            success('Sıralama güncellendi');
+            loadSlides();
+        } catch (err) {
+            showError('Sıralama güncellenemedi');
         }
     };
 
@@ -844,6 +886,30 @@ export const HomeHeroSettings: React.FC = () => {
                                         </div>
 
                                         <div className="flex gap-2">
+                                            {/* Reorder Up Button */}
+                                            <button
+                                                onClick={() => handleMoveUp(index)}
+                                                disabled={index === 0}
+                                                className={`p-2.5 rounded-lg border-2 transition-all ${index === 0
+                                                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                                                        : 'border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50'
+                                                    }`}
+                                                title="Yukarı Taşı"
+                                            >
+                                                <ArrowUp size={16} />
+                                            </button>
+                                            {/* Reorder Down Button */}
+                                            <button
+                                                onClick={() => handleMoveDown(index)}
+                                                disabled={index === slides.length - 1}
+                                                className={`p-2.5 rounded-lg border-2 transition-all ${index === slides.length - 1
+                                                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                                                        : 'border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50'
+                                                    }`}
+                                                title="Aşağı Taşı"
+                                            >
+                                                <ArrowDown size={16} />
+                                            </button>
                                             <button
                                                 onClick={() => handleEdit(slide)}
                                                 className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:text-white hover:bg-blue-600 font-semibold py-2.5 border-2 border-blue-600 rounded-lg transition-all"

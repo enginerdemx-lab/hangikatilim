@@ -1,12 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, User, ArrowRight, BookOpen } from 'lucide-react';
+import { Calendar, User, ArrowRight, BookOpen, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { blogApi } from '../../src/services/api/blog';
+import emailService from '../../src/services/api/emailService';
 import type { BlogPost } from '../../src/types/database';
 
 export const BlogPage: React.FC = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Newsletter state
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterResult, setNewsletterResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+
+    setNewsletterLoading(true);
+    setNewsletterResult(null);
+
+    try {
+      const result = await emailService.subscribeNewsletter(newsletterEmail);
+      if (result.success) {
+        setNewsletterResult({ success: true, message: result.message || 'Başarıyla abone oldunuz!' });
+        setNewsletterEmail('');
+      } else {
+        setNewsletterResult({ success: false, message: result.error || 'Bir hata oluştu' });
+      }
+    } catch (error) {
+      setNewsletterResult({ success: false, message: 'Bir hata oluştu' });
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadPosts();
@@ -165,16 +193,40 @@ export const BlogPage: React.FC = () => {
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary-500 rounded-full blur-3xl opacity-20 -ml-20 -mb-20"></div>
 
           <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-white mb-4">Ekonomi Bültenine Abone Olun</h2>
+            <h2 className="text-3xl font-bold text-white mb-4">📬 E-Bültenimize Abone Olun</h2>
             <p className="text-primary-200 mb-8">
-              Sektörel gelişmeler, kampanya haberleri ve finansal analizler her hafta e-posta kutunuzda.
+              Yeni kampanyalar ve fırsatlardan haberdar olun
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input type="email" placeholder="E-posta adresiniz" className="flex-1 px-6 py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gold-500" />
-              <button className="bg-gold-500 hover:bg-gold-600 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-gold-500/20 transition-all">
-                Abone Ol
+            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="E-posta adresiniz"
+                required
+                className="flex-1 px-6 py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+              />
+              <button
+                type="submit"
+                disabled={newsletterLoading}
+                className="bg-gold-500 hover:bg-gold-600 disabled:bg-gray-500 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-gold-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                {newsletterLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Abone Ol
+                  </>
+                )}
               </button>
-            </div>
+            </form>
+            {newsletterResult && (
+              <div className={`mt-4 flex items-center justify-center gap-2 text-sm ${newsletterResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                {newsletterResult.success && <CheckCircle className="w-4 h-4" />}
+                {newsletterResult.message}
+              </div>
+            )}
             <p className="text-xs text-primary-300/60 mt-4">
               Spam yok, dilediğiniz zaman ayrılabilirsiniz.
             </p>

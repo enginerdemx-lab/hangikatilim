@@ -17,13 +17,24 @@ import { Media } from './pages/admin/Media';
 import { Campaigns as AdminCampaigns } from './pages/admin/Campaigns';
 import { Companies as AdminCompanies } from './pages/admin/Companies';
 import { QuickLinks } from './pages/admin/QuickLinks';
+// EmailNotifications temporarily replaced with inline test
+// import { EmailNotifications } from './pages/admin/EmailNotifications';
 
-// Inline test component
+// Inline test components
 const TestUsersPage = () => <div>TEST USERS PAGE WORKS</div>;
+const TestEmailPage = () => (
+  <div style={{ padding: '2rem', color: 'white' }}>
+    <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>E-posta Bildirimleri - TEST</h1>
+    <p>Bu sayfa çalışıyorsa route doğru tanımlanmış demektir.</p>
+  </div>
+);
 
 // Public Layout
 import { PublicLayout } from './layouts/PublicLayout';
 import { ScrollToHash } from './components/ScrollToHash';
+
+// Non-lazy loaded 404 page (must be bundled)
+import NotFoundPage from './pages/public/NotFoundPage';
 
 // Lazy loaded public pages for code splitting
 const HomePage = lazy(() => import('./pages/public/HomePage'));
@@ -38,6 +49,7 @@ const LoginPage = lazy(() => import('./pages/public/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/public/RegisterPage'));
 const ProfilePage = lazy(() => import('./pages/public/ProfilePage'));
 const SavedCalculationsPage = lazy(() => import('./pages/public/SavedCalculationsPage'));
+const UnsubscribePage = lazy(() => import('./pages/public/UnsubscribePage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -45,19 +57,6 @@ const PageLoader: React.FC = () => (
     <div className="text-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
       <p className="mt-4 text-gray-600">Yükleniyor...</p>
-    </div>
-  </div>
-);
-
-// 404 Page
-const NotFoundPage: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="text-center">
-      <h1 className="text-6xl font-bold text-gray-300">404</h1>
-      <p className="text-xl text-gray-600 mt-4">Sayfa bulunamadı</p>
-      <a href="/" className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-        Ana Sayfaya Dön
-      </a>
     </div>
   </div>
 );
@@ -84,6 +83,7 @@ const App: React.FC = () => {
           <Route path="campaigns" element={<AdminCampaigns />} />
           <Route path="companies" element={<AdminCompanies />} />
           <Route path="quick-links" element={<QuickLinks />} />
+          <Route path="email-notifications" element={<TestEmailPage />} />
         </Route>
 
         {/* Public Routes with Layout */}
@@ -187,6 +187,16 @@ const App: React.FC = () => {
             }
           />
         </Route>
+
+        {/* Unsubscribe Route - Outside PublicLayout */}
+        <Route
+          path="/unsubscribe/:token"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <UnsubscribePage />
+            </Suspense>
+          }
+        />
 
         {/* Global 404 - Catches everything else */}
         <Route path="*" element={<NotFoundPage />} />

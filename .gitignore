@@ -35,3 +35,6 @@ Thumbs.db
 
 # Supabase
 .supabase/
+
+# Sensitive files (contains SMTP password)
+public/api/send-email.php

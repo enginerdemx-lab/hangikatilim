@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, LogIn, RefreshCw, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../services/supabaseClient';
 
 export const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -10,9 +11,23 @@ export const LoginPage: React.FC = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Resend email states
+    const [isEmailNotConfirmed, setIsEmailNotConfirmed] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [resendLoading, setResendLoading] = useState(false);
+    const [resendSuccess, setResendSuccess] = useState(false);
+
     const { user, login } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Cooldown timer effect
+    useEffect(() => {
+        if (resendCooldown > 0) {
+            const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [resendCooldown]);
 
     // Redirect if already logged in
     useEffect(() => {
@@ -22,9 +37,31 @@ export const LoginPage: React.FC = () => {
         }
     }, [user, navigate, location]);
 
+    const handleResendEmail = async () => {
+        if (resendCooldown > 0 || resendLoading) return;
+
+        setResendLoading(true);
+        setResendSuccess(false);
+        try {
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: email,
+            });
+            if (error) throw error;
+            setResendSuccess(true);
+            setResendCooldown(60); // 60 seconds cooldown
+        } catch (err) {
+            setError('E-posta gönderilemedi. Lütfen tekrar deneyin.');
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsEmailNotConfirmed(false);
+        setResendSuccess(false);
 
         if (!email || !password) {
             setError('Lütfen e-posta ve şifrenizi girin.');
@@ -37,19 +74,24 @@ export const LoginPage: React.FC = () => {
             const from = (location.state as any)?.from?.pathname || '/';
             navigate(from, { replace: true });
         } catch (err: any) {
-            // Translate Supabase error messages to Turkish
-            const translateError = (message: string): string => {
-                const translations: Record<string, string> = {
-                    'Email not confirmed': 'E-posta adresiniz henüz doğrulanmadı. Lütfen e-postanızı kontrol edin.',
-                    'Invalid login credentials': 'Geçersiz e-posta veya şifre.',
-                    'User not found': 'Kullanıcı bulunamadı.',
-                    'Invalid email or password': 'Geçersiz e-posta veya şifre.',
-                    'Too many requests': 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.',
-                    'Email already registered': 'Bu e-posta adresi zaten kayıtlı.',
+            // Check if it's email not confirmed error
+            if (err.message === 'Email not confirmed') {
+                setIsEmailNotConfirmed(true);
+                setError('E-posta adresiniz henüz doğrulanmadı. Lütfen e-postanızı kontrol edin.');
+            } else {
+                // Translate Supabase error messages to Turkish
+                const translateError = (message: string): string => {
+                    const translations: Record<string, string> = {
+                        'Invalid login credentials': 'Geçersiz e-posta veya şifre.',
+                        'User not found': 'Kullanıcı bulunamadı.',
+                        'Invalid email or password': 'Geçersiz e-posta veya şifre.',
+                        'Too many requests': 'Çok fazla deneme yaptınız. Lütfen biraz bekleyin.',
+                        'Email already registered': 'Bu e-posta adresi zaten kayıtlı.',
+                    };
+                    return translations[message] || message || 'Giriş yapılırken bir hata oluştu.';
                 };
-                return translations[message] || message || 'Giriş yapılırken bir hata oluştu.';
-            };
-            setError(translateError(err.message));
+                setError(translateError(err.message));
+            }
         } finally {
             setLoading(false);
         }
@@ -73,9 +115,42 @@ export const LoginPage: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Error Alert */}
                         {error && (
-                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
-                                <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
-                                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+                                    <div className="flex-1">
+                                        <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+
+                                        {/* Resend Email Button - Only show if email not confirmed */}
+                                        {isEmailNotConfirmed && (
+                                            <div className="mt-3">
+                                                {resendSuccess ? (
+                                                    <div className="flex items-center gap-2 text-green-600 text-sm">
+                                                        <CheckCircle size={16} />
+                                                        <span>E-posta gönderildi! Lütfen gelen kutunuzu kontrol edin.</span>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleResendEmail}
+                                                        disabled={resendCooldown > 0 || resendLoading}
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {resendLoading ? (
+                                                            <RefreshCw size={14} className="animate-spin" />
+                                                        ) : (
+                                                            <Mail size={14} />
+                                                        )}
+                                                        {resendCooldown > 0
+                                                            ? `Tekrar gönder (${resendCooldown}s)`
+                                                            : 'Doğrulama Maili Tekrar Gönder'
+                                                        }
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         )}
 

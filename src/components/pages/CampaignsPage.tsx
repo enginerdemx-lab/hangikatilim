@@ -459,6 +459,5 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
             </div>
          </div>
       </div>
-    </div >
-  );
+   );
 };

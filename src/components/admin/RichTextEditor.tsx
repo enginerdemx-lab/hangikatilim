@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -13,7 +13,7 @@ import {
     Heading2, Heading3, List, ListOrdered, Quote,
     AlignLeft, AlignCenter, AlignRight, Link as LinkIcon,
     Image as ImageIcon, Undo, Redo, Palette, Highlighter,
-    Pilcrow
+    Pilcrow, Maximize2, Minimize2, Trash2
 } from 'lucide-react';
 import { mediaApi } from '../../services/api/media';
 
@@ -68,6 +68,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     placeholder = 'İçerik yazın...'
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [showImageSizeModal, setShowImageSizeModal] = useState(false);
+    const [imageWidth, setImageWidth] = useState('100');
 
     const editor = useEditor({
         extensions: [
@@ -85,7 +87,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             }),
             Image.configure({
                 inline: false,
-                allowBase64: false,
+                allowBase64: true,
+                HTMLAttributes: {
+                    class: 'resizable-image',
+                },
             }),
             Underline,
             TextAlign.configure({
@@ -187,6 +192,41 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const setHighlight = useCallback((color: string) => {
         if (!editor) return;
         editor.chain().focus().setHighlight({ color }).run();
+    }, [editor]);
+
+    // Image size functions
+    const resizeSelectedImage = useCallback((widthPercent: string) => {
+        if (!editor) return;
+
+        const { state } = editor;
+        const { selection } = state;
+        const node = state.doc.nodeAt(selection.from);
+
+        if (node?.type.name === 'image' && node.attrs.src) {
+            editor.chain().focus().setImage({
+                src: node.attrs.src,
+                alt: node.attrs.alt || '',
+                title: node.attrs.title || '',
+            }).run();
+
+            // Apply width via DOM manipulation after render
+            setTimeout(() => {
+                const images = document.querySelectorAll('.ProseMirror img');
+                images.forEach((img) => {
+                    if ((img as HTMLImageElement).src === node.attrs.src) {
+                        (img as HTMLImageElement).style.width = `${widthPercent}%`;
+                    }
+                });
+                onChange(editor.getHTML());
+            }, 50);
+        }
+        setShowImageSizeModal(false);
+    }, [editor, onChange]);
+
+    const deleteSelectedImage = useCallback(() => {
+        if (!editor) return;
+        editor.chain().focus().deleteSelection().run();
+        setShowImageSizeModal(false);
     }, [editor]);
 
     if (!editor) {
@@ -353,6 +393,56 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     }}
                 />
 
+                {/* Image Size Controls */}
+                {editor.isActive('image') && (
+                    <>
+                        <ToolbarDivider />
+                        <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded">
+                            <span className="text-xs text-blue-600 font-medium mr-1">Görsel:</span>
+                            <button
+                                type="button"
+                                onClick={() => resizeSelectedImage('25')}
+                                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                                title="25%"
+                            >
+                                25%
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => resizeSelectedImage('50')}
+                                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                                title="50%"
+                            >
+                                50%
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => resizeSelectedImage('75')}
+                                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                                title="75%"
+                            >
+                                75%
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => resizeSelectedImage('100')}
+                                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                                title="100%"
+                            >
+                                100%
+                            </button>
+                            <button
+                                type="button"
+                                onClick={deleteSelectedImage}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded ml-1"
+                                title="Görseli sil"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    </>
+                )}
+
                 <ToolbarDivider />
 
                 {/* Colors */}
@@ -425,6 +515,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     height: auto;
                     border-radius: 8px;
                     margin: 1em 0;
+                    cursor: pointer;
+                    transition: box-shadow 0.2s, outline 0.2s;
+                }
+                .ProseMirror img:hover {
+                    outline: 2px solid #3b82f6;
+                }
+                .ProseMirror img.ProseMirror-selectednode {
+                    outline: 3px solid #3b82f6;
+                    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.2);
                 }
                 .ProseMirror blockquote {
                     border-left: 4px solid #3b82f6;
@@ -439,3 +538,4 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 };
 
 export default RichTextEditor;
+

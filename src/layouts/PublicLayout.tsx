@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Linkedin, Mail, ChevronRight } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Linkedin, Mail, ChevronRight, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { PublicNavbar } from '../components/PublicNavbar';
 import { NewsTicker } from '../../components/NewsTicker';
 import { LegalModal, LegalType } from '../../components/LegalModal';
 import { siteSettingsApi } from '../services/api/siteSettings';
+import emailService from '../services/api/emailService';
 import type { SiteSettings } from '../types/database';
 
 export const PublicLayout: React.FC = () => {
@@ -13,6 +14,11 @@ export const PublicLayout: React.FC = () => {
     const [legalModalType, setLegalModalType] = useState<LegalType>('KVKK');
     const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
     const location = useLocation();
+
+    // Newsletter state
+    const [newsletterEmail, setNewsletterEmail] = useState('');
+    const [newsletterLoading, setNewsletterLoading] = useState(false);
+    const [newsletterResult, setNewsletterResult] = useState<{ success: boolean; message: string } | null>(null);
 
     useEffect(() => {
         // FORCE light mode on every page load
@@ -83,6 +89,28 @@ export const PublicLayout: React.FC = () => {
     const handleOpenLegal = (type: LegalType) => {
         setLegalModalType(type);
         setLegalModalOpen(true);
+    };
+
+    const handleNewsletterSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newsletterEmail.trim()) return;
+
+        setNewsletterLoading(true);
+        setNewsletterResult(null);
+
+        try {
+            const result = await emailService.subscribeNewsletter(newsletterEmail);
+            if (result.success) {
+                setNewsletterResult({ success: true, message: result.message || 'Başarıyla abone oldunuz!' });
+                setNewsletterEmail('');
+            } else {
+                setNewsletterResult({ success: false, message: result.error || 'Bir hata oluştu' });
+            }
+        } catch (error) {
+            setNewsletterResult({ success: false, message: 'Bir hata oluştu' });
+        } finally {
+            setNewsletterLoading(false);
+        }
     };
 
     // Helper function to render app store badge
@@ -273,6 +301,48 @@ export const PublicLayout: React.FC = () => {
                                     'App Gallery'
                                 )}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Newsletter Subscription Section */}
+                    <div className="bg-gray-800/50 rounded-xl p-6 mb-8">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="text-center md:text-left">
+                                <h3 className="text-lg font-bold text-white mb-1">📬 E-Bültenimize Abone Olun</h3>
+                                <p className="text-sm text-gray-400">Yeni kampanyalar ve fırsatlardan haberdar olun</p>
+                            </div>
+                            <form onSubmit={handleNewsletterSubmit} className="flex-1 max-w-md w-full">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="email"
+                                        value={newsletterEmail}
+                                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                                        placeholder="E-posta adresiniz"
+                                        required
+                                        className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={newsletterLoading}
+                                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        {newsletterLoading ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Send className="w-4 h-4" />
+                                                <span className="hidden sm:inline">Abone Ol</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                                {newsletterResult && (
+                                    <div className={`mt-3 flex items-center gap-2 text-sm ${newsletterResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                                        {newsletterResult.success && <CheckCircle className="w-4 h-4" />}
+                                        {newsletterResult.message}
+                                    </div>
+                                )}
+                            </form>
                         </div>
                     </div>
 

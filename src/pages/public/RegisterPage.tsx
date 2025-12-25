@@ -111,7 +111,7 @@ export const RegisterPage: React.FC = () => {
 
         setLoading(true);
         try {
-            await signup(email, password, fullName, gender);
+            await signup(email, password, fullName, gender, agreements);
             setSuccess(true);
         } catch (err: any) {
             setError(translateError(err.message));
