@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { homeContentApi } from '../../services/api/homeContent';
 import { ImageUpload } from '../../components/admin/ImageUpload';
+import { useToast } from '../../hooks/useToast';
+import { Search, Plus, ExternalLink, RefreshCw, ChevronDown, ChevronUp, Pencil, Trash2, HelpCircle, LayoutGrid, Building2, X, Check } from 'lucide-react';
 
 type TabType = 'faq' | 'info-cards' | 'logos';
 
@@ -26,32 +28,85 @@ interface CompanyLogo {
     order_index: number;
 }
 
+// Reusable Card Component
+const Card: React.FC<{ children: React.ReactNode; className?: string; title?: string }> = ({ children, className = '', title }) => (
+    <div className={`rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.005] ${className}`}>
+        {title && (
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h3>
+            </div>
+        )}
+        <div className="p-5">{children}</div>
+    </div>
+);
+
+// Input Field Component
+const InputField: React.FC<{
+    label?: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    rows?: number;
+}> = ({ label, value, onChange, placeholder, rows }) => (
+    <div>
+        {label && <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>}
+        {rows ? (
+            <textarea
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                rows={rows}
+                placeholder={placeholder}
+                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent resize-none"
+            />
+        ) : (
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
+            />
+        )}
+    </div>
+);
+
+// Toast Component
+const Toast: React.FC<{ message: string; type: 'success' | 'error'; onClose: () => void }> = ({ message, type, onClose }) => (
+    <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+        {type === 'success' ? <Check size={18} /> : <X size={18} />}
+        <span className="text-sm font-medium">{message}</span>
+        <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded p-1"><X size={14} /></button>
+    </div>
+);
+
 export const HomeContent: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('faq');
     const [faqs, setFaqs] = useState<FAQ[]>([]);
     const [infoCards, setInfoCards] = useState<InfoCard[]>([]);
     const [logos, setLogos] = useState<CompanyLogo[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Toast state
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Editing states
     const [editingFAQ, setEditingFAQ] = useState<FAQ | null>(null);
     const [editingCard, setEditingCard] = useState<InfoCard | null>(null);
     const [editingLogo, setEditingLogo] = useState<CompanyLogo | null>(null);
+    const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
+    const [addingNew, setAddingNew] = useState(false);
 
     // Form states
     const [faqForm, setFaqForm] = useState({ question: '', answer: '' });
     const [cardForm, setCardForm] = useState({ title: '', description: '', icon_name: '' });
     const [logoForm, setLogoForm] = useState({ company_name: '', logo_url: '' });
 
-    useEffect(() => {
-        loadData();
-    }, [activeTab]);
+    useEffect(() => { loadData(); }, [activeTab]);
 
     const loadData = async () => {
         setLoading(true);
-        setError('');
         try {
             if (activeTab === 'faq') {
                 const data = await homeContentApi.getFAQs();
@@ -64,55 +119,71 @@ export const HomeContent: React.FC = () => {
                 setLogos(data || []);
             }
         } catch (err: any) {
-            setError(err.message || 'Veri yüklenirken hata oluştu');
+            showToast(err.message || 'Veri yüklenirken hata oluştu', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const showSuccess = (msg: string) => {
-        setSuccess(msg);
-        setTimeout(() => setSuccess(''), 3000);
+    const showToast = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
     };
 
-    const showError = (msg: string) => {
-        setError(msg);
-        setTimeout(() => setError(''), 5000);
+    // Trigger site refresh
+    const handleViewLive = () => {
+        // Dispatch event to invalidate any client-side cache
+        window.dispatchEvent(new CustomEvent('homeContentUpdated'));
+        showToast('İçerik canlıya yansıtıldı', 'success');
+        // Open homepage in new tab
+        setTimeout(() => window.open('/', '_blank'), 500);
     };
+
+    // Filtered items based on search
+    const filteredFaqs = useMemo(() => {
+        if (!searchQuery.trim()) return faqs;
+        const q = searchQuery.toLowerCase();
+        return faqs.filter(f => f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q));
+    }, [faqs, searchQuery]);
+
+    const filteredCards = useMemo(() => {
+        if (!searchQuery.trim()) return infoCards;
+        const q = searchQuery.toLowerCase();
+        return infoCards.filter(c => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q));
+    }, [infoCards, searchQuery]);
+
+    const filteredLogos = useMemo(() => {
+        if (!searchQuery.trim()) return logos;
+        const q = searchQuery.toLowerCase();
+        return logos.filter(l => l.company_name.toLowerCase().includes(q));
+    }, [logos, searchQuery]);
 
     // FAQ CRUD
     const handleCreateFAQ = async () => {
         if (!faqForm.question || !faqForm.answer) {
-            showError('Soru ve cevap alanları zorunludur');
+            showToast('Soru ve cevap alanları zorunludur', 'error');
             return;
         }
         try {
-            await homeContentApi.createFAQ({
-                question: faqForm.question,
-                answer: faqForm.answer,
-                order_index: faqs.length
-            });
-            showSuccess('FAQ başarıyla eklendi');
+            await homeContentApi.createFAQ({ question: faqForm.question, answer: faqForm.answer, order_index: faqs.length });
+            showToast('FAQ eklendi', 'success');
             setFaqForm({ question: '', answer: '' });
+            setAddingNew(false);
             loadData();
         } catch (err: any) {
-            showError(err.message || 'FAQ eklenirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
     const handleUpdateFAQ = async () => {
         if (!editingFAQ) return;
         try {
-            await homeContentApi.updateFAQ(editingFAQ.id, {
-                question: editingFAQ.question,
-                answer: editingFAQ.answer,
-                order_index: editingFAQ.order_index
-            });
-            showSuccess('FAQ başarıyla güncellendi');
+            await homeContentApi.updateFAQ(editingFAQ.id, { question: editingFAQ.question, answer: editingFAQ.answer, order_index: editingFAQ.order_index });
+            showToast('FAQ güncellendi', 'success');
             setEditingFAQ(null);
             loadData();
         } catch (err: any) {
-            showError(err.message || 'FAQ güncellenirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
@@ -120,48 +191,39 @@ export const HomeContent: React.FC = () => {
         if (!confirm('Bu FAQ\'yi silmek istediğinizden emin misiniz?')) return;
         try {
             await homeContentApi.deleteFAQ(id);
-            showSuccess('FAQ başarıyla silindi');
+            showToast('FAQ silindi', 'success');
             loadData();
         } catch (err: any) {
-            showError(err.message || 'FAQ silinirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
     // Info Card CRUD
     const handleCreateCard = async () => {
         if (!cardForm.title || !cardForm.description) {
-            showError('Başlık ve açıklama alanları zorunludur');
+            showToast('Başlık ve açıklama zorunludur', 'error');
             return;
         }
         try {
-            await homeContentApi.createInfoCard({
-                title: cardForm.title,
-                description: cardForm.description,
-                icon_name: cardForm.icon_name,
-                order_index: infoCards.length
-            });
-            showSuccess('Bilgi kartı başarıyla eklendi');
+            await homeContentApi.createInfoCard({ title: cardForm.title, description: cardForm.description, icon_name: cardForm.icon_name, order_index: infoCards.length });
+            showToast('Bilgi kartı eklendi', 'success');
             setCardForm({ title: '', description: '', icon_name: '' });
+            setAddingNew(false);
             loadData();
         } catch (err: any) {
-            showError(err.message || 'Bilgi kartı eklenirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
     const handleUpdateCard = async () => {
         if (!editingCard) return;
         try {
-            await homeContentApi.updateInfoCard(editingCard.id, {
-                title: editingCard.title,
-                description: editingCard.description,
-                icon_name: editingCard.icon_name,
-                order_index: editingCard.order_index
-            });
-            showSuccess('Bilgi kartı başarıyla güncellendi');
+            await homeContentApi.updateInfoCard(editingCard.id, { title: editingCard.title, description: editingCard.description, icon_name: editingCard.icon_name, order_index: editingCard.order_index });
+            showToast('Bilgi kartı güncellendi', 'success');
             setEditingCard(null);
             loadData();
         } catch (err: any) {
-            showError(err.message || 'Bilgi kartı güncellenirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
@@ -169,46 +231,39 @@ export const HomeContent: React.FC = () => {
         if (!confirm('Bu bilgi kartını silmek istediğinizden emin misiniz?')) return;
         try {
             await homeContentApi.deleteInfoCard(id);
-            showSuccess('Bilgi kartı başarıyla silindi');
+            showToast('Bilgi kartı silindi', 'success');
             loadData();
         } catch (err: any) {
-            showError(err.message || 'Bilgi kartı silinirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
     // Company Logo CRUD
     const handleCreateLogo = async () => {
         if (!logoForm.company_name || !logoForm.logo_url) {
-            showError('Firma adı ve logo URL alanları zorunludur');
+            showToast('Firma adı ve logo URL zorunludur', 'error');
             return;
         }
         try {
-            await homeContentApi.createCompanyLogo({
-                company_name: logoForm.company_name,
-                logo_url: logoForm.logo_url,
-                order_index: logos.length
-            });
-            showSuccess('Logo başarıyla eklendi');
+            await homeContentApi.createCompanyLogo({ company_name: logoForm.company_name, logo_url: logoForm.logo_url, order_index: logos.length });
+            showToast('Logo eklendi', 'success');
             setLogoForm({ company_name: '', logo_url: '' });
+            setAddingNew(false);
             loadData();
         } catch (err: any) {
-            showError(err.message || 'Logo eklenirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
     const handleUpdateLogo = async () => {
         if (!editingLogo) return;
         try {
-            await homeContentApi.updateCompanyLogo(editingLogo.id, {
-                company_name: editingLogo.company_name,
-                logo_url: editingLogo.logo_url,
-                order_index: editingLogo.order_index
-            });
-            showSuccess('Logo başarıyla güncellendi');
+            await homeContentApi.updateCompanyLogo(editingLogo.id, { company_name: editingLogo.company_name, logo_url: editingLogo.logo_url, order_index: editingLogo.order_index });
+            showToast('Logo güncellendi', 'success');
             setEditingLogo(null);
             loadData();
         } catch (err: any) {
-            showError(err.message || 'Logo güncellenirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
@@ -216,283 +271,240 @@ export const HomeContent: React.FC = () => {
         if (!confirm('Bu logoyu silmek istediğinizden emin misiniz?')) return;
         try {
             await homeContentApi.deleteCompanyLogo(id);
-            showSuccess('Logo başarıyla silindi');
+            showToast('Logo silindi', 'success');
             loadData();
         } catch (err: any) {
-            showError(err.message || 'Logo silinirken hata oluştu');
+            showToast(err.message || 'Hata oluştu', 'error');
         }
     };
 
+    const tabs = [
+        { id: 'faq' as TabType, label: 'FAQ', icon: <HelpCircle size={16} />, count: faqs.length },
+        { id: 'info-cards' as TabType, label: 'Bilgi Kartları', icon: <LayoutGrid size={16} />, count: infoCards.length },
+        { id: 'logos' as TabType, label: 'Şirket Logoları', icon: <Building2 size={16} />, count: logos.length },
+    ];
+
+    if (loading && faqs.length === 0 && infoCards.length === 0 && logos.length === 0) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-300 border-t-slate-600"></div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Ana Sayfa İçerik Yönetimi</h1>
-                <p className="text-gray-600">FAQ, Bilgi Kartları ve Şirket Logolarını yönetin</p>
-            </div>
+        <>
+            <div className="max-w-5xl mx-auto space-y-6">
+                {/* Sticky Header */}
+                <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 pb-4 -mx-6 px-6 pt-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ana Sayfa İçerik Yönetimi</h1>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">FAQ, Bilgi Kartları ve Şirket Logolarını yönetin</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={loadData}
+                                disabled={loading}
+                                className="p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                                title="Yenile"
+                            >
+                                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                            </button>
+                            <button
+                                onClick={handleViewLive}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-medium transition-colors"
+                            >
+                                <ExternalLink size={16} />
+                                Siteyi Canlı Gör
+                            </button>
+                        </div>
+                    </div>
 
-            {/* Success/Error Messages */}
-            {success && (
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
-                    ✓ {success}
+                    {/* Search */}
+                    <div className="relative mt-4">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="İçerik ara (FAQ, başlık, açıklama...)"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
+                        />
+                    </div>
                 </div>
-            )}
-            {error && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
-                    ✗ {error}
-                </div>
-            )}
 
-            {/* Tabs */}
-            <div className="mb-6 border-b border-gray-200">
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => setActiveTab('faq')}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'faq'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        ❓ FAQ
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('info-cards')}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'info-cards'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        📋 Bilgi Kartları
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('logos')}
-                        className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'logos'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
-                    >
-                        🏢 Şirket Logoları
-                    </button>
+                {/* Pill Tabs */}
+                <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => { setActiveTab(tab.id); setSearchQuery(''); setAddingNew(false); }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id
+                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-600'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                            <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300">
+                                {tab.count}
+                            </span>
+                        </button>
+                    ))}
                 </div>
-            </div>
 
-            {loading ? (
-                <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <p className="mt-2 text-gray-600">Yükleniyor...</p>
-                </div>
-            ) : (
-                <>
+                {/* Tab Content */}
+                <div className="space-y-4">
                     {/* FAQ Tab */}
                     {activeTab === 'faq' && (
-                        <div className="space-y-6">
-                            {/* Add New FAQ Form */}
-                            <div className="bg-white p-6 rounded-lg border border-gray-200">
-                                <h2 className="text-lg font-bold mb-4">Yeni FAQ Ekle</h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Soru</label>
-                                        <input
-                                            type="text"
+                        <>
+                            {/* Add New FAQ Button/Form */}
+                            {!addingNew ? (
+                                <button
+                                    onClick={() => setAddingNew(true)}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                >
+                                    <Plus size={18} />
+                                    Yeni FAQ Ekle
+                                </button>
+                            ) : (
+                                <Card title="Yeni FAQ Ekle">
+                                    <div className="space-y-4">
+                                        <InputField
+                                            label="Soru"
                                             value={faqForm.question}
-                                            onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            onChange={(v) => setFaqForm({ ...faqForm, question: v })}
                                             placeholder="Soru giriniz..."
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Cevap</label>
-                                        <textarea
+                                        <InputField
+                                            label="Cevap"
                                             value={faqForm.answer}
-                                            onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            rows={4}
+                                            onChange={(v) => setFaqForm({ ...faqForm, answer: v })}
                                             placeholder="Cevap giriniz..."
+                                            rows={3}
                                         />
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => setAddingNew(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                                İptal
+                                            </button>
+                                            <button onClick={handleCreateFAQ} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors">
+                                                FAQ Ekle
+                                            </button>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={handleCreateFAQ}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                    >
-                                        FAQ Ekle
-                                    </button>
-                                </div>
-                            </div>
+                                </Card>
+                            )}
 
-                            {/* FAQ List */}
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-bold">Mevcut FAQ'ler ({faqs.length})</h2>
-                                {faqs.map((faq) => (
-                                    <div key={faq.id} className="bg-white p-4 rounded-lg border border-gray-200">
-                                        {editingFAQ?.id === faq.id ? (
-                                            <div className="space-y-3">
-                                                <input
-                                                    type="text"
-                                                    value={editingFAQ.question}
-                                                    onChange={(e) => setEditingFAQ({ ...editingFAQ, question: e.target.value })}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                />
-                                                <textarea
-                                                    value={editingFAQ.answer}
-                                                    onChange={(e) => setEditingFAQ({ ...editingFAQ, answer: e.target.value })}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                    rows={3}
-                                                />
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={handleUpdateFAQ}
-                                                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                                    >
-                                                        Kaydet
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setEditingFAQ(null)}
-                                                        className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                                                    >
-                                                        İptal
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <h3 className="font-bold text-gray-900 mb-2">{faq.question}</h3>
-                                                        <p className="text-gray-600">{faq.answer}</p>
-                                                    </div>
-                                                    <div className="flex gap-2 ml-4">
-                                                        <button
-                                                            onClick={() => setEditingFAQ(faq)}
-                                                            className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                        >
-                                                            Düzenle
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteFAQ(faq.id)}
-                                                            className="px-3 py-1 text-red-600 hover:bg-red-50 rounded"
-                                                        >
-                                                            Sil
-                                                        </button>
+                            {/* FAQ List - Accordion Style */}
+                            {filteredFaqs.length === 0 ? (
+                                <div className="text-center py-12 text-slate-500">
+                                    <HelpCircle size={40} className="mx-auto mb-3 text-slate-300" />
+                                    <p>{searchQuery ? 'Arama sonucu bulunamadı' : 'Henüz FAQ eklenmemiş'}</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {filteredFaqs.map((faq) => (
+                                        <div key={faq.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all duration-200 hover:shadow-md">
+                                            {editingFAQ?.id === faq.id ? (
+                                                <div className="p-4 space-y-3">
+                                                    <InputField value={editingFAQ.question} onChange={(v) => setEditingFAQ({ ...editingFAQ, question: v })} placeholder="Soru" />
+                                                    <InputField value={editingFAQ.answer} onChange={(v) => setEditingFAQ({ ...editingFAQ, answer: v })} placeholder="Cevap" rows={3} />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button onClick={() => setEditingFAQ(null)} className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">İptal</button>
+                                                        <button onClick={handleUpdateFAQ} className="px-3 py-1.5 text-sm bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg">Kaydet</button>
                                                     </div>
                                                 </div>
-                                            </>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
+                                                        className="w-full flex items-center justify-between p-4 text-left"
+                                                    >
+                                                        <span className="font-medium text-slate-900 dark:text-white">{faq.question}</span>
+                                                        {expandedFAQ === faq.id ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                                                    </button>
+                                                    {expandedFAQ === faq.id && (
+                                                        <div className="px-4 pb-4 pt-0">
+                                                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{faq.answer}</p>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => setEditingFAQ(faq)} className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                                                                    <Pencil size={12} /> Düzenle
+                                                                </button>
+                                                                <button onClick={() => handleDeleteFAQ(faq.id)} className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                                                                    <Trash2 size={12} /> Sil
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
 
                     {/* Info Cards Tab */}
                     {activeTab === 'info-cards' && (
-                        <div className="space-y-6">
-                            {/* Add New Card Form */}
-                            <div className="bg-white p-6 rounded-lg border border-gray-200">
-                                <h2 className="text-lg font-bold mb-4">Yeni Bilgi Kartı Ekle</h2>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Başlık</label>
-                                        <input
-                                            type="text"
-                                            value={cardForm.title}
-                                            onChange={(e) => setCardForm({ ...cardForm, title: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder="Başlık giriniz..."
-                                        />
+                        <>
+                            {!addingNew ? (
+                                <button
+                                    onClick={() => setAddingNew(true)}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                >
+                                    <Plus size={18} />
+                                    Yeni Bilgi Kartı Ekle
+                                </button>
+                            ) : (
+                                <Card title="Yeni Bilgi Kartı Ekle">
+                                    <div className="space-y-4">
+                                        <InputField label="Başlık" value={cardForm.title} onChange={(v) => setCardForm({ ...cardForm, title: v })} placeholder="Başlık giriniz..." />
+                                        <InputField label="Açıklama" value={cardForm.description} onChange={(v) => setCardForm({ ...cardForm, description: v })} placeholder="Açıklama giriniz..." rows={3} />
+                                        <InputField label="İkon Adı (opsiyonel)" value={cardForm.icon_name} onChange={(v) => setCardForm({ ...cardForm, icon_name: v })} placeholder="Örn: home, car, building" />
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => setAddingNew(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">İptal</button>
+                                            <button onClick={handleCreateCard} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors">Kart Ekle</button>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Açıklama</label>
-                                        <textarea
-                                            value={cardForm.description}
-                                            onChange={(e) => setCardForm({ ...cardForm, description: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            rows={3}
-                                            placeholder="Açıklama giriniz..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">İkon Adı (opsiyonel)</label>
-                                        <input
-                                            type="text"
-                                            value={cardForm.icon_name}
-                                            onChange={(e) => setCardForm({ ...cardForm, icon_name: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder="Örn: home, car, building"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={handleCreateCard}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                    >
-                                        Kart Ekle
-                                    </button>
-                                </div>
-                            </div>
+                                </Card>
+                            )}
 
-                            {/* Cards List */}
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-bold">Mevcut Bilgi Kartları ({infoCards.length})</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {infoCards.map((card) => (
-                                        <div key={card.id} className="bg-white p-4 rounded-lg border border-gray-200">
+                            {filteredCards.length === 0 ? (
+                                <div className="text-center py-12 text-slate-500">
+                                    <LayoutGrid size={40} className="mx-auto mb-3 text-slate-300" />
+                                    <p>{searchQuery ? 'Arama sonucu bulunamadı' : 'Henüz bilgi kartı eklenmemiş'}</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {filteredCards.map((card) => (
+                                        <div key={card.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all duration-200 hover:shadow-md hover:scale-[1.01]">
                                             {editingCard?.id === card.id ? (
                                                 <div className="space-y-3">
-                                                    <input
-                                                        type="text"
-                                                        value={editingCard.title}
-                                                        onChange={(e) => setEditingCard({ ...editingCard, title: e.target.value })}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                    />
-                                                    <textarea
-                                                        value={editingCard.description}
-                                                        onChange={(e) => setEditingCard({ ...editingCard, description: e.target.value })}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                        rows={3}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={editingCard.icon_name || ''}
-                                                        onChange={(e) => setEditingCard({ ...editingCard, icon_name: e.target.value })}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                        placeholder="İkon adı"
-                                                    />
+                                                    <InputField value={editingCard.title} onChange={(v) => setEditingCard({ ...editingCard, title: v })} placeholder="Başlık" />
+                                                    <InputField value={editingCard.description} onChange={(v) => setEditingCard({ ...editingCard, description: v })} placeholder="Açıklama" rows={2} />
+                                                    <InputField value={editingCard.icon_name || ''} onChange={(v) => setEditingCard({ ...editingCard, icon_name: v })} placeholder="İkon adı" />
                                                     <div className="flex gap-2">
-                                                        <button
-                                                            onClick={handleUpdateCard}
-                                                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                                                        >
-                                                            Kaydet
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setEditingCard(null)}
-                                                            className="px-3 py-1 bg-gray-300 text-gray-700 text-sm rounded hover:bg-gray-400"
-                                                        >
-                                                            İptal
-                                                        </button>
+                                                        <button onClick={() => setEditingCard(null)} className="flex-1 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">İptal</button>
+                                                        <button onClick={handleUpdateCard} className="flex-1 px-3 py-1.5 text-xs bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg">Kaydet</button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="mb-3">
-                                                        {card.icon_name && (
-                                                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
-                                                                <span className="text-2xl">{card.icon_name}</span>
-                                                            </div>
-                                                        )}
-                                                        <h3 className="font-bold text-gray-900 mb-1">{card.title}</h3>
-                                                        <p className="text-sm text-gray-600">{card.description}</p>
-                                                    </div>
+                                                    {card.icon_name && (
+                                                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center mb-3 text-slate-500">
+                                                            <span className="text-lg">{card.icon_name}</span>
+                                                        </div>
+                                                    )}
+                                                    <h4 className="font-semibold text-slate-900 dark:text-white mb-1">{card.title}</h4>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">{card.description}</p>
                                                     <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => setEditingCard(card)}
-                                                            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded"
-                                                        >
-                                                            Düzenle
+                                                        <button onClick={() => setEditingCard(card)} className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                                                            <Pencil size={12} /> Düzenle
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleDeleteCard(card.id)}
-                                                            className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
-                                                        >
-                                                            Sil
+                                                        <button onClick={() => handleDeleteCard(card.id)} className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                                                            <Trash2 size={12} /> Sil
                                                         </button>
                                                     </div>
                                                 </>
@@ -500,166 +512,86 @@ export const HomeContent: React.FC = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        </div>
+                            )}
+                        </>
                     )}
 
-                    {/* Company Logos Tab */}
+                    {/* Logos Tab */}
                     {activeTab === 'logos' && (
-                        <div className="space-y-6">
-                            {/* Add New Logo Form */}
-                            <div className="bg-white p-6 rounded-lg border border-gray-200">
-                                <h2 className="text-lg font-bold mb-4">Yeni Şirket Logosu Ekle</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Left column - Form inputs */}
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Şirket Adı</label>
-                                            <input
-                                                type="text"
-                                                value={logoForm.company_name}
-                                                onChange={(e) => setLogoForm({ ...logoForm, company_name: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                placeholder="Şirket adı giriniz..."
-                                            />
-                                        </div>
-
-                                        {/* File Upload Option */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Logo Yükle (Dosya)</label>
-                                            <ImageUpload
-                                                folder="logos"
-                                                currentImageUrl={logoForm.logo_url}
-                                                onUploadComplete={(url) => setLogoForm({ ...logoForm, logo_url: url })}
-                                                label=""
-                                                accept="image/*"
-                                            />
-                                        </div>
-
-                                        {/* OR divider */}
-                                        <div className="relative">
-                                            <div className="absolute inset-0 flex items-center">
-                                                <div className="w-full border-t border-gray-200"></div>
+                        <>
+                            {!addingNew ? (
+                                <button
+                                    onClick={() => setAddingNew(true)}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                >
+                                    <Plus size={18} />
+                                    Yeni Şirket Logosu Ekle
+                                </button>
+                            ) : (
+                                <Card title="Yeni Şirket Logosu Ekle">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-4">
+                                            <InputField label="Şirket Adı" value={logoForm.company_name} onChange={(v) => setLogoForm({ ...logoForm, company_name: v })} placeholder="Şirket adı giriniz..." />
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Logo Yükle</label>
+                                                <ImageUpload
+                                                    folder="logos"
+                                                    currentImageUrl={logoForm.logo_url}
+                                                    onUploadComplete={(url) => setLogoForm({ ...logoForm, logo_url: url })}
+                                                    label=""
+                                                    accept="image/*"
+                                                    compact
+                                                />
                                             </div>
-                                            <div className="relative flex justify-center text-sm">
-                                                <span className="px-2 bg-white text-gray-500">veya</span>
+                                            <InputField label="veya Logo URL" value={logoForm.logo_url} onChange={(v) => setLogoForm({ ...logoForm, logo_url: v })} placeholder="https://example.com/logo.png" />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setAddingNew(false)} className="flex-1 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">İptal</button>
+                                                <button onClick={handleCreateLogo} disabled={!logoForm.company_name || !logoForm.logo_url} className="flex-1 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">Logo Ekle</button>
                                             </div>
                                         </div>
-
-                                        {/* URL Input Option */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Logo URL (Harici Link)</label>
-                                            <input
-                                                type="text"
-                                                value={logoForm.logo_url}
-                                                onChange={(e) => setLogoForm({ ...logoForm, logo_url: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                placeholder="https://example.com/logo.png"
-                                            />
+                                        <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl p-6">
+                                            <p className="text-xs text-slate-500 mb-3">Önizleme</p>
+                                            {logoForm.logo_url ? (
+                                                <img src={logoForm.logo_url} alt="Önizleme" className="max-w-[120px] max-h-[80px] object-contain" onError={(e) => { e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60"><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Görsel Yok</text></svg>'; }} />
+                                            ) : (
+                                                <div className="w-[120px] h-[80px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-400 text-xs">Logo yükleyin</div>
+                                            )}
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 mt-2">{logoForm.company_name || 'Şirket Adı'}</p>
                                         </div>
-
-                                        <button
-                                            onClick={handleCreateLogo}
-                                            disabled={!logoForm.company_name || !logoForm.logo_url}
-                                            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                        >
-                                            Logo Ekle
-                                        </button>
                                     </div>
+                                </Card>
+                            )}
 
-                                    {/* Right column - Live Preview */}
-                                    <div className="flex flex-col items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 p-6">
-                                        <p className="text-sm font-medium text-gray-500 mb-4">Canlı Önizleme</p>
-                                        {logoForm.logo_url ? (
-                                            <div className="text-center">
-                                                <div className="w-40 h-40 bg-white rounded-lg shadow-sm flex items-center justify-center p-4 mb-3">
-                                                    <img
-                                                        src={logoForm.logo_url}
-                                                        alt="Logo önizleme"
-                                                        className="max-w-full max-h-full object-contain"
-                                                        onError={(e) => {
-                                                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="12">Görsel Yok</text></svg>';
-                                                        }}
-                                                    />
-                                                </div>
-                                                <p className="text-sm font-medium text-gray-700">{logoForm.company_name || 'Şirket Adı'}</p>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center text-gray-400">
-                                                <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <p className="text-sm">Logo yükleyin veya URL girin</p>
-                                            </div>
-                                        )}
-                                    </div>
+                            {filteredLogos.length === 0 ? (
+                                <div className="text-center py-12 text-slate-500">
+                                    <Building2 size={40} className="mx-auto mb-3 text-slate-300" />
+                                    <p>{searchQuery ? 'Arama sonucu bulunamadı' : 'Henüz logo eklenmemiş'}</p>
                                 </div>
-                            </div>
-
-                            {/* Logos List */}
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-bold">Mevcut Şirket Logoları ({logos.length})</h2>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {logos.map((logo) => (
-                                        <div key={logo.id} className="bg-white p-4 rounded-lg border border-gray-200">
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {filteredLogos.map((logo) => (
+                                        <div key={logo.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all duration-200 hover:shadow-md hover:scale-[1.01]">
                                             {editingLogo?.id === logo.id ? (
                                                 <div className="space-y-3">
-                                                    <input
-                                                        type="text"
-                                                        value={editingLogo.company_name}
-                                                        onChange={(e) => setEditingLogo({ ...editingLogo, company_name: e.target.value })}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                        placeholder="Şirket adı"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={editingLogo.logo_url}
-                                                        onChange={(e) => setEditingLogo({ ...editingLogo, logo_url: e.target.value })}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                        placeholder="Logo URL"
-                                                    />
+                                                    <InputField value={editingLogo.company_name} onChange={(v) => setEditingLogo({ ...editingLogo, company_name: v })} placeholder="Şirket adı" />
+                                                    <InputField value={editingLogo.logo_url} onChange={(v) => setEditingLogo({ ...editingLogo, logo_url: v })} placeholder="Logo URL" />
                                                     <div className="flex gap-2">
-                                                        <button
-                                                            onClick={handleUpdateLogo}
-                                                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                                                        >
-                                                            Kaydet
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setEditingLogo(null)}
-                                                            className="px-3 py-1 bg-gray-300 text-gray-700 text-sm rounded hover:bg-gray-400"
-                                                        >
-                                                            İptal
-                                                        </button>
+                                                        <button onClick={() => setEditingLogo(null)} className="flex-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">İptal</button>
+                                                        <button onClick={handleUpdateLogo} className="flex-1 px-2 py-1 text-xs bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded">Kaydet</button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="mb-3">
-                                                        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center mb-2 overflow-hidden">
-                                                            <img
-                                                                src={logo.logo_url}
-                                                                alt={logo.company_name}
-                                                                className="max-w-full max-h-full object-contain p-2"
-                                                                onError={(e) => {
-                                                                    e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Logo</text></svg>';
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <p className="text-sm font-medium text-center text-gray-900">{logo.company_name}</p>
+                                                    <div className="aspect-[3/2] bg-slate-50 dark:bg-slate-900 rounded-lg flex items-center justify-center mb-2 overflow-hidden">
+                                                        <img src={logo.logo_url} alt={logo.company_name} className="max-w-full max-h-full object-contain p-2" onError={(e) => { e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60"><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="10">Logo</text></svg>'; }} />
                                                     </div>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => setEditingLogo(logo)}
-                                                            className="flex-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
-                                                        >
-                                                            Düzenle
+                                                    <p className="text-sm font-medium text-center text-slate-900 dark:text-white truncate mb-2">{logo.company_name}</p>
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => setEditingLogo(logo)} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                                                            <Pencil size={10} />
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleDeleteLogo(logo.id)}
-                                                            className="flex-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
-                                                        >
-                                                            Sil
+                                                        <button onClick={() => handleDeleteLogo(logo.id)} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                                                            <Trash2 size={10} />
                                                         </button>
                                                     </div>
                                                 </>
@@ -667,11 +599,14 @@ export const HomeContent: React.FC = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        </div>
+                            )}
+                        </>
                     )}
-                </>
-            )}
-        </div>
+                </div>
+            </div>
+
+            {/* Toast */}
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        </>
     );
 };

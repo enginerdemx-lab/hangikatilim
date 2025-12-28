@@ -6,6 +6,7 @@ import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, Syste
 import { generatePDF, generatePDFBlob } from '../services/pdfService';
 import { calculationService } from '../services/api/calculationService';
 import { feedbackService } from '../services/api/feedbackService';
+import { calculatorApi } from '../services/api/calculator';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginModal } from './auth/LoginModal';
 import { RegisterModal } from './auth/RegisterModal';
@@ -14,8 +15,9 @@ import { SponsorArea, SponsorTrigger } from './SponsorArea';
 import { parseQueryToState, buildShareableUrl, debounce, updateUrlWithParams } from '../utils/calculatorUrlParams';
 
 
-const MIN_TARGET = 50000;
-const MAX_TARGET = 5000000;
+// Default fallback values (used if Supabase settings not loaded)
+const DEFAULT_MIN_TARGET = 50000;
+const DEFAULT_MAX_TARGET = 5000000;
 const MAX_MONTHS = 360;
 const LEGAL_DELIVERY_MIN_MONTH = 5;
 const DELIVERY_THRESHOLD_RATE = 0.40; // %40
@@ -35,6 +37,14 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // Auth & Navigation
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Dynamic Calculator Settings from Supabase
+  const [calculatorSettings, setCalculatorSettings] = useState({
+    minTarget: DEFAULT_MIN_TARGET,
+    maxTarget: DEFAULT_MAX_TARGET,
+    defaultAmount: 600000,
+    settingsLoaded: false,
+  });
 
   // State
   const [params, setParams] = useState<CalculationParams>({
@@ -85,6 +95,37 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
   // Schedule Accordion State - Default CLOSED
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+
+  // Load Calculator Settings from Supabase
+  useEffect(() => {
+    const loadCalculatorSettings = async () => {
+      try {
+        const settings = await calculatorApi.getSettings();
+        if (settings) {
+          setCalculatorSettings({
+            minTarget: settings.min_amount,
+            maxTarget: settings.max_amount,
+            defaultAmount: settings.default_amount,
+            settingsLoaded: true,
+          });
+          // Update params with default amount if not already set from URL
+          if (!window.location.search.includes('targetAmount')) {
+            setParams(prev => ({
+              ...prev,
+              targetAmount: settings.default_amount,
+              downPayment: Math.round(settings.default_amount * 0.1),
+            }));
+          }
+        } else {
+          setCalculatorSettings(prev => ({ ...prev, settingsLoaded: true }));
+        }
+      } catch (error) {
+        console.error('Failed to load calculator settings:', error);
+        setCalculatorSettings(prev => ({ ...prev, settingsLoaded: true }));
+      }
+    };
+    loadCalculatorSettings();
+  }, []);
 
   // Cooldown Timer Effect
   useEffect(() => {
@@ -775,8 +816,8 @@ ${url}`;
               <div className="flex gap-4 items-center">
                 <input
                   type="range"
-                  min={MIN_TARGET}
-                  max={MAX_TARGET}
+                  min={calculatorSettings.minTarget}
+                  max={calculatorSettings.maxTarget}
                   step={10000}
                   value={params.targetAmount}
                   onChange={(e) => handleTargetAmountChange(Number(e.target.value))}

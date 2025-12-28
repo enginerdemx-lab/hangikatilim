@@ -252,7 +252,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose })
             {/* Header */}
             <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                 {!isCollapsed && (
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex flex-col items-start min-w-0">
                         {(isDarkMode ? darkLogo : logo) ? (
                             <img src={isDarkMode ? darkLogo : logo} alt="Logo" className="h-8 w-auto object-contain" />
                         ) : (
@@ -260,10 +260,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose })
                                 <span className="text-white font-bold text-sm">K</span>
                             </div>
                         )}
-                        <div className="min-w-0">
-                            <h1 className="text-sm font-bold text-gray-800 dark:text-white truncate">Admin Panel</h1>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{siteName}</p>
-                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Admin Panel</p>
                     </div>
                 )}
                 <div className="flex items-center gap-1">

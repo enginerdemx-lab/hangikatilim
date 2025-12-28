@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Mail, Send, Users, FileText, Clock, CheckCircle, XCircle,
-    RefreshCw, Edit2, Save, X, AlertCircle, Zap, AlertTriangle, Trash2
+    RefreshCw, Edit2, Save, X, AlertCircle, Trash2, Search, Eye
 } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import emailService, { EmailTemplate, EmailLog, NotificationSubscriber } from '../../services/api/emailService';
@@ -9,71 +9,73 @@ import RichTextEditor from '../../components/admin/RichTextEditor';
 
 type Tab = 'send' | 'templates' | 'logs' | 'subscribers';
 
-// Styled Toast Component
+// Reusable Card Component
+const Card: React.FC<{ children: React.ReactNode; className?: string; hover?: boolean }> = ({
+    children, className = '', hover = false
+}) => (
+    <div className={`
+        rounded-2xl border border-slate-200 dark:border-slate-700 
+        bg-white dark:bg-slate-800 p-5 shadow-sm 
+        ${hover ? 'transition-all duration-200 hover:shadow-md hover:scale-[1.01]' : ''}
+        ${className}
+    `}>
+        {children}
+    </div>
+);
+
+// Toast Component (bottom-right)
 const Toast: React.FC<{ message: string; type: 'success' | 'error' | 'warning'; onClose: () => void }> = ({ message, type, onClose }) => {
     useEffect(() => {
         const timer = setTimeout(onClose, 4000);
         return () => clearTimeout(timer);
     }, [onClose]);
 
-    const bgColor = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-amber-500';
-    const Icon = type === 'success' ? CheckCircle : type === 'error' ? XCircle : AlertTriangle;
+    const styles = {
+        success: 'bg-green-50 border-green-200 text-green-800',
+        error: 'bg-red-50 border-red-200 text-red-800',
+        warning: 'bg-amber-50 border-amber-200 text-amber-800',
+    };
+    const Icon = type === 'success' ? CheckCircle : type === 'error' ? XCircle : AlertCircle;
 
     return (
-        <div className={`fixed top-4 right-4 z-[9999] ${bgColor} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-in`}>
-            <Icon size={22} />
-            <span className="font-medium text-sm">{message}</span>
-            <button onClick={onClose} className="ml-2 hover:opacity-70 transition-opacity"><X size={18} /></button>
+        <div className={`fixed bottom-4 right-4 z-[9999] ${styles[type]} border px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-in`}>
+            <Icon size={18} />
+            <span className="text-sm font-medium">{message}</span>
+            <button onClick={onClose} className="ml-2 hover:opacity-70 transition-opacity"><X size={16} /></button>
         </div>
     );
 };
 
-// Styled Confirm Dialog Component
+// Confirm Dialog Component
 const ConfirmDialog: React.FC<{
     isOpen: boolean;
     title: string;
     message: string;
     confirmText?: string;
-    cancelText?: string;
     type?: 'info' | 'warning' | 'danger';
     onConfirm: () => void;
     onCancel: () => void;
-}> = ({ isOpen, title, message, confirmText = 'Tamam', cancelText = 'İptal', type = 'info', onConfirm, onCancel }) => {
+}> = ({ isOpen, title, message, confirmText = 'Tamam', type = 'info', onConfirm, onCancel }) => {
     if (!isOpen) return null;
 
-    const buttonColor = type === 'danger' ? 'bg-red-500 hover:bg-red-600' :
-        type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' :
-            'bg-blue-500 hover:bg-blue-600';
-    const iconColor = type === 'danger' ? 'text-red-500' :
-        type === 'warning' ? 'text-amber-500' :
-            'text-blue-500';
-    const Icon = type === 'danger' ? XCircle : type === 'warning' ? AlertTriangle : AlertCircle;
+    const buttonStyles = {
+        info: 'bg-slate-900 hover:bg-slate-800',
+        warning: 'bg-amber-500 hover:bg-amber-600',
+        danger: 'bg-red-500 hover:bg-red-600',
+    };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 max-w-md w-full mx-4 overflow-hidden">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-md w-full mx-4 overflow-hidden">
                 <div className="p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-slate-700/50 ${iconColor}`}>
-                            <Icon size={24} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-white">{title}</h3>
-                        </div>
-                    </div>
-                    <p className="text-slate-300 text-sm leading-relaxed">{message}</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{title}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{message}</p>
                 </div>
-                <div className="flex gap-3 p-4 bg-slate-900/50 border-t border-slate-700">
-                    <button
-                        onClick={onCancel}
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
-                    >
-                        {cancelText}
+                <div className="flex gap-3 p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+                    <button onClick={onCancel} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors">
+                        İptal
                     </button>
-                    <button
-                        onClick={onConfirm}
-                        className={`flex-1 px-4 py-2.5 rounded-xl ${buttonColor} text-white font-medium transition-colors`}
-                    >
+                    <button onClick={onConfirm} className={`flex-1 px-4 py-2.5 rounded-xl ${buttonStyles[type]} text-white font-medium transition-colors`}>
                         {confirmText}
                     </button>
                 </div>
@@ -81,6 +83,47 @@ const ConfirmDialog: React.FC<{
         </div>
     );
 };
+
+// Status Badge Component
+const StatusBadge: React.FC<{ status: 'sent' | 'failed' | 'pending' }> = ({ status }) => {
+    const styles = {
+        sent: 'bg-green-50 text-green-700 border-green-200',
+        failed: 'bg-red-50 text-red-700 border-red-200',
+        pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    };
+    const labels = { sent: 'Gönderildi', failed: 'Başarısız', pending: 'Bekliyor' };
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${styles[status]}`}>
+            {status === 'failed' && <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>}
+            {labels[status]}
+        </span>
+    );
+};
+
+// Preview Modal Component
+const PreviewModal: React.FC<{ content: string; subject: string; onClose: () => void }> = ({ content, subject, onClose }) => (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                    <Eye size={18} className="text-slate-500" />
+                    <h3 className="font-semibold text-slate-900 dark:text-white">E-posta Önizleme</h3>
+                </div>
+                <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                    <X size={18} className="text-slate-500" />
+                </button>
+            </div>
+            <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Konu:</p>
+                <p className="font-medium text-slate-900 dark:text-white">{subject || '(Konu belirtilmedi)'}</p>
+            </div>
+            <div className="p-4 max-h-96 overflow-y-auto">
+                <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: content || '<p class="text-slate-400">İçerik boş</p>' }} />
+            </div>
+        </div>
+    </div>
+);
 
 export const EmailNotifications: React.FC = () => {
     const [activeTab, setActiveTab] = useState<Tab>('send');
@@ -90,17 +133,9 @@ export const EmailNotifications: React.FC = () => {
     const [subscribers, setSubscribers] = useState<NotificationSubscriber[]>([]);
     const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
 
-    // Toast state
+    // Toast & Dialog state
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
-
-    // Confirm dialog state
-    const [confirmDialog, setConfirmDialog] = useState<{
-        isOpen: boolean;
-        title: string;
-        message: string;
-        type: 'info' | 'warning' | 'danger';
-        onConfirm: () => void;
-    } | null>(null);
+    const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; type: 'info' | 'warning' | 'danger'; onConfirm: () => void } | null>(null);
 
     // Send form state
     const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -109,19 +144,16 @@ export const EmailNotifications: React.FC = () => {
     const [sendResult, setSendResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
     const [sending, setSending] = useState(false);
     const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
-    const [showRecipientSelector, setShowRecipientSelector] = useState(false);
+    const [recipientSearch, setRecipientSearch] = useState('');
+    const [showPreview, setShowPreview] = useState(false);
 
-    const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-        setToast({ message, type });
-    };
-
+    const showToast = (message: string, type: 'success' | 'error' | 'warning') => setToast({ message, type });
     const showConfirm = (title: string, message: string, type: 'info' | 'warning' | 'danger', onConfirm: () => void) => {
         setConfirmDialog({ isOpen: true, title, message, type, onConfirm });
     };
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useEffect(() => { loadData(); }, []);
+    useEffect(() => { setSelectedRecipients(new Set(subscribers.map(s => s.id))); }, [subscribers]);
 
     const loadData = async () => {
         setLoading(true);
@@ -141,86 +173,61 @@ export const EmailNotifications: React.FC = () => {
         }
     };
 
-    // Initialize selected recipients when subscribers load
-    useEffect(() => {
-        setSelectedRecipients(new Set(subscribers.map(s => s.id)));
-    }, [subscribers]);
-
     const toggleRecipient = (id: string) => {
         setSelectedRecipients(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
+            newSet.has(id) ? newSet.delete(id) : newSet.add(id);
             return newSet;
         });
     };
 
-    const selectAllRecipients = () => {
-        setSelectedRecipients(new Set(subscribers.map(s => s.id)));
-    };
-
-    const deselectAllRecipients = () => {
-        setSelectedRecipients(new Set());
-    };
+    const filteredSubscribers = subscribers.filter(s =>
+        s.email.toLowerCase().includes(recipientSearch.toLowerCase()) ||
+        (s.full_name || '').toLowerCase().includes(recipientSearch.toLowerCase())
+    );
 
     const handleSendBulk = async () => {
-        if (!selectedTemplate && !customContent) {
-            showToast('Lütfen bir şablon seçin veya özel içerik girin', 'warning');
+        if (!customContent) {
+            showToast('Lütfen e-posta içeriği girin', 'warning');
             return;
         }
-
         const recipientsToSend = subscribers.filter(s => selectedRecipients.has(s.id));
-
         if (recipientsToSend.length === 0) {
             showToast('Lütfen en az bir alıcı seçin', 'warning');
             return;
         }
 
-        showConfirm(
-            'E-posta Gönderimi',
-            `${recipientsToSend.length} kişiye e-posta gönderilecek. Devam etmek istiyor musunuz?`,
-            'info',
-            async () => {
-                setConfirmDialog(null);
-                setSending(true);
-                setSendResult(null);
+        showConfirm('E-posta Gönderimi', `${recipientsToSend.length} kişiye e-posta gönderilecek.`, 'info', async () => {
+            setConfirmDialog(null);
+            setSending(true);
+            setSendResult(null);
 
-                try {
-                    let result = { total: 0, sent: 0, failed: 0 };
-                    for (const subscriber of recipientsToSend) {
-                        const sendResult = await emailService.sendEmail(
-                            subscriber.email,
-                            customSubject || 'Katılım Uzmanı Bildirimi',
-                            customContent
-                        );
-                        result.total++;
-                        if (sendResult.success) result.sent++;
-                        else result.failed++;
-                    }
-                    setSendResult(result);
-                    await loadData();
-                    if (result.sent > 0) {
-                        showToast(`${result.sent} e-posta başarıyla gönderildi!`, 'success');
-                    }
-                    if (result.failed > 0) {
-                        showToast(`${result.failed} e-posta gönderilemedi`, 'error');
-                    }
-                } catch (error) {
-                    console.error('Send failed:', error);
-                    showToast('Gönderim sırasında hata oluştu', 'error');
-                } finally {
-                    setSending(false);
+            try {
+                let result = { total: 0, sent: 0, failed: 0 };
+                for (const subscriber of recipientsToSend) {
+                    const sendResult = await emailService.sendEmail(
+                        subscriber.email,
+                        customSubject || 'Katılım Uzmanı Bildirimi',
+                        customContent
+                    );
+                    result.total++;
+                    sendResult.success ? result.sent++ : result.failed++;
                 }
+                setSendResult(result);
+                await loadData();
+                if (result.sent > 0) showToast(`${result.sent} e-posta gönderildi!`, 'success');
+                if (result.failed > 0) showToast(`${result.failed} e-posta başarısız`, 'error');
+            } catch (error) {
+                console.error('Send failed:', error);
+                showToast('Gönderim hatası', 'error');
+            } finally {
+                setSending(false);
             }
-        );
+        });
     };
 
     const handleUpdateTemplate = async () => {
         if (!editingTemplate) return;
-
         try {
             await emailService.updateTemplate(editingTemplate.id, {
                 subject: editingTemplate.subject,
@@ -229,9 +236,9 @@ export const EmailNotifications: React.FC = () => {
             });
             setEditingTemplate(null);
             await loadData();
+            showToast('Şablon güncellendi', 'success');
         } catch (error) {
-            console.error('Update failed:', error);
-            alert('Şablon güncellenemedi');
+            showToast('Güncelleme başarısız', 'error');
         }
     };
 
@@ -242,42 +249,42 @@ export const EmailNotifications: React.FC = () => {
         { id: 'subscribers' as Tab, label: 'Aboneler', icon: Users }
     ];
 
+    const stats = {
+        subscribers: subscribers.length,
+        sent: logs.filter(l => l.status === 'sent').length,
+        failed: logs.filter(l => l.status === 'failed').length,
+    };
+
+    const canSend = customSubject.trim() !== '' && customContent.trim() !== '' && selectedRecipients.size > 0;
+
     return (
         <>
-            <div className="p-6">
-                {/* Header */}
-                <div className="mb-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-blue-600 rounded-xl">
-                                <Mail className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-black">E-posta Bildirimleri</h1>
-                                <p className="text-gray-600 text-sm">Üyelere toplu e-posta gönderimi ve şablon yönetimi</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={loadData}
-                            className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                        >
-                            <RefreshCw className={`w-5 h-5 text-gray-300 ${loading ? 'animate-spin' : ''}`} />
+            <div className="max-w-7xl mx-auto space-y-6">
+                {/* Header Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">E-posta Bildirimleri</h1>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Üyelere toplu e-posta gönderimi ve yönetimi</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={loadData} disabled={loading} className="p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors disabled:opacity-50">
+                            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-1 mb-6 bg-slate-800 p-1 rounded-lg">
+                {/* Pill Tabs */}
+                <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium text-sm transition-all ${activeTab === tab.id
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-400 hover:text-white hover:bg-slate-700'
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
+                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-600'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                         >
-                            <tab.icon className="w-4 h-4" />
+                            <tab.icon size={16} />
                             <span className="hidden sm:inline">{tab.label}</span>
                         </button>
                     ))}
@@ -286,204 +293,180 @@ export const EmailNotifications: React.FC = () => {
                 {/* Send Email Tab */}
                 {activeTab === 'send' && (
                     <div className="space-y-6">
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="p-5 rounded-xl bg-slate-800 border border-slate-700">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 bg-blue-600/20 rounded-lg">
-                                        <Users className="w-5 h-5 text-blue-400" />
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <Card hover>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Toplam Abone</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{stats.subscribers}</p>
                                     </div>
-                                    <span className="text-gray-400 text-sm font-medium">Toplam Abone</span>
-                                </div>
-                                <div className="text-3xl font-bold text-blue-400">
-                                    {subscribers.length}
-                                </div>
-                            </div>
-
-                            <div className="p-5 rounded-xl bg-slate-800 border border-slate-700">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 bg-green-600/20 rounded-lg">
-                                        <CheckCircle className="w-5 h-5 text-green-400" />
+                                    <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700">
+                                        <Users size={20} className="text-slate-500" />
                                     </div>
-                                    <span className="text-gray-400 text-sm font-medium">Gönderilen</span>
                                 </div>
-                                <div className="text-3xl font-bold text-green-400">
-                                    {logs.filter(l => l.status === 'sent').length}
-                                </div>
-                            </div>
-
-                            <div className="p-5 rounded-xl bg-slate-800 border border-slate-700">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 bg-red-600/20 rounded-lg">
-                                        <XCircle className="w-5 h-5 text-red-400" />
+                            </Card>
+                            <Card hover>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Gönderilen</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{stats.sent}</p>
                                     </div>
-                                    <span className="text-gray-400 text-sm font-medium">Başarısız</span>
+                                    <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700">
+                                        <CheckCircle size={20} className="text-slate-500" />
+                                    </div>
                                 </div>
-                                <div className="text-3xl font-bold text-red-400">
-                                    {logs.filter(l => l.status === 'failed').length}
+                            </Card>
+                            <Card hover>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Başarısız</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+                                            {stats.failed}
+                                            {stats.failed > 0 && <span className="w-2 h-2 rounded-full bg-red-500"></span>}
+                                        </p>
+                                    </div>
+                                    <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700">
+                                        <XCircle size={20} className="text-slate-500" />
+                                    </div>
                                 </div>
-                            </div>
+                            </Card>
                         </div>
 
-                        {/* Send Form */}
-                        <div className="p-6 rounded-xl bg-slate-800 border border-slate-700">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 bg-blue-600 rounded-lg">
-                                    <Zap className="w-5 h-5 text-white" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-white">Yeni E-posta Gönder</h3>
-                            </div>
-
-                            <div className="space-y-5">
-                                {/* Template Selection */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Şablon Seçin (Opsiyonel)
-                                    </label>
-                                    <select
-                                        value={selectedTemplate}
-                                        onChange={(e) => setSelectedTemplate(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                    >
-                                        <option value="">-- Özel E-posta --</option>
-                                        {templates.filter(t => t.is_active).map((template) => (
-                                            <option key={template.id} value={template.name}>
-                                                {template.name} - {template.subject}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Subject */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Konu
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={customSubject}
-                                        onChange={(e) => setCustomSubject(e.target.value)}
-                                        placeholder="E-posta konusu..."
-                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                    />
-                                </div>
-
-                                {/* Content */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        İçerik
-                                    </label>
-                                    <RichTextEditor
-                                        content={customContent}
-                                        onChange={(html) => setCustomContent(html)}
-                                        placeholder="E-posta içeriğini buraya yazın..."
-                                    />
-                                </div>
-
-                                {/* Send Result */}
-                                {sendResult && (
-                                    <div className={`p-4 rounded-lg border ${sendResult.failed === 0
-                                        ? 'bg-green-900/20 border-green-500/30'
-                                        : 'bg-amber-900/20 border-amber-500/30'
-                                        }`}>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            {sendResult.failed === 0 ? (
-                                                <CheckCircle className="w-5 h-5 text-green-400" />
-                                            ) : (
-                                                <AlertCircle className="w-5 h-5 text-amber-400" />
-                                            )}
-                                            <span className="font-medium text-white">Gönderim Tamamlandı</span>
+                        {/* 2-Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Left: Compose Email */}
+                            <div className="lg:col-span-2">
+                                <Card hover={false}>
+                                    <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-4">Yeni E-posta</h3>
+                                    <div className="space-y-4">
+                                        {/* Template Select */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Şablon (Opsiyonel)</label>
+                                            <select
+                                                value={selectedTemplate}
+                                                onChange={(e) => setSelectedTemplate(e.target.value)}
+                                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
+                                            >
+                                                <option value="">-- Özel E-posta --</option>
+                                                {templates.filter(t => t.is_active).map((t) => (
+                                                    <option key={t.id} value={t.name}>{t.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
-                                        <div className="flex gap-4 text-sm">
-                                            <span className="text-gray-400">Toplam: <span className="text-white font-medium">{sendResult.total}</span></span>
-                                            <span className="text-gray-400">Başarılı: <span className="text-green-400 font-medium">{sendResult.sent}</span></span>
-                                            <span className="text-gray-400">Başarısız: <span className="text-red-400 font-medium">{sendResult.failed}</span></span>
+
+                                        {/* Subject */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Konu *</label>
+                                            <input
+                                                type="text"
+                                                value={customSubject}
+                                                onChange={(e) => setCustomSubject(e.target.value)}
+                                                placeholder="E-posta konusu..."
+                                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        {/* Content */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">İçerik *</label>
+                                            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                                <RichTextEditor
+                                                    content={customContent}
+                                                    onChange={(html) => setCustomContent(html)}
+                                                    placeholder="E-posta içeriğini yazın..."
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Send Result */}
+                                        {sendResult && (
+                                            <div className={`p-3 rounded-xl border ${sendResult.failed === 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                                                <p className="text-sm font-medium text-slate-900">
+                                                    Gönderim tamamlandı: {sendResult.sent} başarılı, {sendResult.failed} başarısız
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Actions */}
+                                        <div className="flex items-center justify-between pt-2">
+                                            <button
+                                                onClick={() => setShowPreview(true)}
+                                                disabled={!customContent}
+                                                className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50 flex items-center gap-1"
+                                            >
+                                                <Eye size={14} />
+                                                Önizleme
+                                            </button>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-slate-500">
+                                                    {selectedRecipients.size} kişiye gönderilecek
+                                                </span>
+                                                <button
+                                                    onClick={handleSendBulk}
+                                                    disabled={!canSend || sending}
+                                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white dark:text-slate-900 rounded-xl font-medium transition-colors disabled:cursor-not-allowed"
+                                                >
+                                                    {sending ? (
+                                                        <><RefreshCw size={16} className="animate-spin" /> Gönderiliyor...</>
+                                                    ) : (
+                                                        <><Send size={16} /> Gönder</>
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
+                                </Card>
+                            </div>
 
-                                {/* Recipient Selector */}
-                                <div className="border border-slate-600 rounded-lg overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowRecipientSelector(!showRecipientSelector)}
-                                        className="w-full flex items-center justify-between px-4 py-3 bg-slate-700/50 hover:bg-slate-700 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-blue-400" />
-                                            <span className="text-white font-medium">Alıcıları Seç</span>
-                                        </div>
-                                        <span className="text-sm text-blue-400">
-                                            {selectedRecipients.size} / {subscribers.length} seçili
-                                        </span>
-                                    </button>
+                            {/* Right: Recipients */}
+                            <div className="lg:col-span-1">
+                                <Card hover={false} className="h-full">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Alıcılar</h3>
+                                        <span className="text-xs text-slate-500">{selectedRecipients.size}/{subscribers.length}</span>
+                                    </div>
 
-                                    {showRecipientSelector && (
-                                        <div className="p-4 space-y-3 bg-slate-800/50">
-                                            {/* Select All / Deselect All */}
-                                            <div className="flex gap-2 mb-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={selectAllRecipients}
-                                                    className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                                                >
-                                                    Tümünü Seç
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={deselectAllRecipients}
-                                                    className="px-3 py-1.5 text-xs bg-slate-600 hover:bg-slate-500 text-white rounded transition-colors"
-                                                >
-                                                    Hiçbirini Seçme
-                                                </button>
-                                            </div>
+                                    {/* Search */}
+                                    <div className="relative mb-3">
+                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={recipientSearch}
+                                            onChange={(e) => setRecipientSearch(e.target.value)}
+                                            placeholder="İsim veya e-posta ara..."
+                                            className="w-full pl-8 pr-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent placeholder-slate-400"
+                                        />
+                                    </div>
 
-                                            {/* Subscriber List */}
-                                            <div className="max-h-60 overflow-y-auto space-y-1">
-                                                {subscribers.map((subscriber) => (
-                                                    <label
-                                                        key={subscriber.id}
-                                                        className="flex items-center gap-3 p-2 rounded hover:bg-slate-700/50 cursor-pointer transition-colors"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedRecipients.has(subscriber.id)}
-                                                            onChange={() => toggleRecipient(subscriber.id)}
-                                                            className="w-4 h-4 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500"
-                                                        />
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm text-white truncate">
-                                                                {subscriber.full_name || subscriber.email}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 truncate">
-                                                                {subscriber.email}
-                                                            </p>
-                                                        </div>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                    {/* Select All / Clear */}
+                                    <div className="flex gap-2 mb-3">
+                                        <button onClick={() => setSelectedRecipients(new Set(subscribers.map(s => s.id)))} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Tümünü seç</button>
+                                        <span className="text-slate-300">|</span>
+                                        <button onClick={() => setSelectedRecipients(new Set())} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Temizle</button>
+                                    </div>
 
-                                {/* Send Button */}
-                                <button
-                                    onClick={handleSendBulk}
-                                    disabled={sending || selectedRecipients.size === 0}
-                                    className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
-                                >
-                                    {sending ? (
-                                        <>
-                                            <RefreshCw className="w-5 h-5 animate-spin" />
-                                            Gönderiliyor...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="w-5 h-5" />
-                                            {selectedRecipients.size} Kişiye Gönder
-                                        </>
-                                    )}
-                                </button>
+                                    {/* List */}
+                                    <div className="max-h-64 overflow-y-auto space-y-1">
+                                        {filteredSubscribers.map((s) => (
+                                            <label
+                                                key={s.id}
+                                                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${selectedRecipients.has(s.id) ? 'bg-slate-100 dark:bg-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedRecipients.has(s.id)}
+                                                    onChange={() => toggleRecipient(s.id)}
+                                                    className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-slate-900 dark:text-white truncate">{s.full_name || s.email}</p>
+                                                    <p className="text-xs text-slate-500 truncate">{s.email}</p>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </Card>
                             </div>
                         </div>
                     </div>
@@ -491,101 +474,69 @@ export const EmailNotifications: React.FC = () => {
 
                 {/* Templates Tab */}
                 {activeTab === 'templates' && (
-                    <div className="rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
-                        <div className="p-4 border-b border-slate-700 flex items-center gap-3">
-                            <div className="p-2 bg-purple-600 rounded-lg">
-                                <FileText className="w-5 h-5 text-white" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-white">E-posta Şablonları</h3>
+                    <Card hover={false}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">E-posta Şablonları</h3>
                         </div>
-                        <div className="divide-y divide-slate-700">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700">
                             {templates.length === 0 ? (
-                                <div className="p-8 text-center text-gray-400">
-                                    Henüz şablon eklenmemiş
-                                </div>
-                            ) : (
-                                templates.map((template) => (
-                                    <div key={template.id} className="p-4 hover:bg-slate-700/50 transition-colors">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <span className="font-medium text-white">{template.name}</span>
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${template.is_active
-                                                        ? 'bg-green-600/20 text-green-400'
-                                                        : 'bg-gray-600/20 text-gray-400'
-                                                        }`}>
-                                                        {template.is_active ? 'Aktif' : 'Pasif'}
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm text-gray-400">{template.subject}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => setEditingTemplate(template)}
-                                                className="p-2 text-gray-400 hover:text-white hover:bg-slate-600 rounded-lg transition-colors"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
+                                <div className="py-8 text-center text-slate-500">Henüz şablon yok</div>
+                            ) : templates.map((t) => (
+                                <div key={t.id} className="py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 -mx-5 px-5 transition-colors">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-slate-900 dark:text-white">{t.name}</span>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                {t.is_active ? 'Aktif' : 'Pasif'}
+                                            </span>
                                         </div>
+                                        <p className="text-sm text-slate-500 mt-0.5">{t.subject}</p>
                                     </div>
-                                ))
-                            )}
+                                    <button onClick={() => setEditingTemplate(t)} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                        <Edit2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    </Card>
                 )}
 
                 {/* Template Edit Modal */}
                 {editingTemplate && (
-                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                        <div className="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-700">
-                            <div className="flex items-center justify-between p-5 border-b border-slate-700">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-purple-600 rounded-lg">
-                                        <Edit2 className="w-5 h-5 text-white" />
-                                    </div>
-                                    <h2 className="text-lg font-bold text-white">Şablon Düzenle: {editingTemplate.name}</h2>
-                                </div>
-                                <button onClick={() => setEditingTemplate(null)} className="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
-                                    <X className="w-5 h-5" />
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+                                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Şablon Düzenle: {editingTemplate.name}</h2>
+                                <button onClick={() => setEditingTemplate(null)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                    <X size={18} className="text-slate-500" />
                                 </button>
                             </div>
-                            <div className="p-5 space-y-5">
+                            <div className="p-5 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">Konu</label>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Konu</label>
                                     <input
                                         type="text"
                                         value={editingTemplate.subject}
                                         onChange={(e) => setEditingTemplate({ ...editingTemplate, subject: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-300"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">HTML İçerik</label>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">HTML İçerik</label>
                                     <textarea
                                         value={editingTemplate.body_html}
                                         onChange={(e) => setEditingTemplate({ ...editingTemplate, body_html: e.target.value })}
                                         rows={10}
-                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-sm focus:ring-2 focus:ring-purple-500"
+                                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-slate-300"
                                     />
                                 </div>
-                                <div className="p-3 bg-slate-900 rounded-lg border border-slate-600">
-                                    <p className="text-xs text-gray-400">
-                                        <span className="text-purple-400 font-medium">Değişkenler:</span> {editingTemplate.variables.map(v => `{{${v}}}`).join(', ')}
-                                    </p>
-                                </div>
                             </div>
-                            <div className="flex justify-end gap-3 p-5 border-t border-slate-700">
-                                <button
-                                    onClick={() => setEditingTemplate(null)}
-                                    className="px-4 py-2 text-gray-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                                >
+                            <div className="flex justify-end gap-3 p-5 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                                <button onClick={() => setEditingTemplate(null)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
                                     İptal
                                 </button>
-                                <button
-                                    onClick={handleUpdateTemplate}
-                                    className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    Kaydet
+                                <button onClick={handleUpdateTemplate} className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-medium transition-colors">
+                                    <Save size={16} /> Kaydet
                                 </button>
                             </div>
                         </div>
@@ -594,150 +545,102 @@ export const EmailNotifications: React.FC = () => {
 
                 {/* Logs Tab */}
                 {activeTab === 'logs' && (
-                    <div className="rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
-                        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-600 rounded-lg">
-                                    <Clock className="w-5 h-5 text-white" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-white">Gönderim Geçmişi</h3>
-                            </div>
-                            <button
-                                onClick={loadData}
-                                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                            >
-                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                                Yenile
-                            </button>
+                    <Card hover={false}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Gönderim Geçmişi</h3>
+                            <span className="text-xs text-slate-500">Son 50 gönderim</span>
                         </div>
-                        <div className="divide-y divide-slate-700">
-                            {logs.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <Mail className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                                    <p className="text-gray-400">Henüz e-posta gönderilmemiş</p>
-                                </div>
-                            ) : (
-                                logs.map((log) => (
-                                    <div key={log.id} className="p-4 hover:bg-slate-700/50 transition-colors">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-white font-medium truncate">{log.recipient_email}</p>
-                                                <p className="text-sm text-gray-400 truncate">{log.subject}</p>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium ${log.status === 'sent' ? 'bg-green-600/20 text-green-400' :
-                                                    log.status === 'failed' ? 'bg-red-600/20 text-red-400' : 'bg-amber-600/20 text-amber-400'
-                                                    }`}>
-                                                    {log.status === 'sent' ? <CheckCircle className="w-3 h-3" /> :
-                                                        log.status === 'failed' ? <XCircle className="w-3 h-3" /> :
-                                                            <Clock className="w-3 h-3" />}
-                                                    {log.status === 'sent' ? 'Gönderildi' :
-                                                        log.status === 'failed' ? 'Başarısız' : 'Bekliyor'}
-                                                </span>
-                                                <span className="text-xs text-gray-500">
-                                                    {new Date(log.created_at).toLocaleString('tr-TR')}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                                        <th className="text-left py-2 text-xs font-medium text-slate-500 uppercase">Tarih</th>
+                                        <th className="text-left py-2 text-xs font-medium text-slate-500 uppercase">Konu</th>
+                                        <th className="text-left py-2 text-xs font-medium text-slate-500 uppercase">Alıcı</th>
+                                        <th className="text-left py-2 text-xs font-medium text-slate-500 uppercase">Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {logs.slice(0, 50).map((log) => (
+                                        <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                            <td className="py-2.5 text-sm text-slate-600 dark:text-slate-400">
+                                                {new Date(log.created_at).toLocaleDateString('tr-TR')}
+                                            </td>
+                                            <td className="py-2.5 text-sm text-slate-900 dark:text-white truncate max-w-[200px]">{log.subject}</td>
+                                            <td className="py-2.5 text-sm text-slate-600 dark:text-slate-400 truncate max-w-[200px]">{log.recipient_email}</td>
+                                            <td className="py-2.5"><StatusBadge status={log.status} /></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {logs.length === 0 && (
+                                <div className="py-8 text-center text-slate-500">Henüz gönderim yok</div>
                             )}
                         </div>
-                    </div>
+                    </Card>
                 )}
 
                 {/* Subscribers Tab */}
                 {activeTab === 'subscribers' && (
-                    <div className="rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
-                        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-600 rounded-lg">
-                                    <Users className="w-5 h-5 text-white" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-white">Aboneler</h3>
-                            </div>
-                            <span className="px-3 py-1 bg-green-600/20 text-green-400 rounded text-sm font-medium">
+                    <Card hover={false}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Aboneler</h3>
+                            <span className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-full">
                                 {subscribers.length} kişi
                             </span>
                         </div>
-                        <div className="divide-y divide-slate-700">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700">
                             {subscribers.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <Users className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                                    <p className="text-gray-400">Bildirim almak isteyen abone bulunamadı</p>
-                                </div>
-                            ) : (
-                                subscribers.map((subscriber) => (
-                                    <div key={subscriber.id} className="p-4 hover:bg-slate-700/50 transition-colors flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-                                            {(subscriber.full_name || subscriber.email)[0].toUpperCase()}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-white font-medium">{subscriber.full_name || '-'}</p>
-                                            <p className="text-sm text-gray-400">{subscriber.email}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                showConfirm(
-                                                    'Aboneyi Sil',
-                                                    `${subscriber.email} adresini abonelikten çıkarmak istediğinize emin misiniz?`,
-                                                    'danger',
-                                                    async () => {
-                                                        setConfirmDialog(null);
-                                                        try {
-                                                            const { error } = await supabase.rpc('delete_subscriber', { p_subscriber_id: subscriber.id });
-                                                            if (error) throw error;
-                                                            showToast('Abone silindi', 'success');
-                                                            await loadData();
-                                                        } catch (err) {
-                                                            console.error('Delete error:', err);
-                                                            showToast('Silme başarısız', 'error');
-                                                        }
-                                                    }
-                                                );
-                                            }}
-                                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                                            title="Aboneyi Sil"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                <div className="py-8 text-center text-slate-500">Abone yok</div>
+                            ) : subscribers.map((s) => (
+                                <div key={s.id} className="py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 -mx-5 px-5 transition-colors">
+                                    <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-400 font-medium text-sm">
+                                        {(s.full_name || s.email)[0].toUpperCase()}
                                     </div>
-                                ))
-                            )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white">{s.full_name || '-'}</p>
+                                        <p className="text-xs text-slate-500">{s.email}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => showConfirm('Aboneyi Sil', `${s.email} silinsin mi?`, 'danger', async () => {
+                                            setConfirmDialog(null);
+                                            try {
+                                                await supabase.rpc('delete_subscriber', { p_subscriber_id: s.id });
+                                                showToast('Abone silindi', 'success');
+                                                loadData();
+                                            } catch { showToast('Silme başarısız', 'error'); }
+                                        })}
+                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    </Card>
                 )}
             </div>
 
+            {/* Preview Modal */}
+            {showPreview && <PreviewModal content={customContent} subject={customSubject} onClose={() => setShowPreview(false)} />}
+
             {/* Toast */}
-            {
-                toast && (
-                    <Toast
-                        message={toast.message}
-                        type={toast.type}
-                        onClose={() => setToast(null)}
-                    />
-                )
-            }
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
             {/* Confirm Dialog */}
-            {
-                confirmDialog && (
-                    <ConfirmDialog
-                        isOpen={confirmDialog.isOpen}
-                        title={confirmDialog.title}
-                        message={confirmDialog.message}
-                        type={confirmDialog.type}
-                        confirmText="Gönder"
-                        cancelText="İptal"
-                        onConfirm={confirmDialog.onConfirm}
-                        onCancel={() => setConfirmDialog(null)}
-                    />
-                )
-            }
+            {confirmDialog && (
+                <ConfirmDialog
+                    isOpen={confirmDialog.isOpen}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    type={confirmDialog.type}
+                    confirmText="Tamam"
+                    onConfirm={confirmDialog.onConfirm}
+                    onCancel={() => setConfirmDialog(null)}
+                />
+            )}
         </>
     );
 };
 
 export default EmailNotifications;
-
