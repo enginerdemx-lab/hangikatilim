@@ -1,233 +1,145 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
+import {
+    LayoutDashboard,
+    Users,
+    Calculator,
+    Star,
+    Building2,
+    Megaphone,
+    Newspaper,
+    FileText,
+    Zap,
+    Image,
+    Grid3X3,
+    Home,
+    Settings,
+    FolderOpen,
+    Mail,
+    MessageSquare,
+    LogOut,
+    ChevronDown,
+    ChevronUp,
+    PanelLeftClose,
+    PanelLeft,
+    Sun,
+    Moon,
+    Monitor,
+    X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-interface NavItem {
+// Menu Item Interface
+interface MenuItem {
     label: string;
     path: string;
-    icon: React.ReactNode;
+    icon: LucideIcon;
 }
 
-const navItems: NavItem[] = [
+// Category Interface
+interface MenuCategory {
+    id: string;
+    label: string;
+    icon: LucideIcon;
+    items: MenuItem[];
+}
+
+// Menu Configuration - Centralized & Config-based
+const menuConfig: MenuCategory[] = [
     {
-        label: 'Dashboard',
-        path: '/admin',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                />
-            </svg>
-        ),
+        id: 'general',
+        label: 'Genel',
+        icon: LayoutDashboard,
+        items: [
+            { label: 'Dashboard', path: '/admin', icon: Home },
+        ],
     },
     {
-        label: 'Üyeler',
-        path: '/admin/users',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-            </svg>
-        ),
+        id: 'users',
+        label: 'Kullanıcı & Yetkilendirme',
+        icon: Users,
+        items: [
+            { label: 'Üyeler', path: '/admin/users', icon: Users },
+        ],
     },
     {
-        label: 'Ana Sayfa İçerik',
-        path: '/admin/home-content',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                />
-            </svg>
-        ),
+        id: 'calculator',
+        label: 'Hesaplama & Finans',
+        icon: Calculator,
+        items: [
+            { label: 'Hesaplama Ayarları', path: '/admin/calculator', icon: Calculator },
+            { label: 'Geri Bildirimler', path: '/admin/feedback', icon: MessageSquare },
+        ],
     },
     {
-        label: 'Site Ayarları',
-        path: '/admin/site-settings',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        ),
+        id: 'sponsors',
+        label: 'Sponsor & Gelir',
+        icon: Star,
+        items: [
+            { label: 'Sponsor Yönetimi', path: '/admin/sponsors', icon: Star },
+        ],
     },
     {
-        label: 'Sektör Gündemi',
-        path: '/admin/ticker',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-            </svg>
-        ),
+        id: 'content',
+        label: 'İçerik Yönetimi',
+        icon: FileText,
+        items: [
+            { label: 'Firmalar', path: '/admin/companies', icon: Building2 },
+            { label: 'Kampanyalar', path: '/admin/campaigns', icon: Megaphone },
+            { label: 'Sektör Haberleri', path: '/admin/news', icon: Newspaper },
+            { label: 'Blog', path: '/admin/blog', icon: FileText },
+            { label: 'Sektör Gündemi', path: '/admin/ticker', icon: Zap },
+        ],
     },
     {
-        label: 'Ana Sayfa Hero',
-        path: '/admin/home-hero',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-            </svg>
-        ),
+        id: 'homepage',
+        label: 'Ana Sayfa & UI',
+        icon: Grid3X3,
+        items: [
+            { label: 'Ana Sayfa Hero', path: '/admin/home-hero', icon: Image },
+            { label: 'Kısayol Kareleri', path: '/admin/quick-links', icon: Grid3X3 },
+            { label: 'Ana Sayfa İçerik', path: '/admin/home-content', icon: Home },
+        ],
     },
     {
-        label: 'Kısayol Kareleri',
-        path: '/admin/quick-links',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-        ),
-    },
-    {
-        label: 'Hesaplama Ayarları',
-        path: '/admin/calculator',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'Firmalar',
-        path: '/admin/companies',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'Kampanyalar',
-        path: '/admin/campaigns',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'Sektör Haberleri',
-        path: '/admin/news',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'Blog',
-        path: '/admin/blog',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'İletişim',
-        path: '/admin/contact',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'Medya Kütüphanesi',
-        path: '/admin/media',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-            </svg>
-        ),
-    },
-    {
-        label: 'E-posta Bildirimleri',
-        path: '/admin/email-notifications',
-        icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76"
-                />
-            </svg>
-        ),
+        id: 'system',
+        label: 'Sistem',
+        icon: Settings,
+        items: [
+            { label: 'Site Ayarları', path: '/admin/site-settings', icon: Settings },
+            { label: 'Medya Kütüphanesi', path: '/admin/media', icon: FolderOpen },
+            { label: 'İletişim', path: '/admin/contact', icon: Mail },
+            { label: 'E-posta Bildirimleri', path: '/admin/email-notifications', icon: Mail },
+        ],
     },
 ];
 
 interface AdminSidebarProps {
     onLogout: () => void;
+    onClose?: () => void;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose }) => {
     const location = useLocation();
-    const [siteName, setSiteName] = useState<string>('Katılım Uzmanı'); // Default fallback
+    const [siteName, setSiteName] = useState<string>('Katılım Uzmanı');
+    const [logo, setLogo] = useState<string>('');
     const [darkLogo, setDarkLogo] = useState<string>('');
+    const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['general']));
+    const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+    const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+    const [userEmail, setUserEmail] = useState<string>('');
+    const [userName, setUserName] = useState<string>('');
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-    // Fetch site name and logo from database
+    // Fetch site settings
     useEffect(() => {
         const fetchSiteSettings = async () => {
             try {
                 const { data, error } = await supabase
                     .from('site_settings')
-                    .select('site_name, logo_dark_url')
+                    .select('site_name, logo_url, dark_logo_url')
                     .limit(1)
                     .maybeSingle();
 
@@ -236,12 +148,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout }) => {
                     return;
                 }
 
-                if (data?.site_name) {
-                    setSiteName(data.site_name);
-                }
-                if (data?.logo_dark_url) {
-                    setDarkLogo(data.logo_dark_url);
-                }
+                if (data?.site_name) setSiteName(data.site_name);
+                if (data?.logo_url) setLogo(data.logo_url);
+                if (data?.dark_logo_url) setDarkLogo(data.dark_logo_url);
             } catch (error) {
                 console.error('Failed to fetch site settings:', error);
             }
@@ -249,59 +158,312 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout }) => {
         fetchSiteSettings();
     }, []);
 
+    // Fetch current user
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserEmail(user.email || '');
+                setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin');
+            }
+        };
+        fetchUser();
+    }, []);
+
+    // Load saved theme preference
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('admin_theme') as 'light' | 'dark' | 'system' | null;
+        if (savedTheme) {
+            setTheme(savedTheme);
+            applyTheme(savedTheme);
+        }
+    }, []);
+
+    const applyTheme = (newTheme: 'light' | 'dark' | 'system') => {
+        const root = document.documentElement;
+        let isDark = false;
+
+        if (newTheme === 'dark') {
+            root.classList.add('dark');
+            isDark = true;
+        } else if (newTheme === 'light') {
+            root.classList.remove('dark');
+            isDark = false;
+        } else {
+            // System preference
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                root.classList.add('dark');
+                isDark = true;
+            } else {
+                root.classList.remove('dark');
+                isDark = false;
+            }
+        }
+
+        setIsDarkMode(isDark);
+    };
+
+    const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+        setTheme(newTheme);
+        localStorage.setItem('admin_theme', newTheme);
+        applyTheme(newTheme);
+    };
+
+    const getUserInitial = () => {
+        return userName.charAt(0).toUpperCase() || 'A';
+    };
+
+    // Auto-expand category containing active route
+    useEffect(() => {
+        const activeCategory = menuConfig.find(cat =>
+            cat.items.some(item =>
+                item.path === location.pathname ||
+                (item.path !== '/admin' && location.pathname.startsWith(item.path))
+            )
+        );
+        if (activeCategory) {
+            setOpenCategories(prev => new Set([...prev, activeCategory.id]));
+        }
+    }, [location.pathname]);
+
+    const toggleCategory = (categoryId: string) => {
+        setOpenCategories(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(categoryId)) {
+                newSet.delete(categoryId);
+            } else {
+                newSet.add(categoryId);
+            }
+            return newSet;
+        });
+    };
+
+    const isItemActive = (path: string) => {
+        if (path === '/admin') {
+            return location.pathname === '/admin';
+        }
+        return location.pathname === path || location.pathname.startsWith(path + '/');
+    };
+
     return (
-        <div className="w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white h-screen flex flex-col fixed left-0 top-0">
-            {/* Logo/Header */}
-            <div className="p-6 border-b border-gray-700">
-                {darkLogo && (
-                    <img
-                        src={darkLogo}
-                        alt="Site Logo"
-                        className="h-10 w-auto object-contain mb-3"
-                    />
+        <div
+            className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 h-screen flex flex-col transition-all duration-300`}
+        >
+            {/* Header */}
+            <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                {!isCollapsed && (
+                    <div className="flex items-center gap-3 min-w-0">
+                        {(isDarkMode ? darkLogo : logo) ? (
+                            <img src={isDarkMode ? darkLogo : logo} alt="Logo" className="h-8 w-auto object-contain" />
+                        ) : (
+                            <div className="w-8 h-8 bg-[#0855f8] rounded-lg flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">K</span>
+                            </div>
+                        )}
+                        <div className="min-w-0">
+                            <h1 className="text-sm font-bold text-gray-800 dark:text-white truncate">Admin Panel</h1>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{siteName}</p>
+                        </div>
+                    </div>
                 )}
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                    Admin Panel
-                </h1>
-                <p className="text-sm text-gray-400 mt-1">{siteName}</p>
+                <div className="flex items-center gap-1">
+                    {/* Collapse button - Desktop only */}
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors hidden lg:block"
+                        title={isCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt'}
+                    >
+                        {isCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+                    </button>
+                    {/* Close button - Mobile only */}
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors lg:hidden"
+                            title="Menüyü Kapat"
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4">
-                {navItems.map((item) => {
-                    const isActive = location.pathname === item.path;
+            <nav className="flex-1 overflow-y-auto py-2 px-2">
+                {menuConfig.map((category) => {
+                    const isOpen = openCategories.has(category.id);
+                    const hasActiveItem = category.items.some(item => isItemActive(item.path));
+                    const CategoryIcon = category.icon;
+
                     return (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={`flex items-center gap-3 px-6 py-3 transition-all duration-200 ${isActive
-                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-r-4 border-white'
-                                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                }`}
-                        >
-                            {item.icon}
-                            <span className="font-medium">{item.label}</span>
-                        </Link>
+                        <div key={category.id} className="mb-1">
+                            <button
+                                onClick={() => !isCollapsed && toggleCategory(category.id)}
+                                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3'} py-2 rounded-lg transition-colors group
+                  ${hasActiveItem ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}
+                `}
+                                title={isCollapsed ? category.label : undefined}
+                            >
+                                <div className={`flex items-center ${isCollapsed ? '' : 'gap-2'}`}>
+                                    <CategoryIcon size={18} className={`flex-shrink-0 ${hasActiveItem ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                    {!isCollapsed && (
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-left">{category.label}</span>
+                                    )}
+                                </div>
+                                {!isCollapsed && (
+                                    <ChevronDown
+                                        size={14}
+                                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                                    />
+                                )}
+                            </button>
+
+                            {/* Category Items */}
+                            {!isCollapsed && isOpen && (
+                                <div className="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-0.5">
+                                    {category.items.map((item) => {
+                                        const isActive = isItemActive(item.path);
+                                        const ItemIcon = item.icon;
+
+                                        return (
+                                            <Link
+                                                key={item.path}
+                                                to={item.path}
+                                                onClick={onClose}
+                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200
+                          ${isActive
+                                                        ? 'bg-[#0855f8] text-white shadow-sm'
+                                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                                    }
+                        `}
+                                            >
+                                                <ItemIcon size={16} className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'} />
+                                                <span className="font-medium">{item.label}</span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Collapsed mode: show items as tooltips */}
+                            {isCollapsed && (
+                                <div className="mt-1 space-y-0.5">
+                                    {category.items.map((item) => {
+                                        const isActive = isItemActive(item.path);
+                                        const ItemIcon = item.icon;
+
+                                        return (
+                                            <Link
+                                                key={item.path}
+                                                to={item.path}
+                                                className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200
+                          ${isActive
+                                                        ? 'bg-[#0855f8] text-white shadow-sm'
+                                                        : 'text-gray-500 hover:bg-gray-100'
+                                                    }
+                        `}
+                                                title={item.label}
+                                            >
+                                                <ItemIcon size={18} />
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     );
                 })}
             </nav>
 
-            {/* Logout Button */}
-            <div className="p-4 border-t border-gray-700">
-                <button
-                    onClick={onLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                        />
-                    </svg>
-                    Çıkış Yap
-                </button>
+            {/* Footer: Theme Toggle + User Profile */}
+            <div className="border-t border-gray-200 dark:border-gray-700">
+                {/* Theme Toggle */}
+                {!isCollapsed && (
+                    <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                            <button
+                                onClick={() => handleThemeChange('light')}
+                                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium transition-all ${theme === 'light' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                    }`}
+                                title="Açık Tema"
+                            >
+                                <Sun size={14} />
+                                <span>Light</span>
+                            </button>
+                            <button
+                                onClick={() => handleThemeChange('dark')}
+                                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium transition-all ${theme === 'dark' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                    }`}
+                                title="Koyu Tema"
+                            >
+                                <Moon size={14} />
+                                <span>Dark</span>
+                            </button>
+                            <button
+                                onClick={() => handleThemeChange('system')}
+                                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium transition-all ${theme === 'system' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                    }`}
+                                title="Sistem Teması"
+                            >
+                                <Monitor size={14} />
+                                <span>System</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="p-2 relative">
+                    <button
+                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
+                        title={isCollapsed ? userName : undefined}
+                    >
+                        <div className="w-8 h-8 bg-[#0855f8] rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            {getUserInitial()}
+                        </div>
+                        {!isCollapsed && (
+                            <>
+                                <div className="flex-1 text-left min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{userName}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
+                                </div>
+                                {showProfileMenu ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                            </>
+                        )}
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showProfileMenu && !isCollapsed && (
+                        <div className="absolute bottom-full left-2 right-2 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50">
+                            <Link
+                                to="/admin/site-settings"
+                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                onClick={() => setShowProfileMenu(false)}
+                            >
+                                <Settings size={16} />
+                                Profil Ayarları
+                            </Link>
+                            <button
+                                onClick={() => { setShowProfileMenu(false); onLogout(); }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                                <LogOut size={16} />
+                                Çıkış Yap
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Collapsed mode: just logout button */}
+                    {isCollapsed && (
+                        <button
+                            onClick={onLogout}
+                            className="w-full flex items-center justify-center p-2 mt-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                            title="Çıkış Yap"
+                        >
+                            <LogOut size={18} />
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

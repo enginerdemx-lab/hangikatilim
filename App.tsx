@@ -21,6 +21,8 @@ import { AdminLayout } from './src/components/admin/AdminLayout';
 import { QuickLinks } from './src/pages/admin/QuickLinks';
 import { EmailNotifications } from './src/pages/admin/EmailNotifications';
 import { Users as AdminUsers } from './src/pages/admin/Members';
+import { Feedback as AdminFeedback } from './src/pages/admin/Feedback';
+import { Sponsors as AdminSponsors } from './src/pages/admin/Sponsors';
 
 // Public Layout and Pages
 import { PublicLayout } from './src/layouts/PublicLayout';
@@ -88,6 +90,8 @@ const App: React.FC = () => {
                         <Route path="quick-links" element={<QuickLinks />} />
                         <Route path="email-notifications" element={<EmailNotifications />} />
                         <Route path="users" element={<AdminUsers />} />
+                        <Route path="feedback" element={<AdminFeedback />} />
+                        <Route path="sponsors" element={<AdminSponsors />} />
                     </Route>
 
                     {/* Public Routes with Layout */}

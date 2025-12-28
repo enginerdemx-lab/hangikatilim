@@ -1,0 +1,151 @@
+import React, { useEffect, useState } from 'react';
+import { ExternalLink, Sparkles } from 'lucide-react';
+import { sponsorsApi, Sponsor } from '../src/services/api/sponsors';
+import { siteSettingsApi } from '../src/services/api/siteSettings';
+
+export type SponsorTrigger = 'pdf' | 'save' | 'ai';
+
+interface SponsorAreaProps {
+    trigger: SponsorTrigger;
+}
+
+// Declare gtag globally for TypeScript
+declare global {
+    interface Window {
+        gtag?: (command: string, action: string, params?: Record<string, unknown>) => void;
+    }
+}
+
+export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
+    const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [hasTrackedView, setHasTrackedView] = useState(false);
+    const [isEnabled, setIsEnabled] = useState(true);
+
+    // Fetch sponsors and settings from API
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Check if sponsor area is enabled
+                const settings = await siteSettingsApi.getSettings();
+                if (settings && settings.sponsor_area_enabled === false) {
+                    setIsEnabled(false);
+                    setLoading(false);
+                    return;
+                }
+
+                const data = await sponsorsApi.getActive();
+                setSponsors(data);
+            } catch (error) {
+                console.error('[SponsorArea] Failed to fetch sponsors:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Track sponsor area view on first render
+    useEffect(() => {
+        if (!hasTrackedView && trigger && sponsors.length > 0) {
+            // GA4 Event: sponsor_area_view
+            if (typeof window !== 'undefined' && window.gtag) {
+                window.gtag('event', 'sponsor_area_view', {
+                    trigger: trigger,
+                    sponsor_count: sponsors.length
+                });
+            }
+            setHasTrackedView(true);
+        }
+    }, [trigger, hasTrackedView, sponsors]);
+
+    const handleSponsorClick = (sponsor: Sponsor) => {
+        // GA4 Event: sponsor_click
+        if (typeof window !== 'undefined' && window.gtag) {
+            window.gtag('event', 'sponsor_click', {
+                sponsor: sponsor.id,
+                sponsor_name: sponsor.name,
+                trigger: trigger
+            });
+        }
+    };
+
+    // Don't render if loading or no sponsors
+    if (loading) {
+        return (
+            <div className="mt-6 animate-pulse">
+                <div className="h-4 w-48 bg-gray-200 dark:bg-slate-700 rounded mb-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-32 bg-gray-100 dark:bg-slate-800 rounded-xl" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Don't render if disabled or no sponsors
+    if (!isEnabled || sponsors.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="mt-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={16} className="text-amber-500" />
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Bu hesaba göre sponsor teklifler
+                </h4>
+            </div>
+
+            {/* Sponsor Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {sponsors.map((sponsor) => (
+                    <a
+                        key={sponsor.id}
+                        href={sponsor.cta_url}
+                        onClick={() => handleSponsorClick(sponsor)}
+                        className="group block bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-300"
+                    >
+                        {/* Card Header with Gradient Accent */}
+                        <div className={`h-1 w-12 rounded-full bg-gradient-to-r ${sponsor.color} mb-3 group-hover:w-full transition-all duration-300`} />
+
+                        {/* Logo or Name */}
+                        <div className="flex items-center gap-2 mb-2">
+                            {sponsor.logo_url ? (
+                                <img src={sponsor.logo_url} alt={sponsor.name} className="h-9 w-auto object-contain" />
+                            ) : (
+                                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                                    {sponsor.name}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Title */}
+                        <h5 className="text-sm font-bold text-gray-800 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                            {sponsor.title}
+                        </h5>
+
+                        {/* Description */}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
+                            {sponsor.description}
+                        </p>
+
+                        {/* CTA */}
+                        <div className="flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 group-hover:gap-2 transition-all">
+                            <span>{sponsor.cta_text}</span>
+                            <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                    </a>
+                ))}
+            </div>
+
+            {/* Transparency Note */}
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-4 flex items-center justify-center gap-1">
+                <span className="opacity-70">ℹ️</span>
+                Bu alan sponsorlu içerik içerebilir.
+            </p>
+        </div>
+    );
+};

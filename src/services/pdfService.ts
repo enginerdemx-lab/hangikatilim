@@ -63,7 +63,7 @@ export const generatePDF = async (params: CalculationParams, result: Calculation
             <div style="text-align: right;">
               <p style="color: white; font-size: 11px; margin: 0;"><strong>Tarih:</strong> ${new Date().toLocaleDateString('tr-TR')}</p>
               <p style="color: white; font-size: 11px; margin: 5px 0 0 0;"><strong>Sayın:</strong> ${userName}</p>
-              <p style="color: rgba(255,255,255,0.8); font-size: 10px; margin: 10px 0 0 0; font-weight: 600;">www.hangikatilim.com</p>
+              <p style="color: rgba(255,255,255,0.8); font-size: 10px; margin: 10px 0 0 0; font-weight: 600;">www.katilimuzmani.com</p>
             </div>
           </div>
 
@@ -115,7 +115,7 @@ export const generatePDF = async (params: CalculationParams, result: Calculation
             <div style="display: flex; gap: 12px; align-items: center;">
               <div style="background: #10b981; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📅</div>
               <div>
-                <h3 style="color: #047857; font-size: 14px; margin: 0 0 5px 0; font-weight: 700;">Tahmini Teslimat Tarihi</h3>
+                <h3 style="color: #047857; font-size: 14px; margin: 0 0 5px 0; font-weight: 700;">Tahmini at Tarihi</h3>
                 <p style="color: #065f46; font-size: 16px; margin: 0; font-weight: 800;">${result.deliveryDate}</p>
               </div>
             </div>
@@ -140,7 +140,7 @@ export const generatePDF = async (params: CalculationParams, result: Calculation
                     <td style="padding: 6px 4px; border: 1px solid #e2e8f0; text-align: center; font-weight: ${row.isDeliveryMonth ? '700' : '400'}; font-size: 9px;">
                       <div style="display: flex; flex-direction: column; align-items: center; gap: 1px;">
                         <span>${row.month}</span>
-                        ${row.isDeliveryMonth ? '<span style="display: inline-block; background: #10b981; color: white; padding: 0px 3px; border-radius: 2px; font-size: 5px; line-height: 1.4; white-space: nowrap; max-width: 35px;">TESLİMAT</span>' : ''}
+                        ${row.isDeliveryMonth ? '<span style="display: block; background: #10b981; color: white; padding: 1px 2px; border-radius: 2px; font-size: 6px; line-height: 1.2; text-align: center; margin-top: 2px;">TESLİM</span>' : ''}
                       </div>
                     </td>
                     <td style="padding: 4px; text-align: center; border: 1px solid #e2e8f0; font-size: 7px;">${row.date}</td>
@@ -157,7 +157,7 @@ export const generatePDF = async (params: CalculationParams, result: Calculation
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div style="font-size: 8px; color: #64748b;">
                 <p style="margin: 0; font-weight: 600;">Katılım Uzmanı | Tasarruf Finansman Hesaplama Planı</p>
-                <p style="margin: 2px 0 0 0; font-size: 7px;">⚠️ Bu belge bilgilendirme amaçlıdır - www.hangikatilim.com</p>
+                <p style="margin: 2px 0 0 0; font-size: 7px;">⚠️ Bu belge bilgilendirme amaçlıdır - www.katilimuzmani.com</p>
               </div>
               <div style="font-size: 9px; color: #1e40af; font-weight: 700;">
                 Sayfa ${pageNumber} / ${totalPages}
@@ -263,7 +263,7 @@ export const generatePDFBlob = async (params: CalculationParams, result: Calcula
             <div style="text-align: right;">
               <p style="color: white; font-size: 11px; margin: 0;"><strong>Tarih:</strong> ${new Date().toLocaleDateString('tr-TR')}</p>
               <p style="color: white; font-size: 11px; margin: 5px 0 0 0;"><strong>Sayın:</strong> ${userName}</p>
-              <p style="color: rgba(255,255,255,0.8); font-size: 10px; margin: 10px 0 0 0; font-weight: 600;">www.hangikatilim.com</p>
+              <p style="color: rgba(255,255,255,0.8); font-size: 10px; margin: 10px 0 0 0; font-weight: 600;">www.katilimuzmani.com</p>
             </div>
           </div>
 
@@ -315,7 +315,7 @@ export const generatePDFBlob = async (params: CalculationParams, result: Calcula
             <div style="display: flex; gap: 12px; align-items: center;">
               <div style="background: #10b981; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📅</div>
               <div>
-                <h3 style="color: #047857; font-size: 14px; margin: 0 0 5px 0; font-weight: 700;">Tahmini Teslimat Tarihi</h3>
+                <h3 style="color: #047857; font-size: 14px; margin: 0 0 5px 0; font-weight: 700;">Tahmini at Tarihi</h3>
                 <p style="color: #065f46; font-size: 16px; margin: 0; font-weight: 800;">${result.deliveryDate}</p>
               </div>
             </div>
@@ -340,7 +340,7 @@ export const generatePDFBlob = async (params: CalculationParams, result: Calcula
                     <td style="padding: 6px 4px; border: 1px solid #e2e8f0; text-align: center; font-weight: ${row.isDeliveryMonth ? '700' : '400'}; font-size: 9px;">
                       <div style="display: flex; flex-direction: column; align-items: center; gap: 1px;">
                         <span>${row.month}</span>
-                        ${row.isDeliveryMonth ? '<span style="display: inline-block; background: #10b981; color: white; padding: 0px 3px; border-radius: 2px; font-size: 5px; line-height: 1.4; white-space: nowrap; max-width: 35px;">TESLİMAT</span>' : ''}
+                        ${row.isDeliveryMonth ? '<span style="display: block; background: #10b981; color: white; padding: 1px 2px; border-radius: 2px; font-size: 6px; line-height: 1.2; text-align: center; margin-top: 2px;">TESLİM</span>' : ''}
                       </div>
                     </td>
                     <td style="padding: 4px; text-align: center; border: 1px solid #e2e8f0; font-size: 7px;">${row.date}</td>
@@ -357,7 +357,7 @@ export const generatePDFBlob = async (params: CalculationParams, result: Calcula
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div style="font-size: 8px; color: #64748b;">
                 <p style="margin: 0; font-weight: 600;">Katılım Uzmanı | Tasarruf Finansman Hesaplama Planı</p>
-                <p style="margin: 2px 0 0 0; font-size: 7px;">⚠️ Bu belge bilgilendirme amaçlıdır - www.hangikatilim.com</p>
+                <p style="margin: 2px 0 0 0; font-size: 7px;">⚠️ Bu belge bilgilendirme amaçlıdır - www.katilimuzmani.com</p>
               </div>
               <div style="font-size: 9px; color: #1e40af; font-weight: 700;">
                 Sayfa ${pageNumber} / ${totalPages}

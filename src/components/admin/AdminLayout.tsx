@@ -1,22 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { AdminSidebar } from './AdminSidebar';
 import { ToastContainer } from './Toast';
 import { useToast } from '../../hooks/useToast';
 import { useUnreadMessagesCount } from '../../hooks/useUnreadMessagesCount';
+import { Menu, X } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
     const { isAuthenticated, loading, logout } = useAuth();
     const { toasts, removeToast } = useToast();
     const { count: unreadCount } = useUnreadMessagesCount();
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+    // Close mobile sidebar on route change
+    useEffect(() => {
+        setIsMobileSidebarOpen(false);
+    }, []);
+
+    // Close sidebar on escape key
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setIsMobileSidebarOpen(false);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, []);
+
+    // Prevent body scroll when mobile sidebar is open
+    useEffect(() => {
+        if (isMobileSidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isMobileSidebarOpen]);
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Yükleniyor...</p>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400">Yükleniyor...</p>
                 </div>
             </div>
         );
@@ -35,20 +65,48 @@ export const AdminLayout: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
-            <AdminSidebar onLogout={handleLogout} />
+        <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+            {/* Mobile Sidebar Overlay */}
+            {isMobileSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                />
+            )}
 
-            <div className="flex-1 ml-64 flex flex-col">
+            {/* Sidebar - Fixed on both mobile and desktop, slide-in on mobile */}
+            <div className={`
+                fixed inset-y-0 left-0 z-50 w-64
+                transform transition-transform duration-300 ease-in-out
+                lg:translate-x-0
+                ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}>
+                <AdminSidebar
+                    onLogout={handleLogout}
+                    onClose={() => setIsMobileSidebarOpen(false)}
+                />
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
                 {/* Top Header Bar */}
-                <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-500">Admin Panel</span>
+                        {/* Hamburger Menu Button - Mobile Only */}
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            className="p-2 -ml-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden"
+                            aria-label="Menüyü Aç"
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">Admin Panel</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         {/* Message Notification Badge */}
                         <Link
                             to="/admin/contact?tab=messages"
-                            className="relative p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                             title="Gelen Mesajlar"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,14 +124,15 @@ export const AdminLayout: React.FC = () => {
                             href="/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm hover:shadow-md"
+                            className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm hover:shadow-md"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                            Siteyi Canlı Gör
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span className="hidden sm:inline">Siteyi Canlı Gör</span>
+                            <span className="sm:hidden">Canlı</span>
+                            <svg className="w-3 h-3 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
                         </a>
@@ -81,7 +140,7 @@ export const AdminLayout: React.FC = () => {
                 </header>
 
                 {/* Main Content */}
-                <main className="flex-1 p-8">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
                     <Outlet />
                 </main>
             </div>

@@ -24,10 +24,55 @@ export const CompaniesPage: React.FC = () => {
         }
     };
 
+    // Skeleton Loader Component
+    const CompanySkeleton = () => (
+        <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl border border-gray-100 dark:border-slate-700 flex flex-col md:flex-row md:items-center gap-6 animate-pulse">
+            {/* Logo Skeleton */}
+            <div className="w-full md:w-48 h-24 bg-gray-200 dark:bg-slate-700 rounded-xl flex-shrink-0"></div>
+
+            <div className="flex-1 space-y-3">
+                {/* Title Skeleton */}
+                <div className="h-6 bg-gray-200 dark:bg-slate-700 rounded w-48"></div>
+                {/* Subtitle Skeleton */}
+                <div className="h-3 bg-gray-100 dark:bg-slate-600 rounded w-64"></div>
+                {/* Description Skeleton */}
+                <div className="h-4 bg-gray-100 dark:bg-slate-600 rounded w-full max-w-md"></div>
+                <div className="h-4 bg-gray-100 dark:bg-slate-600 rounded w-3/4 max-w-sm"></div>
+                {/* Tags Skeleton */}
+                <div className="flex gap-2 pt-2">
+                    <div className="h-6 w-20 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                    <div className="h-6 w-16 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                    <div className="h-6 w-24 bg-green-100 dark:bg-green-900/30 rounded"></div>
+                </div>
+            </div>
+
+            {/* Button Skeleton */}
+            <div className="w-full md:w-40 h-12 bg-blue-100 dark:bg-slate-700 rounded-xl"></div>
+        </div>
+    );
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-12 animate-fade-in">
+                <div className="container mx-auto px-4 max-w-6xl">
+                    {/* Header Skeleton */}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-16 bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-slate-700">
+                        <div className="flex-1 space-y-4 animate-pulse">
+                            <div className="h-6 w-32 bg-green-100 dark:bg-green-900/30 rounded-full"></div>
+                            <div className="h-8 w-80 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                            <div className="h-4 w-full max-w-lg bg-gray-100 dark:bg-slate-600 rounded"></div>
+                            <div className="h-4 w-3/4 max-w-md bg-gray-100 dark:bg-slate-600 rounded"></div>
+                        </div>
+                        <div className="w-full md:w-1/3 h-40 bg-blue-50 dark:bg-slate-900/50 rounded-2xl animate-pulse"></div>
+                    </div>
+
+                    {/* Company Cards Skeleton */}
+                    <div className="grid grid-cols-1 gap-6">
+                        {[1, 2, 3, 4].map((i) => (
+                            <CompanySkeleton key={i} />
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }

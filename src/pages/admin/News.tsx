@@ -30,6 +30,7 @@ export const News: React.FC = () => {
         content: '',
         is_featured: false,
         status: 'draft',
+        published_at: new Date().toISOString().split('T')[0], // Varsayılan bugün
     });
 
     useEffect(() => {
@@ -86,6 +87,7 @@ export const News: React.FC = () => {
             content: post.content || '',
             is_featured: post.is_featured,
             status: post.status,
+            published_at: post.published_at ? post.published_at.split('T')[0] : new Date().toISOString().split('T')[0],
         });
         setEditingId(post.id);
         setIsEditing(true);
@@ -136,6 +138,7 @@ export const News: React.FC = () => {
             content: '',
             is_featured: false,
             status: 'draft',
+            published_at: new Date().toISOString().split('T')[0],
         });
         setEditingId(null);
         setIsEditing(false);
@@ -240,6 +243,17 @@ export const News: React.FC = () => {
                                             <option value="draft">📝 Taslak</option>
                                             <option value="published">✅ Yayında</option>
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Yayın Tarihi
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.published_at || ''}
+                                            onChange={(e) => setFormData({ ...formData, published_at: e.target.value })}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                        />
                                     </div>
                                 </div>
 

@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Copy, Share2 } from 'lucide-react';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../types';
 import { generatePDF, generatePDFBlob } from '../src/services/pdfService';
 import { calculationService } from '../src/services/api/calculationService';
+import { feedbackService } from '../src/services/api/feedbackService';
 import { useAuth } from '../src/contexts/AuthContext';
 import { LoginModal } from '../src/components/auth/LoginModal';
 import { RegisterModal } from '../src/components/auth/RegisterModal';
 import { PasswordResetModal } from '../src/components/auth/PasswordResetModal';
+import { SponsorArea, SponsorTrigger } from './SponsorArea';
+import { parseQueryToState, serializeStateToQuery, buildShareableUrl, debounce, hasUrlParams } from '../src/utils/calculatorUrlParams';
 
 
 const MIN_TARGET = 50000;
@@ -22,6 +25,52 @@ const MIN_RATE_LOTTERY = 8.5;
 const MIN_RATE_NON_LOTTERY = 7.0;
 const MAX_RATE = 12.0;
 
+// GA4 Event Tracking - gtag ile doğrudan gönderim (GTM kullanılmıyor)
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
+const isDevMode = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
+/**
+ * GA4 Event Tracking Fonksiyonu
+ * - Production'da: debug_mode OLMADAN normal gönderim (Raporlar > Etkinlikler'de görünür)
+ * - Localhost'ta: debug_mode: true ile DebugView'de görünür
+ * - GTM kullanılmıyor, doğrudan gtag('event', ...) ile gönderilir
+ */
+const trackEvent = (eventName: string, params: Record<string, any>) => {
+  // Console log ile client-side tetikleme doğrulaması
+  console.log(`[GA4] ${eventName} fired`, params);
+
+  if (window.gtag) {
+    // Production'da debug_mode eklenmez, sadece localhost'ta eklenir
+    const eventParams = isDevMode
+      ? { ...params, debug_mode: true }
+      : params;
+
+    // Doğrudan gtag('event', ...) ile GA4'e gönderim
+    window.gtag('event', eventName, eventParams);
+    console.log(`[GA4] Event sent to GA4: gtag('event', '${eventName}', ...)`, eventParams);
+  } else {
+    console.warn('[GA4] gtag not found - event not sent');
+  }
+};
+
+/**
+ * GA4 User Property Ayarlama
+ * - Funnel ve segment analizi için kullanılır
+ */
+const setUserProperty = (propertyName: string, value: string | boolean) => {
+  if (window.gtag) {
+    window.gtag('set', 'user_properties', {
+      [propertyName]: String(value)
+    });
+    console.log(`[GA4] User property set: ${propertyName} = ${value}`);
+  }
+};
+
 interface CalculatorProps {
   theme?: 'light' | 'dark';
 }
@@ -32,6 +81,12 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // Auth & Navigation
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // GA4: is_logged_in user property güncelle
+  useEffect(() => {
+    setUserProperty('is_logged_in', !!user);
+  }, [user]);
 
   // State
   const [params, setParams] = useState<CalculationParams>({
@@ -67,6 +122,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [savingCalculation, setSavingCalculation] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
 
+  // Feedback state
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   // AI Cooldown State
   const AI_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
   const COOLDOWN_KEY = 'aiCooldownUntil';
@@ -74,6 +133,89 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
   // Schedule Accordion State - Default CLOSED
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+
+  // Sponsor Area State
+  const [showSponsor, setShowSponsor] = useState(false);
+  const [sponsorTrigger, setSponsorTrigger] = useState<SponsorTrigger | null>(null);
+
+  // URL Sync - Track if initial load happened
+  const [urlInitialized, setUrlInitialized] = useState(false);
+
+  // Initialize params from URL on mount
+  useEffect(() => {
+    if (hasUrlParams(location.search)) {
+      const urlState = parseQueryToState(location.search);
+      if (Object.keys(urlState).length > 0) {
+        setParams(prev => ({
+          ...prev,
+          ...urlState,
+          // Show interim panels if values exist
+        }));
+        // If interim payments exist, show the panels
+        if (urlState.interimPayment1 && urlState.interimPayment1 > 0) {
+          setShowInterim1(true);
+        }
+        if (urlState.interimPayment2 && urlState.interimPayment2 > 0) {
+          setShowInterim2(true);
+        }
+        // If increase settings exist, show the panel
+        if (urlState.increaseType && urlState.increaseType !== IncreaseType.NONE) {
+          setShowIncreaseSettings(true);
+        }
+        console.log('[URL Params] Loaded from URL:', urlState);
+      }
+    }
+    setUrlInitialized(true);
+  }, []); // Empty deps - only run on mount
+
+  // Debounced URL update when params change
+  const debouncedUpdateUrl = useMemo(
+    () => debounce((newParams: CalculationParams) => {
+      const newUrl = buildShareableUrl(newParams);
+      window.history.replaceState(null, '', newUrl);
+      console.log('[URL Params] URL updated');
+    }, 400),
+    []
+  );
+
+  // Update URL when params change (after initial load)
+  useEffect(() => {
+    if (urlInitialized) {
+      debouncedUpdateUrl(params);
+    }
+  }, [params, urlInitialized, debouncedUpdateUrl]);
+
+  // Copy Link Handler
+  const handleCopyLink = async () => {
+    const url = buildShareableUrl(params);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Link kopyalandı!', 'success');
+
+      // GA4 Event
+      trackEvent('share_link_copy', {
+        method: 'copy',
+        page: window.location.pathname
+      });
+    } catch (err) {
+      console.error('Copy failed:', err);
+      showToast('Link kopyalanamadı', 'error');
+    }
+  };
+
+  // WhatsApp Share Handler
+  const handleWhatsAppShare = () => {
+    const url = buildShareableUrl(params);
+    const message = `Tasarruf finansmanı hesaplamasına göz at: ${url}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+
+    // GA4 Event
+    trackEvent('share_whatsapp', {
+      method: 'whatsapp',
+      page: window.location.pathname
+    });
+  };
 
   // Cooldown Timer Effect
   useEffect(() => {
@@ -477,12 +619,76 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const handleAiAdvice = async () => {
     if (!result) return;
     setLoadingAi(true);
-    // TODO: Implement AI advice feature with Gemini API
-    // For now, show a placeholder message
-    setTimeout(() => {
-      setAiAdvice('AI tavsiye özelliği yakında aktif olacak. Şu anda hesaplamanızı kaydedebilir ve profil sayfanızdan görüntüleyebilirsiniz.');
+
+    // GA4 Event: AI Button Click
+    trackEvent('ai_button_click', {
+      source: 'calculator',
+      page: window.location.pathname
+    });
+
+    try {
+      const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+      if (!GEMINI_API_KEY) {
+        setAiAdvice('AI tavsiye özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
+        setLoadingAi(false);
+        return;
+      }
+
+      const prompt = `Sen bir tasarruf finansmanı uzmanısın. Kullanıcının hesaplama sonuçlarına göre kısa ve anlaşılır bir tavsiye ver.
+
+Hesaplama Detayları:
+- Hedef Tutar: ${params.targetAmount.toLocaleString('tr-TR')} TL
+- Vade: ${params.months} ay
+- Sistem: ${params.systemType === 'LOTTERY' ? 'Çekilişli' : 'Çekilişsiz/Peşinatlı'}
+- Aylık Taksit: ${result.monthlyInstallment.toLocaleString('tr-TR')} TL
+- Toplam Ödeme: ${result.totalPayable.toLocaleString('tr-TR')} TL
+- Katılım Payı: ${result.participationFee.toLocaleString('tr-TR')} TL
+- Katılım Payı Oranı: %${params.participationRate}
+- Varlık Tipi: ${params.assetType === 'HOME' ? 'Konut' : params.assetType === 'CAR' ? 'Araç' : 'Ticari'}
+
+Bu hesaplama sonucuna göre:
+1. Kullanıcının ödeme kapasitesine uygun olup olmadığını değerlendir
+2. Varsa risk faktörlerini belirt
+3. Alternatif önerilerde bulun (farklı vade, farklı sistem vb.)
+4. Genel bir değerlendirme yap
+
+Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel bir dil kullan. "Yatırım tavsiyesi değildir" uyarısını da ekle.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const data = await response.json();
+      const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Tavsiye alınamadı. Lütfen tekrar deneyin.';
+
+      setAiAdvice(aiText);
+
+      // Trigger sponsor area on AI advice
+      setShowSponsor(true);
+      setSponsorTrigger('ai');
+    } catch (error) {
+      console.error('AI Advice error:', error);
+      setAiAdvice('Yapay zeka tavsiyesi alınırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+    } finally {
       setLoadingAi(false);
-    }, 1000);
+    }
   };
 
   const toggleIncreaseSettings = () => {
@@ -500,7 +706,19 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // Mevcut kod:
   const downloadPDF = () => {
     if (!result) return;
-    generatePDF(params, result, 'Ziyaretçi');
+    // Üye girişi yapılmışsa üye adı, değilse 'Ziyaretçi' göster
+    const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Ziyaretçi';
+    generatePDF(params, result, userName);
+
+    // GA4 Event: PDF Download
+    trackEvent('pdf_download', {
+      file_name: 'katilim_hesaplama.pdf',
+      page: window.location.pathname
+    });
+
+    // Trigger sponsor area on PDF download
+    setShowSponsor(true);
+    setSponsorTrigger('pdf');
   };
 
   // BURAYA EKLE - downloadPDF'in hemen altına:
@@ -527,8 +745,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
     setSavingCalculation(true);
 
     try {
+      // Generate PDF Blob first (this can be slow)
       const pdfBlob = await generatePDFBlob(params, result, user.email || 'Kullanıcı');
 
+      // Save to database
       await calculationService.saveCalculation({
         userId: user.id,
         type: mapAssetTypeToCalculationType(params.assetType),
@@ -536,6 +756,18 @@ export const Calculator: React.FC<CalculatorProps> = ({
         result,
         pdfBlob
       });
+
+      // GA4 Event: Calculation Saved (EN KRİTİK)
+      trackEvent('calculation_saved', {
+        type: mapAssetTypeToCalculationType(params.assetType),
+        calculation_type: mapAssetTypeToCalculationType(params.assetType),
+        vade: params.months,
+        tutar: result.totalPayable
+      });
+
+      // Trigger sponsor area on save
+      setShowSponsor(true);
+      setSponsorTrigger('save');
 
       // Success toast
       showToast('Hesaplama başarıyla kaydedildi!', 'success');
@@ -916,7 +1148,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
             {/* Fee Payment Options */}
             <div className="mb-8">
               <label className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-3 block">Organizasyon Ücreti Ödeme Şekli</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setParams({ ...params, feePaymentType: FeePaymentType.UPFRONT })}
                   className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all ${params.feePaymentType === FeePaymentType.UPFRONT
@@ -934,15 +1166,6 @@ export const Calculator: React.FC<CalculatorProps> = ({
                     }`}
                 >
                   Yarı Peşin / Yarı Taksit
-                </button>
-                <button
-                  onClick={() => setParams({ ...params, feePaymentType: FeePaymentType.SPREAD })}
-                  className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all ${params.feePaymentType === FeePaymentType.SPREAD
-                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-500 text-primary-700 dark:text-primary-400'
-                    : 'border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:border-primary-300'
-                    }`}
-                >
-                  Taksitlere Böl
                 </button>
               </div>
             </div>
@@ -982,20 +1205,20 @@ export const Calculator: React.FC<CalculatorProps> = ({
             </div>
 
             {/* ENHANCED INCREASE PAYMENT SECTION */}
-            <div className={`p-4 rounded-xl border transition-all duration-300 ${showIncreaseSettings ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${showIncreaseSettings ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-gray-200 text-gray-500'}`}>
+            <div className={`p-4 rounded-xl border transition-all duration-300 overflow-hidden ${showIncreaseSettings ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700'}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center ${showIncreaseSettings ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-gray-200 text-gray-500'}`}>
                     <TrendingUp size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Artışlı Ödeme</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Taksitlerinizi belirli dönemlerde artırarak borcunuzu erken bitirin.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate sm:whitespace-normal">Taksitlerinizi belirli dönemlerde artırarak borcunuzu erken bitirin.</p>
                   </div>
                 </div>
                 <button
                   onClick={toggleIncreaseSettings}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${showIncreaseSettings ? 'bg-primary-600' : 'bg-gray-300 dark:bg-slate-600'}`}
+                  className={`relative w-12 h-6 flex-shrink-0 rounded-full transition-colors duration-300 ${showIncreaseSettings ? 'bg-primary-600' : 'bg-gray-300 dark:bg-slate-600'}`}
                 >
                   <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${showIncreaseSettings ? 'translate-x-6' : 'translate-x-0'}`}></span>
                 </button>
@@ -1191,6 +1414,23 @@ export const Calculator: React.FC<CalculatorProps> = ({
                 </button>
               </div>
 
+              {/* Share Buttons Row */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 py-2.5 px-4 rounded-xl text-sm font-medium transition-all"
+                >
+                  <Copy size={16} className="flex-shrink-0" />
+                  <span>Linki Kopyala</span>
+                </button>
+                <button
+                  onClick={handleWhatsAppShare}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white py-2.5 px-4 rounded-xl text-sm font-medium transition-all shadow-lg shadow-[#25D366]/20"
+                >
+                  <Share2 size={16} className="flex-shrink-0" />
+                  <span>WhatsApp</span>
+                </button>
+              </div>
               {aiAdvice && (
                 <div className="bg-purple-50 dark:bg-slate-800 p-4 rounded-xl border border-purple-100 dark:border-slate-600 text-sm text-purple-900 dark:text-purple-100 animate-fade-in mb-6">
                   <div className="flex items-center gap-2 mb-2 text-purple-700 dark:text-purple-300 font-bold">
@@ -1198,6 +1438,65 @@ export const Calculator: React.FC<CalculatorProps> = ({
                     <span>AI Asistan Tavsiyesi</span>
                   </div>
                   <p className="leading-relaxed opacity-90">{aiAdvice}</p>
+                </div>
+              )}
+
+              {/* Sponsor Area - Only visible after PDF/Save/AI action */}
+              {showSponsor && sponsorTrigger && (
+                <SponsorArea trigger={sponsorTrigger} />
+              )}
+
+              {/* Feedback UI - Geri bildirim */}
+              {result && !feedbackSubmitted && (
+                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 rounded-xl border border-blue-200 dark:border-slate-700">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center font-medium">Bu hesaplama size faydalı oldu mu?</p>
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={async () => {
+                        setFeedbackLoading(true);
+                        await feedbackService.submitFeedback({
+                          is_positive: true,
+                          calculation_params: {
+                            targetAmount: params.targetAmount,
+                            months: params.months,
+                            systemType: params.systemType,
+                            assetType: params.assetType
+                          }
+                        });
+                        setFeedbackSubmitted(true);
+                        setFeedbackLoading(false);
+                      }}
+                      disabled={feedbackLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                    >
+                      👍 Evet
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setFeedbackLoading(true);
+                        await feedbackService.submitFeedback({
+                          is_positive: false,
+                          calculation_params: {
+                            targetAmount: params.targetAmount,
+                            months: params.months,
+                            systemType: params.systemType,
+                            assetType: params.assetType
+                          }
+                        });
+                        setFeedbackSubmitted(true);
+                        setFeedbackLoading(false);
+                      }}
+                      disabled={feedbackLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                    >
+                      👎 Hayır
+                    </button>
+                  </div>
+                </div>
+              )}
+              {feedbackSubmitted && (
+                <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 rounded-xl border border-green-300 dark:border-green-800 text-center">
+                  <p className="text-sm text-green-700 dark:text-green-400 font-bold">✔️ Geri bildiriminiz için teşekkürler!</p>
                 </div>
               )}
 

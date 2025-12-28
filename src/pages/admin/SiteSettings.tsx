@@ -538,13 +538,13 @@ export const SiteSettings: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Twitter</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">X (Twitter)</label>
                         <input
                             type="url"
                             value={formData.twitter_url}
                             onChange={(e) => handleFormChange({ twitter_url: e.target.value })}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="https://twitter.com/..."
+                            placeholder="https://x.com/..."
                         />
                     </div>
 

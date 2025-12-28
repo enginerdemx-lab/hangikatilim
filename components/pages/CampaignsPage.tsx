@@ -269,7 +269,49 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                {/* CAMPAIGN LIST */}
                <div className="space-y-4">
 
-                  {campaigns.map((camp) => (
+                  {/* Skeleton Loader */}
+                  {loading && (
+                     <>
+                        {[1, 2, 3].map((i) => (
+                           <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden animate-pulse">
+                              {/* Card Header Skeleton */}
+                              <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
+                                 <div className="h-5 w-24 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                                 <div className="h-3 w-32 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                              </div>
+                              <div className="p-5 flex flex-col md:flex-row gap-4 items-center">
+                                 {/* Image and Logo Skeleton */}
+                                 <div className="flex flex-row gap-3 items-center">
+                                    <div className="w-72 h-32 bg-gray-200 dark:bg-slate-700 rounded-xl"></div>
+                                    <div className="flex flex-col items-center gap-2">
+                                       <div className="w-20 h-20 bg-gray-100 dark:bg-slate-600 rounded-xl"></div>
+                                       <div className="h-3 w-16 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                                    </div>
+                                 </div>
+                                 {/* Content Skeleton */}
+                                 <div className="flex-1 space-y-3 md:pl-6">
+                                    <div className="h-6 w-64 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                                    <div className="flex gap-4">
+                                       <div className="h-10 w-20 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                                       <div className="h-10 w-28 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                                    </div>
+                                    <div className="space-y-2">
+                                       <div className="h-3 w-48 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                                       <div className="h-3 w-40 bg-gray-100 dark:bg-slate-600 rounded"></div>
+                                    </div>
+                                 </div>
+                                 {/* Button Skeleton */}
+                                 <div className="flex flex-col gap-2">
+                                    <div className="w-32 h-10 bg-blue-200 dark:bg-slate-700 rounded-lg"></div>
+                                    <div className="w-24 h-4 bg-gray-100 dark:bg-slate-600 rounded mx-auto"></div>
+                                 </div>
+                              </div>
+                           </div>
+                        ))}
+                     </>
+                  )}
+
+                  {!loading && campaigns.map((camp) => (
                      <div
                         key={camp.id}
                         className="group relative bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300"

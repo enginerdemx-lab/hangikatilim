@@ -17,6 +17,7 @@ const VALID_DB_COLUMNS = [
     'cta2_label',
     'cta2_link',
     'sort_order',
+    'is_active',
 ];
 
 // Filter payload to only include valid DB columns

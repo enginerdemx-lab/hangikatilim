@@ -37,7 +37,9 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
     const [news, setNews] = useState<NewsPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const autoSlideRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         loadNews();
@@ -54,6 +56,36 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
         }
     };
 
+    // Auto-slide every 5 seconds
+    useEffect(() => {
+        if (news.length <= 0 || loading) return;
+
+        const startAutoSlide = () => {
+            autoSlideRef.current = setInterval(() => {
+                setIsTransitioning(true);
+                setTimeout(() => {
+                    setCurrentIndex((prev) => {
+                        const visibleCount = getVisibleCount();
+                        const nextIndex = prev + visibleCount;
+                        if (nextIndex < news.length) {
+                            return nextIndex;
+                        }
+                        return 0;
+                    });
+                    setIsTransitioning(false);
+                }, 300);
+            }, 5000);
+        };
+
+        startAutoSlide();
+
+        return () => {
+            if (autoSlideRef.current) {
+                clearInterval(autoSlideRef.current);
+            }
+        };
+    }, [news.length, loading]);
+
     // Number of visible items based on screen size
     const getVisibleCount = () => {
         if (typeof window === 'undefined') return 3;
@@ -67,25 +99,46 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
     const currentPage = Math.floor(currentIndex / visibleCount);
 
     const handleNext = () => {
-        const nextIndex = currentIndex + visibleCount;
-        if (nextIndex < news.length) {
-            setCurrentIndex(nextIndex);
-        } else {
-            setCurrentIndex(0);
-        }
+        // Clear auto-slide and restart
+        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
+
+        setIsTransitioning(true);
+        setTimeout(() => {
+            const nextIndex = currentIndex + visibleCount;
+            if (nextIndex < news.length) {
+                setCurrentIndex(nextIndex);
+            } else {
+                setCurrentIndex(0);
+            }
+            setIsTransitioning(false);
+        }, 300);
     };
 
     const handlePrev = () => {
-        const prevIndex = currentIndex - visibleCount;
-        if (prevIndex >= 0) {
-            setCurrentIndex(prevIndex);
-        } else {
-            setCurrentIndex(Math.max(0, news.length - visibleCount));
-        }
+        // Clear auto-slide and restart
+        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
+
+        setIsTransitioning(true);
+        setTimeout(() => {
+            const prevIndex = currentIndex - visibleCount;
+            if (prevIndex >= 0) {
+                setCurrentIndex(prevIndex);
+            } else {
+                setCurrentIndex(Math.max(0, news.length - visibleCount));
+            }
+            setIsTransitioning(false);
+        }, 300);
     };
 
     const handleDotClick = (pageIndex: number) => {
-        setCurrentIndex(pageIndex * visibleCount);
+        // Clear auto-slide
+        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
+
+        setIsTransitioning(true);
+        setTimeout(() => {
+            setCurrentIndex(pageIndex * visibleCount);
+            setIsTransitioning(false);
+        }, 300);
     };
 
     // Don't render if no news
@@ -168,7 +221,7 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
                     {/* Cards Grid */}
                     <div
                         ref={scrollRef}
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
+                        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 transition-opacity duration-300 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
                     >
                         {visibleNews.map((item) => (
                             <Link
@@ -242,8 +295,8 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
                                 key={index}
                                 onClick={() => handleDotClick(index)}
                                 className={`h-2 rounded-full transition-all ${index === currentPage
-                                        ? 'w-6 bg-blue-600 dark:bg-blue-400'
-                                        : 'w-2 bg-gray-300 dark:bg-slate-600 hover:bg-gray-400 dark:hover:bg-slate-500'
+                                    ? 'w-6 bg-blue-600 dark:bg-blue-400'
+                                    : 'w-2 bg-gray-300 dark:bg-slate-600 hover:bg-gray-400 dark:hover:bg-slate-500'
                                     }`}
                                 aria-label={`Sayfa ${index + 1}`}
                             />

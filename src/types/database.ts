@@ -45,6 +45,8 @@ export interface SiteSettings {
   instagram_url?: string;
   linkedin_url?: string;
   copyright_text?: string;
+  // Sponsor area toggle
+  sponsor_area_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +92,8 @@ export interface HomeHero {
   cta1_link?: string;
   cta2_label?: string;
   cta2_link?: string;
+  sort_order?: number;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }

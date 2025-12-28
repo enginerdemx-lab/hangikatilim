@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus } from 'lucide-react';
+import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Link, MessageCircle } from 'lucide-react';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../../types';
 import { generatePDF, generatePDFBlob } from '../services/pdfService';
 import { calculationService } from '../services/api/calculationService';
+import { feedbackService } from '../services/api/feedbackService';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginModal } from './auth/LoginModal';
 import { RegisterModal } from './auth/RegisterModal';
 import { PasswordResetModal } from './auth/PasswordResetModal';
+import { SponsorArea, SponsorTrigger } from './SponsorArea';
+import { parseQueryToState, buildShareableUrl, debounce, updateUrlWithParams } from '../utils/calculatorUrlParams';
 
 
 const MIN_TARGET = 50000;
@@ -66,6 +69,14 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [showResetModal, setShowResetModal] = useState(false);
   const [savingCalculation, setSavingCalculation] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
+
+  // Sponsor Area State - Only shows after user intent actions
+  const [showSponsor, setShowSponsor] = useState(false);
+  const [sponsorTrigger, setSponsorTrigger] = useState<SponsorTrigger | null>(null);
+
+  // Feedback state
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // AI Cooldown State
   const AI_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -132,8 +143,18 @@ export const Calculator: React.FC<CalculatorProps> = ({
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
-  // Check for prefill data from Campaigns page
+  // Check for URL params or prefill data on mount
   useEffect(() => {
+    // Check URL params first (priority)
+    const urlParams = parseQueryToState(window.location.search);
+    if (Object.keys(urlParams).length > 0) {
+      setParams(prev => ({ ...prev, ...urlParams }));
+      // Clear any stale prefill data
+      localStorage.removeItem('CALC_PREFILL');
+      return; // Skip localStorage prefill if URL has params
+    }
+
+    // Then check for prefill data from Campaigns page
     const prefillDataStr = localStorage.getItem('CALC_PREFILL');
     if (prefillDataStr) {
       try {
@@ -143,7 +164,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
           targetAmount: prefillData.amount,
           months: prefillData.months,
           assetType: prefillData.assetType,
-          systemType: prefillData.systemType || SystemType.LOTTERY, // Apply system type
+          systemType: prefillData.systemType || SystemType.LOTTERY,
           downPayment: prefillData.downPayment || 0
         }));
         // Clean up
@@ -153,6 +174,18 @@ export const Calculator: React.FC<CalculatorProps> = ({
       }
     }
   }, []);
+
+  // Debounced URL update - syncs params to URL with 300ms delay
+  const debouncedUrlUpdate = useCallback(
+    debounce((p: CalculationParams) => {
+      updateUrlWithParams(p);
+    }, 300),
+    []
+  );
+
+  useEffect(() => {
+    debouncedUrlUpdate(params);
+  }, [params, debouncedUrlUpdate]);
 
   // Determine current min rate based on system type
   const currentMinRate = params.systemType === SystemType.LOTTERY ? MIN_RATE_LOTTERY : MIN_RATE_NON_LOTTERY;
@@ -477,6 +510,11 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const handleAiAdvice = async () => {
     if (!result) return;
     setLoadingAi(true);
+
+    // Trigger sponsor area on AI button click
+    setShowSponsor(true);
+    setSponsorTrigger('ai');
+
     // TODO: Implement AI advice feature with Gemini API
     // For now, show a placeholder message
     setTimeout(() => {
@@ -501,6 +539,9 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const downloadPDF = () => {
     if (!result) return;
     generatePDF(params, result, 'Ziyaretçi');
+    // Trigger sponsor area on PDF download
+    setShowSponsor(true);
+    setSponsorTrigger('pdf');
   };
 
   // BURAYA EKLE - downloadPDF'in hemen altına:
@@ -547,6 +588,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
       // Success toast only after everything is saved
       showToast('Hesaplama başarıyla kaydedildi!', 'success');
+
+      // Trigger sponsor area on save
+      setShowSponsor(true);
+      setSponsorTrigger('save');
     } catch (error) {
       console.error('Save calculation error:', error);
       showToast('Hesaplama kaydedilemedi. Lütfen tekrar deneyin.', 'error');
@@ -560,6 +605,47 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  // GA4 safe wrapper - logs to console for debugging, doesn't error if gtag missing
+  const trackEvent = (eventName: string, eventParams: object) => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', eventName, eventParams);
+      }
+      console.debug(`[GA4] ${eventName}`, eventParams);
+    } catch (e) {
+      console.warn('GA4 tracking failed:', e);
+    }
+  };
+
+  // Copy shareable link to clipboard
+  const handleCopyLink = async () => {
+    const url = buildShareableUrl(params);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Link kopyalandı!', 'success');
+      trackEvent('share_link_copy', { method: 'copy', page: '/' });
+    } catch (e) {
+      console.error('Clipboard write failed:', e);
+      showToast('Link kopyalanamadı', 'error');
+    }
+  };
+
+  // Share via WhatsApp
+  const handleWhatsAppShare = () => {
+    const url = buildShareableUrl(params);
+    // Format numbers with Turkish locale (1.000.000)
+    const formatTL = (val: number) => new Intl.NumberFormat('tr-TR').format(val);
+
+    const text = `Katılım Uzmanı hesaplama sonucum:
+Tutar: ${formatTL(params.targetAmount)} TL, Peşinat: ${formatTL(params.downPayment)} TL, Vade: ${params.months} ay, Organizasyon Ücreti: %${params.participationRate}
+Detaylara buradan ulaşabilirsin:
+${url}`;
+
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+    trackEvent('share_whatsapp', { method: 'whatsapp' });
   };
 
   // Asset Options Config
@@ -1196,6 +1282,29 @@ export const Calculator: React.FC<CalculatorProps> = ({
                 </button>
               </div>
 
+              {/* Share Buttons Row */}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-medium transition-all border border-gray-200 dark:border-slate-600"
+                >
+                  <Link size={16} />
+                  Linki Kopyala
+                </button>
+                <button
+                  onClick={handleWhatsAppShare}
+                  className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg"
+                >
+                  <MessageCircle size={16} />
+                  WhatsApp
+                </button>
+              </div>
+
+              {/* Sponsor Area - Only visible after PDF/Save/AI action */}
+              {showSponsor && sponsorTrigger && (
+                <SponsorArea trigger={sponsorTrigger} />
+              )}
+
               {aiAdvice && (
                 <div className="bg-purple-50 dark:bg-slate-800 p-4 rounded-xl border border-purple-100 dark:border-slate-600 text-sm text-purple-900 dark:text-purple-100 animate-fade-in mb-6">
                   <div className="flex items-center gap-2 mb-2 text-purple-700 dark:text-purple-300 font-bold">
@@ -1203,6 +1312,60 @@ export const Calculator: React.FC<CalculatorProps> = ({
                     <span>AI Asistan Tavsiyesi</span>
                   </div>
                   <p className="leading-relaxed opacity-90">{aiAdvice}</p>
+                </div>
+              )}
+
+              {/* Feedback UI - Geri bildirim - CHART'TAN ÖNCE */}
+              {result && !feedbackSubmitted && (
+                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 rounded-xl border border-blue-200 dark:border-slate-700">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center font-medium">Bu hesaplama size faydalı oldu mu?</p>
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={async () => {
+                        setFeedbackLoading(true);
+                        await feedbackService.submitFeedback({
+                          is_positive: true,
+                          calculation_params: {
+                            targetAmount: params.targetAmount,
+                            months: params.months,
+                            systemType: params.systemType,
+                            assetType: params.assetType
+                          }
+                        });
+                        setFeedbackSubmitted(true);
+                        setFeedbackLoading(false);
+                      }}
+                      disabled={feedbackLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                    >
+                      👍 Evet
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setFeedbackLoading(true);
+                        await feedbackService.submitFeedback({
+                          is_positive: false,
+                          calculation_params: {
+                            targetAmount: params.targetAmount,
+                            months: params.months,
+                            systemType: params.systemType,
+                            assetType: params.assetType
+                          }
+                        });
+                        setFeedbackSubmitted(true);
+                        setFeedbackLoading(false);
+                      }}
+                      disabled={feedbackLoading}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                    >
+                      👎 Hayır
+                    </button>
+                  </div>
+                </div>
+              )}
+              {feedbackSubmitted && (
+                <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 rounded-xl border border-green-300 dark:border-green-800 text-center">
+                  <p className="text-sm text-green-700 dark:text-green-400 font-bold">✔️ Geri bildiriminiz için teşekkürler!</p>
                 </div>
               )}
 

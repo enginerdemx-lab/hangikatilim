@@ -17,6 +17,8 @@ import { Media } from './pages/admin/Media';
 import { Campaigns as AdminCampaigns } from './pages/admin/Campaigns';
 import { Companies as AdminCompanies } from './pages/admin/Companies';
 import { QuickLinks } from './pages/admin/QuickLinks';
+import { Sponsors as AdminSponsors } from './pages/admin/Sponsors';
+import { Feedback as AdminFeedback } from './pages/admin/Feedback';
 // EmailNotifications temporarily replaced with inline test
 // import { EmailNotifications } from './pages/admin/EmailNotifications';
 
@@ -83,7 +85,9 @@ const App: React.FC = () => {
           <Route path="campaigns" element={<AdminCampaigns />} />
           <Route path="companies" element={<AdminCompanies />} />
           <Route path="quick-links" element={<QuickLinks />} />
+          <Route path="sponsors" element={<AdminSponsors />} />
           <Route path="email-notifications" element={<TestEmailPage />} />
+          <Route path="feedback" element={<AdminFeedback />} />
         </Route>
 
         {/* Public Routes with Layout */}

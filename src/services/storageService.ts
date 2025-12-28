@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-export type StorageFolder = 'logos' | 'campaign-images' | 'blog-covers' | 'news-covers' | 'badges';
+export type StorageFolder = 'logos' | 'campaign-images' | 'blog-covers' | 'news-covers' | 'badges' | 'sponsors';
 
 
 export const storageService = {

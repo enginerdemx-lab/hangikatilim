@@ -8,8 +8,8 @@ interface Message {
   text: string;
 }
 
-// API Key - Production için environment variable kullanılmalı
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyC7l2bfz4h8aHW83c2d6tceuu5IHB2gajA';
+// API Key - Environment variable kullanılmalı (.env dosyasında VITE_GEMINI_API_KEY olarak tanımlı olmalı)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 export const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);

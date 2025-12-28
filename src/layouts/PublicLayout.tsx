@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Linkedin, Mail, ChevronRight, Send, CheckCircle, Loader2 } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Mail, ChevronRight, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { PublicNavbar } from '../components/PublicNavbar';
 import { NewsTicker } from '../../components/NewsTicker';
 import { LegalModal, LegalType } from '../../components/LegalModal';
 import { siteSettingsApi } from '../services/api/siteSettings';
 import emailService from '../services/api/emailService';
 import type { SiteSettings } from '../types/database';
+
+// Custom X (Twitter) Icon
+const XIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
 
 export const PublicLayout: React.FC = () => {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -50,17 +57,41 @@ export const PublicLayout: React.FC = () => {
                         localStorage.setItem('cached_site_name', settings.site_name);
                     }
 
-                    // Set favicon
+                    // Set favicon - update all favicon links for Google Search compatibility
                     if (settings.favicon_url) {
-                        const existingFavicon = document.querySelector('link[rel="icon"]');
-                        if (existingFavicon) existingFavicon.remove();
+                        // Update all favicon link elements
+                        const faviconIco = document.getElementById('favicon-ico') as HTMLLinkElement;
+                        const faviconPng = document.getElementById('favicon-png') as HTMLLinkElement;
+                        const appleTouchIcon = document.getElementById('apple-touch-icon') as HTMLLinkElement;
 
-                        const link = document.createElement('link');
-                        link.rel = 'icon';
-                        link.href = settings.favicon_url;
-                        link.type = 'image/x-icon';
-                        document.head.appendChild(link);
+                        if (faviconIco) faviconIco.href = settings.favicon_url;
+                        if (faviconPng) faviconPng.href = settings.favicon_url;
+                        if (appleTouchIcon) appleTouchIcon.href = settings.favicon_url;
                     }
+
+                    // Update SEO meta tags from admin panel
+                    const seoTitle = settings.default_seo_title || `${settings.site_name} | Tasarruf Finansmanı Hesaplayıcı`;
+                    const seoDescription = settings.default_seo_description || "Türkiye'nin en kapsamlı tasarruf finansmanı hesaplama ve karşılaştırma platformu.";
+
+                    // Update meta description
+                    const metaDesc = document.getElementById('meta-description') as HTMLMetaElement;
+                    if (metaDesc) metaDesc.content = seoDescription;
+
+                    // Update Open Graph tags
+                    const ogTitle = document.getElementById('og-title') as HTMLMetaElement;
+                    const ogDesc = document.getElementById('og-description') as HTMLMetaElement;
+                    const ogImage = document.getElementById('og-image') as HTMLMetaElement;
+                    if (ogTitle) ogTitle.content = seoTitle;
+                    if (ogDesc) ogDesc.content = seoDescription;
+                    if (ogImage && settings.og_image_url) ogImage.content = settings.og_image_url;
+
+                    // Update Twitter Card tags
+                    const twitterTitle = document.getElementById('twitter-title') as HTMLMetaElement;
+                    const twitterDesc = document.getElementById('twitter-description') as HTMLMetaElement;
+                    const twitterImage = document.getElementById('twitter-image') as HTMLMetaElement;
+                    if (twitterTitle) twitterTitle.content = seoTitle;
+                    if (twitterDesc) twitterDesc.content = seoDescription;
+                    if (twitterImage && settings.og_image_url) twitterImage.content = settings.og_image_url;
                 }
             } catch (error) {
                 console.error('Site ayarları yüklenemedi:', error);
@@ -205,7 +236,7 @@ export const PublicLayout: React.FC = () => {
                                 )}
                                 {siteSettings?.twitter_url && (
                                     <a href={siteSettings.twitter_url} target="_blank" rel="noopener noreferrer" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
-                                        <Twitter size={18} />
+                                        <XIcon size={18} />
                                     </a>
                                 )}
                                 {siteSettings?.instagram_url && (
@@ -224,7 +255,7 @@ export const PublicLayout: React.FC = () => {
                                             <Facebook size={18} />
                                         </a>
                                         <a href="#" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
-                                            <Twitter size={18} />
+                                            <XIcon size={18} />
                                         </a>
                                         <a href="#" className="bg-gray-800 hover:bg-primary-600 text-white p-2 rounded-lg transition-colors">
                                             <Instagram size={18} />

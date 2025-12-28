@@ -879,6 +879,7 @@ const AgreementsList: React.FC<{ userId: string }> = ({ userId }) => {
     const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
     const [legalModalOpen, setLegalModalOpen] = useState(false);
     const [legalModalType, setLegalModalType] = useState<LegalType>('TERMS');
+    const [selectedAgreementAccepted, setSelectedAgreementAccepted] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -898,8 +899,9 @@ const AgreementsList: React.FC<{ userId: string }> = ({ userId }) => {
         loadData();
     }, [userId]);
 
-    const handleOpenLegal = (type: LegalType) => {
+    const handleOpenLegal = (type: LegalType, isAccepted: boolean) => {
         setLegalModalType(type);
+        setSelectedAgreementAccepted(isAccepted);
         setLegalModalOpen(true);
     };
 
@@ -920,7 +922,7 @@ const AgreementsList: React.FC<{ userId: string }> = ({ userId }) => {
 
     const AgreementItem = ({ label, accepted, date, type }: { label: string, accepted: boolean, date?: string, type: LegalType }) => (
         <button
-            onClick={() => handleOpenLegal(type)}
+            onClick={() => handleOpenLegal(type, accepted)}
             className="w-full flex items-center justify-between py-3 border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-lg px-2 transition-colors text-left"
         >
             <div className="flex items-center gap-3">
@@ -949,7 +951,7 @@ const AgreementsList: React.FC<{ userId: string }> = ({ userId }) => {
                 isOpen={legalModalOpen}
                 type={legalModalType}
                 onClose={() => setLegalModalOpen(false)}
-                onConfirm={() => setLegalModalOpen(false)}
+                onConfirm={selectedAgreementAccepted ? undefined : () => setLegalModalOpen(false)}
                 siteSettings={siteSettings}
             />
             <div className="space-y-1">

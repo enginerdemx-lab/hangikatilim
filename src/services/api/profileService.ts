@@ -104,6 +104,17 @@ export const profileService = {
             .eq('user_id', userId);
 
         if (error) throw error;
+
+        // Eğer email_enabled değiştiyse, profiles tablosundaki
+        // email_notifications alanını da güncelle (aboneler listesi senkronizasyonu)
+        if (preferences.email_enabled !== undefined) {
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({ email_notifications: preferences.email_enabled })
+                .eq('id', userId);
+
+            if (profileError) throw profileError;
+        }
     },
 
     // ============================================
