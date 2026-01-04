@@ -4,6 +4,7 @@ import { Menu, Moon, Sun, X, User, LogIn, LogOut, Calculator, ChevronDown } from
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 
+
 interface PublicNavbarProps {
     theme: 'light' | 'dark';
     toggleTheme: () => void;
@@ -116,6 +117,9 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
 
                     {/* Right Actions */}
                     <div className="flex items-center gap-3">
+                        {/* Notification Button */}
+
+
                         {/* Theme Toggle */}
                         <button
                             onClick={toggleTheme}
@@ -263,6 +267,10 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
                                 )}
                             </>
                         )}
+                        <div className="flex items-center justify-between px-4 py-2">
+                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Bildirimler</span>
+
+                        </div>
                     </div>
                 )}
             </nav>

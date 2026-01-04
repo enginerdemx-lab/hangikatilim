@@ -141,20 +141,22 @@ export const emailService = {
         textBody?: string
     ): Promise<{ success: boolean; error?: string }> {
         try {
-            // Use absolute URL for production
-            const API_URL = window.location.hostname === 'localhost'
-                ? '/api/send-email.php'
-                : 'https://katilimuzmani.com/api/send-email.php';
+            // Supabase Edge Function kullan
+            const SUPABASE_URL = 'https://jlckywnllaprrtjgqovf.supabase.co';
+            const API_URL = `${SUPABASE_URL}/functions/v1/send-email`;
 
             // Add automatic footer to email
             const emailFooter = '<div style="margin-top:30px;padding-top:15px;border-top:1px solid #ccc;font-size:11px;color:#666;"><p>Bu ileti Katilim Uzmani tarafindan iletilmistir.</p><p><a href="https://katilimuzmani.com/profil">Iletisim tercihlerinizi guncellemek icin tiklayin</a></p><p>Iletisim: destek@katilimuzmani.com</p></div>';
 
             const fullHtmlBody = htmlBody + emailFooter;
 
-            // Call PHP backend for SMTP sending
+            // Call Supabase Edge Function
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsY2t5d25sbGFwcnJ0amdxb3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ1MTg2MDcsImV4cCI6MjA1MDA5NDYwN30.bIjQfSLQs6RihwJpCjqjNx_RmjskXxvvukIqeD5tuyQ'}`
+                },
                 body: JSON.stringify({
                     to,
                     subject,

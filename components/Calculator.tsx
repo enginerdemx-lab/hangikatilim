@@ -11,13 +11,13 @@ import { LoginModal } from '../src/components/auth/LoginModal';
 import { RegisterModal } from '../src/components/auth/RegisterModal';
 import { PasswordResetModal } from '../src/components/auth/PasswordResetModal';
 import { SponsorArea, SponsorTrigger } from './SponsorArea';
-import { parseQueryToState, serializeStateToQuery, buildShareableUrl, debounce, hasUrlParams } from '../src/utils/calculatorUrlParams';
+import { parseQueryToState, buildShareUrl, buildWhatsAppMessage, openWhatsApp, hasUrlParams, formatCurrencyForShare } from '../src/utils/calculatorUrlParams';
 
 
 const MIN_TARGET = 50000;
 const MAX_TARGET = 5000000;
 const MAX_MONTHS = 360;
-const LEGAL_DELIVERY_MIN_MONTH = 5;
+const LEGAL_DELIVERY_MIN_MONTH = 6;
 const DELIVERY_THRESHOLD_RATE = 0.40; // %40
 
 // Participation Rate Limits
@@ -134,6 +134,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // Schedule Accordion State - Default CLOSED
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
+  // Manual Delivery Month State
+  const [useManualDeliveryMonth, setUseManualDeliveryMonth] = useState(false);
+  const [manualDeliveryMonth, setManualDeliveryMonth] = useState(6);
+
   // Sponsor Area State
   const [showSponsor, setShowSponsor] = useState(false);
   const [sponsorTrigger, setSponsorTrigger] = useState<SponsorTrigger | null>(null);
@@ -141,7 +145,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // URL Sync - Track if initial load happened
   const [urlInitialized, setUrlInitialized] = useState(false);
 
-  // Initialize params from URL on mount
+  // Initialize params from URL on mount (only for shared links)
   useEffect(() => {
     if (hasUrlParams(location.search)) {
       const urlState = parseQueryToState(location.search);
@@ -149,53 +153,30 @@ export const Calculator: React.FC<CalculatorProps> = ({
         setParams(prev => ({
           ...prev,
           ...urlState,
-          // Show interim panels if values exist
         }));
-        // If interim payments exist, show the panels
-        if (urlState.interimPayment1 && urlState.interimPayment1 > 0) {
-          setShowInterim1(true);
-        }
-        if (urlState.interimPayment2 && urlState.interimPayment2 > 0) {
-          setShowInterim2(true);
-        }
-        // If increase settings exist, show the panel
-        if (urlState.increaseType && urlState.increaseType !== IncreaseType.NONE) {
-          setShowIncreaseSettings(true);
-        }
-        console.log('[URL Params] Loaded from URL:', urlState);
+        console.log('[URL Params] Loaded from shared URL:', urlState);
       }
     }
     setUrlInitialized(true);
   }, []); // Empty deps - only run on mount
 
-  // Debounced URL update when params change
-  const debouncedUpdateUrl = useMemo(
-    () => debounce((newParams: CalculationParams) => {
-      const newUrl = buildShareableUrl(newParams);
-      window.history.replaceState(null, '', newUrl);
-      console.log('[URL Params] URL updated');
-    }, 400),
-    []
-  );
-
-  // Update URL when params change (after initial load)
-  useEffect(() => {
-    if (urlInitialized) {
-      debouncedUpdateUrl(params);
-    }
-  }, [params, urlInitialized, debouncedUpdateUrl]);
+  // NO URL AUTO-UPDATE - URL only changes when user clicks share buttons
 
   // Copy Link Handler
   const handleCopyLink = async () => {
-    const url = buildShareableUrl(params);
+    const shareUrl = buildShareUrl(params);
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       showToast('Link kopyalandı!', 'success');
 
-      // GA4 Event
-      trackEvent('share_link_copy', {
-        method: 'copy',
-        page: window.location.pathname
+      // GA4 Event: share_link_copied
+      trackEvent('share_link_copied', {
+        tip: params.assetType,
+        sistem: params.systemType,
+        tutar: params.targetAmount,
+        pesinat: params.downPayment,
+        vade: params.months,
+        oran: params.participationRate,
       });
     } catch (err) {
       console.error('Copy failed:', err);
@@ -205,15 +186,27 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
   // WhatsApp Share Handler
   const handleWhatsAppShare = () => {
-    const url = buildShareableUrl(params);
-    const message = `Tasarruf finansmanı hesaplamasına göz at: ${url}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    const shareUrl = buildShareUrl(params);
 
-    // GA4 Event
-    trackEvent('share_whatsapp', {
-      method: 'whatsapp',
-      page: window.location.pathname
+    const message = buildWhatsAppMessage({
+      tutar: params.targetAmount,
+      pesinat: params.downPayment,
+      vade: params.months,
+      oran: params.participationRate,
+      shareUrl: shareUrl,
+      // TODO: customTemplate from admin panel if available
+    });
+
+    openWhatsApp(message);
+
+    // GA4 Event: share_whatsapp_clicked
+    trackEvent('share_whatsapp_clicked', {
+      tip: params.assetType,
+      sistem: params.systemType,
+      tutar: params.targetAmount,
+      pesinat: params.downPayment,
+      vade: params.months,
+      oran: params.participationRate,
     });
   };
 
@@ -574,11 +567,14 @@ export const Calculator: React.FC<CalculatorProps> = ({
       if (finalDeliveryMonth === -1) finalDeliveryMonth = Math.max(5, Math.floor(months * 0.4));
     }
 
+    // Manual delivery month override (if enabled)
+    if (useManualDeliveryMonth && manualDeliveryMonth >= LEGAL_DELIVERY_MIN_MONTH && manualDeliveryMonth <= months) {
+      finalDeliveryMonth = manualDeliveryMonth;
+    }
+
     // Update schedule with correct delivery flag
     schedule.forEach(row => {
-      if (row.month === finalDeliveryMonth) {
-        row.isDeliveryMonth = true;
-      }
+      row.isDeliveryMonth = row.month === finalDeliveryMonth;
     });
 
     const deliveryDateObj = new Date(today.getFullYear(), today.getMonth() + Math.max(0, finalDeliveryMonth), 15);
@@ -594,7 +590,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
       schedule,
       initialPayment
     });
-  }, [params, calculateMonthsFromInstallment]);
+  }, [params, calculateMonthsFromInstallment, useManualDeliveryMonth, manualDeliveryMonth]);
 
   useEffect(() => {
     calculate();
@@ -627,7 +623,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
     });
 
     try {
-      const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+      // Use process.env which is defined in vite.config.ts
+      const GEMINI_API_KEY = (process.env as any).GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
 
       if (!GEMINI_API_KEY) {
         setAiAdvice('AI tavsiye özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
@@ -893,14 +890,67 @@ Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel b
                   <div>
                     <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Teslimat Zamanı Nasıl Belirlenir?</h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      Toplam ödemeniz (Peşinat + Taksitler), hedef tutarın <strong>%40'ına</strong> ulaştığında teslimat yapılır. Yasal düzenlemeler gereği teslimat <strong>en erken 5. ayda</strong> gerçekleşir.
+                      Teslimat için toplam ödemenin (Peşinat + Taksitler) hedef tutarın <strong>%40'ına</strong> ulaşması ve yasal <strong>150 günlük</strong> sürenin (en erken <strong>6. ay</strong>) dolması gerekir.
                     </p>
                     {result && (
                       <div className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded">
                         <CalendarCheck size={14} />
-                        Mevcut plana göre teslimat: {result.deliveryMonthIndex}. Ay
+                        {useManualDeliveryMonth ? 'Manuel seçilen teslimat' : 'Mevcut plana göre teslimat'}: {result.deliveryMonthIndex}. Ay
                       </div>
                     )}
+
+                    {/* Manual Delivery Month Toggle */}
+                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+                      <label className="flex items-center gap-3 cursor-pointer group select-none">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={useManualDeliveryMonth}
+                            onChange={(e) => setUseManualDeliveryMonth(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary-600 transition-colors">
+                          Teslimat Ayını Manuel Belirle
+                        </span>
+                      </label>
+
+                      {/* Manual Input Controls */}
+                      {useManualDeliveryMonth && (
+                        <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setManualDeliveryMonth(prev => Math.max(6, prev - 1))}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={6}
+                                max={params.months}
+                                value={manualDeliveryMonth}
+                                onChange={(e) => {
+                                  let val = parseInt(e.target.value);
+                                  if (isNaN(val)) val = 6;
+                                  setManualDeliveryMonth(Math.max(6, Math.min(params.months, val)));
+                                }}
+                                className="w-16 h-8 text-center bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                              />
+                            </div>
+                            <button
+                              onClick={() => setManualDeliveryMonth(prev => Math.min(params.months, prev + 1))}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                          <span className="text-sm font-bold text-primary-600 dark:text-primary-400">. Ayda Teslim</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1,221 +1,126 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './src/contexts/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Admin imports
-import { AdminLogin } from './src/pages/admin/AdminLogin';
-import { AdminDashboard } from './src/pages/admin/AdminDashboard';
-import { Campaigns as AdminCampaigns } from './src/pages/admin/Campaigns';
-import { Companies as AdminCompanies } from './src/pages/admin/Companies';
-import { SiteSettings } from './src/pages/admin/SiteSettings';
-import { Blog as AdminBlog } from './src/pages/admin/Blog';
-import { HomeHeroSettings } from './src/pages/admin/HomeHeroSettings';
-import { Navigation } from './src/pages/admin/Navigation';
-import { Ticker } from './src/pages/admin/Ticker';
-import { Calculator as AdminCalculator } from './src/pages/admin/Calculator';
-import { News as AdminNews } from './src/pages/admin/News';
-import { Contact as AdminContact } from './src/pages/admin/Contact';
-import { Media } from './src/pages/admin/Media';
-import { HomeContent } from './src/pages/admin/HomeContent';
-import { AdminLayout } from './src/components/admin/AdminLayout';
-import { QuickLinks } from './src/pages/admin/QuickLinks';
-import { EmailNotifications } from './src/pages/admin/EmailNotifications';
-import { Users as AdminUsers } from './src/pages/admin/Members';
-import { Feedback as AdminFeedback } from './src/pages/admin/Feedback';
-import { Sponsors as AdminSponsors } from './src/pages/admin/Sponsors';
+import { AdminLayout } from './components/admin/AdminLayout';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminLogin } from './pages/admin/AdminLogin';
+import { HomeContent } from './pages/admin/HomeContent';
+import { SiteSettings } from './pages/admin/SiteSettings';
+import { Ticker } from './pages/admin/Ticker';
+import { HomeHeroSettings } from './pages/admin/HomeHeroSettings';
+import { Calculator as AdminCalculator } from './pages/admin/Calculator';
+import { News as AdminNews } from './pages/admin/News';
+import { Blog as AdminBlog } from './pages/admin/Blog';
+import { Contact as AdminContact } from './pages/admin/Contact';
+import { Media } from './pages/admin/Media';
+import { Campaigns as AdminCampaigns } from './pages/admin/Campaigns';
+import { Companies as AdminCompanies } from './pages/admin/Companies';
+import { QuickLinks } from './pages/admin/QuickLinks';
+import { Sponsors as AdminSponsors } from './pages/admin/Sponsors';
+import { Feedback as AdminFeedback } from './pages/admin/Feedback';
+import { PushNotifications } from './pages/admin/PushNotifications';
 
-// Public Layout and Pages
-import { PublicLayout } from './src/layouts/PublicLayout';
+// Test components
+const TestUsersPage = () => <div>TEST USERS PAGE WORKS</div>;
+const TestEmailPage = () => (
+  <div style={{ padding: '2rem', color: 'white' }}>
+    <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>E-posta Bildirimleri - TEST</h1>
+    <p>Bu sayfa çalışıyorsa route doğru tanımlanmış demektir.</p>
+  </div>
+);
+const TestPushPage = () => (
+  <div style={{ padding: '2rem', background: 'green', color: 'white', fontSize: '24px' }}>
+    ✅ PUSH NOTIFICATIONS ÇALIŞIYOR!
+  </div>
+);
 
-// Lazy loaded public pages for code splitting
-const HomePage = lazy(() => import('./src/pages/public/HomePage'));
-const CampaignsPage = lazy(() => import('./src/pages/public/CampaignsPage'));
-const CompaniesPage = lazy(() => import('./src/pages/public/CompaniesPage'));
-const NewsPage = lazy(() => import('./src/pages/public/NewsPage'));
-const NewsDetailPage = lazy(() => import('./src/pages/public/NewsDetailPage'));
-const BlogPage = lazy(() => import('./src/pages/public/BlogPage'));
-const BlogDetailPage = lazy(() => import('./src/pages/public/BlogDetailPage'));
-const ContactPage = lazy(() => import('./src/pages/public/ContactPage'));
-const ProfilePage = lazy(() => import('./src/pages/public/ProfilePage'));
-const SavedCalculationsPage = lazy(() => import('./src/pages/public/SavedCalculationsPage'));
-const LoginPage = lazy(() => import('./src/pages/public/LoginPage'));
-const RegisterPage = lazy(() => import('./src/pages/public/RegisterPage'));
-const AuthCallback = lazy(() => import('./src/pages/public/AuthCallback'));
+// Public Layout
+import { PublicLayout } from './layouts/PublicLayout';
+import { ScrollToHash } from './components/ScrollToHash';
+import NotFoundPage from './pages/public/NotFoundPage';
 
-// Auth Guard
-import { RequireAuth } from './src/components/RequireAuth';
+// Lazy loaded public pages
+const HomePage = lazy(() => import('./pages/public/HomePage'));
+const CampaignsPage = lazy(() => import('./pages/public/CampaignsPage'));
+const CompaniesPage = lazy(() => import('./pages/public/CompaniesPage'));
+const NewsPage = lazy(() => import('./pages/public/NewsPage'));
+const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
+const BlogPage = lazy(() => import('./pages/public/BlogPage'));
+const BlogDetailPage = lazy(() => import('./pages/public/BlogDetailPage'));
+const ContactPage = lazy(() => import('./pages/public/ContactPage'));
+const LoginPage = lazy(() => import('./pages/public/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/public/RegisterPage'));
+const ProfilePage = lazy(() => import('./pages/public/ProfilePage'));
+const SavedCalculationsPage = lazy(() => import('./pages/public/SavedCalculationsPage'));
+const UnsubscribePage = lazy(() => import('./pages/public/UnsubscribePage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Yükleniyor...</p>
-        </div>
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600">Yükleniyor...</p>
     </div>
+  </div>
 );
 
-
 const App: React.FC = () => {
-    return (
-        <AuthProvider>
-            <BrowserRouter>
-                <Routes>
-                    {/* Auth Callback Route - outside of PublicLayout for cleaner UI */}
-                    <Route
-                        path="/auth/callback"
-                        element={
-                            <Suspense fallback={<PageLoader />}>
-                                <AuthCallback />
-                            </Suspense>
-                        }
-                    />
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <ScrollToHash />
+        <Routes>
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="members" element={<TestUsersPage />} />
+            <Route path="home-content" element={<HomeContent />} />
+            <Route path="site-settings" element={<SiteSettings />} />
+            <Route path="ticker" element={<Ticker />} />
+            <Route path="home-hero" element={<HomeHeroSettings />} />
+            <Route path="calculator" element={<AdminCalculator />} />
+            <Route path="news" element={<AdminNews />} />
+            <Route path="blog" element={<AdminBlog />} />
+            <Route path="contact" element={<AdminContact />} />
+            <Route path="media" element={<Media />} />
+            <Route path="campaigns" element={<AdminCampaigns />} />
+            <Route path="companies" element={<AdminCompanies />} />
+            <Route path="quick-links" element={<QuickLinks />} />
+            <Route path="sponsors" element={<AdminSponsors />} />
+            <Route path="email-notifications" element={<TestEmailPage />} />
+            <Route path="feedback" element={<AdminFeedback />} />
+            <Route path="push-notifications" element={<PushNotifications />} />
+            <Route path="push_notifications" element={<Navigate to="/admin/push-notifications" replace />} />
+          </Route>
 
-                    {/* Admin Routes */}
-                    <Route path="/admin/login" element={<AdminLogin />} />
-                    <Route path="/admin" element={<AdminLayout />}>
-                        <Route index element={<AdminDashboard />} />
-                        <Route path="home-content" element={<HomeContent />} />
-                        <Route path="site-settings" element={<SiteSettings />} />
-                        <Route path="navigation" element={<Navigation />} />
-                        <Route path="ticker" element={<Ticker />} />
-                        <Route path="home-hero" element={<HomeHeroSettings />} />
-                        <Route path="calculator" element={<AdminCalculator />} />
-                        <Route path="companies" element={<AdminCompanies />} />
-                        <Route path="campaigns" element={<AdminCampaigns />} />
-                        <Route path="news" element={<AdminNews />} />
-                        <Route path="blog" element={<AdminBlog />} />
-                        <Route path="contact" element={<AdminContact />} />
-                        <Route path="media" element={<Media />} />
-                        <Route path="quick-links" element={<QuickLinks />} />
-                        <Route path="email-notifications" element={<EmailNotifications />} />
-                        <Route path="users" element={<AdminUsers />} />
-                        <Route path="feedback" element={<AdminFeedback />} />
-                        <Route path="sponsors" element={<AdminSponsors />} />
-                    </Route>
+          {/* Public Routes */}
+          <Route path="/" element={<PublicLayout />}>
+            <Route index element={<Suspense fallback={<PageLoader />}><HomePage /></Suspense>} />
+            <Route path="kampanyalar" element={<Suspense fallback={<PageLoader />}><CampaignsPage /></Suspense>} />
+            <Route path="katilim-firmalari" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
+            <Route path="sektor-haberleri" element={<Suspense fallback={<PageLoader />}><NewsPage /></Suspense>} />
+            <Route path="sektor-haberleri/:slug" element={<Suspense fallback={<PageLoader />}><NewsDetailPage /></Suspense>} />
+            <Route path="blog" element={<Suspense fallback={<PageLoader />}><BlogPage /></Suspense>} />
+            <Route path="blog/:slug" element={<Suspense fallback={<PageLoader />}><BlogDetailPage /></Suspense>} />
+            <Route path="iletisim" element={<Suspense fallback={<PageLoader />}><ContactPage /></Suspense>} />
+            <Route path="login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
+            <Route path="register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
+            <Route path="profil" element={<Suspense fallback={<PageLoader />}><ProfilePage /></Suspense>} />
+            <Route path="profil/hesaplamalar" element={<Suspense fallback={<PageLoader />}><SavedCalculationsPage /></Suspense>} />
+          </Route>
 
-                    {/* Public Routes with Layout */}
-                    <Route path="/" element={<PublicLayout />}>
-                        <Route
-                            index
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <HomePage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="kampanyalar"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <CampaignsPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="katilim-firmalari"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <CompaniesPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="sektor-haberleri"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <NewsPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="sektor-haberleri/:slug"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <NewsDetailPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="blog"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <BlogPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="blog/:slug"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <BlogDetailPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="iletisim"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <ContactPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="profil"
-                            element={
-                                <RequireAuth>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <ProfilePage />
-                                    </Suspense>
-                                </RequireAuth>
-                            }
-                        />
-                        <Route
-                            path="profil/hesaplamalar"
-                            element={
-                                <RequireAuth>
-                                    <Suspense fallback={<PageLoader />}>
-                                        <SavedCalculationsPage />
-                                    </Suspense>
-                                </RequireAuth>
-                            }
-                        />
-                        {/* Auth Routes - Inside PublicLayout to keep navbar/header */}
-                        <Route
-                            path="login"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <LoginPage />
-                                </Suspense>
-                            }
-                        />
-                        <Route
-                            path="register"
-                            element={
-                                <Suspense fallback={<PageLoader />}>
-                                    <RegisterPage />
-                                </Suspense>
-                            }
-                        />
-                    </Route>
+          {/* Unsubscribe */}
+          <Route path="/unsubscribe/:token" element={<Suspense fallback={<PageLoader />}><UnsubscribePage /></Suspense>} />
 
-                    {/* Global 404 - MUST be OUTSIDE of PublicLayout to not catch admin routes */}
-                    <Route path="*" element={
-                        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                            <div className="text-center">
-                                <h1 className="text-6xl font-bold text-gray-300">404</h1>
-                                <p className="text-xl text-gray-600 mt-4">Sayfa bulunamadı</p>
-                                <a href="/" className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                    Ana Sayfaya Dön
-                                </a>
-                            </div>
-                        </div>
-                    } />
-                </Routes>
-            </BrowserRouter>
-        </AuthProvider>
-    );
+          {/* 404 */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
 };
 
 export default App;
-

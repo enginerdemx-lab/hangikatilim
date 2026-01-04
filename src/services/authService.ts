@@ -14,6 +14,8 @@ export const authService = {
         consent: boolean;
         commercial: boolean;
     }) {
+        console.log('[authService] Attempting signup for:', email);
+
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -32,7 +34,15 @@ export const authService = {
             },
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error('[authService] Signup error:', error);
+            console.error('[authService] Error message:', error.message);
+            console.error('[authService] Error status:', error.status);
+            console.error('[authService] Full error object:', JSON.stringify(error, null, 2));
+            throw error;
+        }
+
+        console.log('[authService] Signup successful:', data);
         return data;
     },
 

@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { siteSettingsApi } from '../../services/api/siteSettings';
+import { uiEffectsApi, SnowConfig, DEFAULT_SNOW_CONFIG } from '../../services/api/uiEffects';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { SiteSettings } from '../../types/database';
-import { Save, RefreshCw, Search, Settings, Globe, Mail, Share2, Smartphone, FileText, Copy, Check } from 'lucide-react';
+import { Save, RefreshCw, Search, Settings, Globe, Mail, Share2, Smartphone, FileText, Copy, Check, Snowflake, Eye, X, Plus } from 'lucide-react';
+import { startSnow, stopSnow, updateSnow, isSnowRunning } from '../../utils/snowEffect';
 
-type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'uygulama' | 'hukuki';
+type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'uygulama' | 'hukuki' | 'efektler';
 
 // Reusable Card Component
 const Card: React.FC<{ children: React.ReactNode; className?: string; title?: string }> = ({ children, className = '', title }) => (
@@ -131,6 +133,13 @@ export const SiteSettings: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('genel');
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Snow Effect State
+    const [snowConfig, setSnowConfig] = useState<SnowConfig>(DEFAULT_SNOW_CONFIG);
+    const [snowLoading, setSnowLoading] = useState(false);
+    const [snowSaving, setSnowSaving] = useState(false);
+    const [snowPreviewing, setSnowPreviewing] = useState(false);
+    const [newExcludedPage, setNewExcludedPage] = useState('');
+
     const { success, error: showError } = useToast();
 
     // Form state (renk alanları kaldırıldı)
@@ -224,6 +233,86 @@ export const SiteSettings: React.FC = () => {
         }
     };
 
+    // Load snow config
+    const loadSnowConfig = useCallback(async () => {
+        try {
+            setSnowLoading(true);
+            const config = await uiEffectsApi.getSnowConfig();
+            setSnowConfig(config);
+        } catch (err) {
+            console.error('Snow config yüklenemedi:', err);
+        } finally {
+            setSnowLoading(false);
+        }
+    }, []);
+
+    // Load snow config when Efektler tab is active
+    useEffect(() => {
+        if (activeTab === 'efektler') {
+            loadSnowConfig();
+        }
+    }, [activeTab, loadSnowConfig]);
+
+    // Cleanup preview on unmount or tab change
+    useEffect(() => {
+        return () => {
+            if (isSnowRunning()) {
+                stopSnow();
+            }
+        };
+    }, [activeTab]);
+
+    // Handle snow config change
+    const handleSnowConfigChange = (updates: Partial<SnowConfig>) => {
+        setSnowConfig(prev => ({ ...prev, ...updates }));
+    };
+
+    // Toggle preview
+    const handleSnowPreview = () => {
+        if (snowPreviewing) {
+            stopSnow();
+            setSnowPreviewing(false);
+        } else {
+            startSnow(snowConfig);
+            setSnowPreviewing(true);
+        }
+    };
+
+    // Save snow config
+    const handleSaveSnowConfig = async () => {
+        try {
+            setSnowSaving(true);
+            await uiEffectsApi.updateSnowConfig(snowConfig);
+            success('Kar efekti ayarları kaydedildi');
+
+            // Update preview if active
+            if (snowPreviewing) {
+                updateSnow(snowConfig);
+            }
+        } catch (err) {
+            showError('Kar efekti ayarları kaydedilemedi');
+        } finally {
+            setSnowSaving(false);
+        }
+    };
+
+    // Add excluded page
+    const addExcludedPage = () => {
+        if (newExcludedPage.trim() && !snowConfig.excludedPages.includes(newExcludedPage.trim())) {
+            handleSnowConfigChange({
+                excludedPages: [...snowConfig.excludedPages, newExcludedPage.trim()]
+            });
+            setNewExcludedPage('');
+        }
+    };
+
+    // Remove excluded page
+    const removeExcludedPage = (page: string) => {
+        handleSnowConfigChange({
+            excludedPages: snowConfig.excludedPages.filter(p => p !== page)
+        });
+    };
+
     const hasChanges = useMemo(() => {
         if (!originalData) return false;
         return JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -261,6 +350,7 @@ export const SiteSettings: React.FC = () => {
         { id: 'sosyal', label: 'Sosyal Medya', icon: <Share2 size={16} />, keywords: ['facebook', 'twitter', 'instagram', 'linkedin', 'sosyal'] },
         { id: 'uygulama', label: 'Uygulama', icon: <Smartphone size={16} />, keywords: ['app store', 'google play', 'app gallery', 'uygulama', 'mobil'] },
         { id: 'hukuki', label: 'Hukuki', icon: <FileText size={16} />, keywords: ['kvkk', 'gizlilik', 'kullanım', 'çerez', 'politika', 'hukuki'] },
+        { id: 'efektler', label: 'Efektler', icon: <Snowflake size={16} />, keywords: ['kar', 'snow', 'efekt', 'animasyon', 'kış'] },
     ];
 
     // Search filter
@@ -322,8 +412,8 @@ export const SiteSettings: React.FC = () => {
                         key={tab.id}
                         onClick={() => { setActiveTab(tab.id); setSearchQuery(''); }}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id
-                                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-600'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-600'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
                     >
                         {tab.icon}
@@ -677,6 +767,231 @@ export const SiteSettings: React.FC = () => {
                                 />
                             </div>
                         </Card>
+                    </div>
+                )}
+
+                {activeTab === 'efektler' && (
+                    <div className="space-y-4">
+                        {snowLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-slate-600"></div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Snow Effect Toggle & Save */}
+                                <Card>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <Snowflake size={24} className="text-blue-500" />
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Kar Efekti</h3>
+                                                <p className="text-sm text-slate-500">Site genelinde kar yağışı animasyonu</p>
+                                            </div>
+                                        </div>
+                                        <Toggle
+                                            checked={snowConfig.enabled}
+                                            onChange={(v) => handleSnowConfigChange({ enabled: v })}
+                                            label={snowConfig.enabled ? 'Aktif' : 'Pasif'}
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleSnowPreview}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${snowPreviewing
+                                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                                }`}
+                                        >
+                                            <Eye size={16} />
+                                            {snowPreviewing ? 'Önizlemeyi Kapat' : 'Canlı Önizleme'}
+                                        </button>
+                                        <button
+                                            onClick={handleSaveSnowConfig}
+                                            disabled={snowSaving}
+                                            className="flex items-center gap-2 px-5 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 disabled:bg-slate-400 text-white dark:text-slate-900 rounded-xl font-medium transition-colors"
+                                        >
+                                            {snowSaving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                                            Kaydet
+                                        </button>
+                                    </div>
+                                </Card>
+
+                                {/* Parameters */}
+                                <Card title="Parametreler">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Intensity */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Yoğunluk: {snowConfig.intensity}
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="200"
+                                                step="10"
+                                                value={snowConfig.intensity}
+                                                onChange={(e) => handleSnowConfigChange({ intensity: parseInt(e.target.value) })}
+                                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
+                                            />
+                                            <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                                <span>0</span>
+                                                <span>200</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Speed */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Hız: {snowConfig.speed.toFixed(1)}
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="0.2"
+                                                max="3.0"
+                                                step="0.1"
+                                                value={snowConfig.speed}
+                                                onChange={(e) => handleSnowConfigChange({ speed: parseFloat(e.target.value) })}
+                                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
+                                            />
+                                            <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                                <span>Yavaş</span>
+                                                <span>Hızlı</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Size Min */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Min Boyut: {snowConfig.sizeMin.toFixed(1)}px
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="0.5"
+                                                max="4.0"
+                                                step="0.1"
+                                                value={snowConfig.sizeMin}
+                                                onChange={(e) => handleSnowConfigChange({ sizeMin: parseFloat(e.target.value) })}
+                                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
+                                            />
+                                        </div>
+
+                                        {/* Size Max */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Max Boyut: {snowConfig.sizeMax.toFixed(1)}px
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="0.5"
+                                                max="4.0"
+                                                step="0.1"
+                                                value={snowConfig.sizeMax}
+                                                onChange={(e) => handleSnowConfigChange({ sizeMax: parseFloat(e.target.value) })}
+                                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
+                                            />
+                                        </div>
+
+                                        {/* Wind */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Rüzgar: {snowConfig.wind.toFixed(1)}
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="-1.0"
+                                                max="1.0"
+                                                step="0.1"
+                                                value={snowConfig.wind}
+                                                onChange={(e) => handleSnowConfigChange({ wind: parseFloat(e.target.value) })}
+                                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
+                                            />
+                                            <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                                <span>← Sola</span>
+                                                <span>Sağa →</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Opacity */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                Opaklık: {Math.round(snowConfig.opacity * 100)}%
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min="0.1"
+                                                max="1.0"
+                                                step="0.05"
+                                                value={snowConfig.opacity}
+                                                onChange={(e) => handleSnowConfigChange({ opacity: parseFloat(e.target.value) })}
+                                                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-slate-900 dark:accent-white"
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* Options */}
+                                <Card title="Seçenekler">
+                                    <div className="space-y-4">
+                                        <Toggle
+                                            checked={snowConfig.winterMode}
+                                            onChange={(v) => handleSnowConfigChange({ winterMode: v })}
+                                            label="Sadece Kış Modu (Aralık, Ocak, Şubat aylarında otomatik aktif)"
+                                        />
+                                        <p className="text-xs text-slate-500 ml-13">
+                                            Bu seçenek aktifken, kar efekti sadece kış aylarında (Aralık-Şubat) otomatik olarak açılır.
+                                            Diğer aylarda "Aktif" durumu yok sayılır.
+                                        </p>
+                                    </div>
+                                </Card>
+
+                                {/* Excluded Pages */}
+                                <Card title="Hariç Tutulacak Sayfalar">
+                                    <p className="text-sm text-slate-500 mb-4">
+                                        Kar efektinin görünmeyeceği sayfaları belirleyin. Örn: /admin, /login
+                                    </p>
+
+                                    <div className="flex gap-2 mb-4">
+                                        <input
+                                            type="text"
+                                            value={newExcludedPage}
+                                            onChange={(e) => setNewExcludedPage(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && addExcludedPage()}
+                                            placeholder="/sayfa-yolu"
+                                            className="flex-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                                        />
+                                        <button
+                                            onClick={addExcludedPage}
+                                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                        >
+                                            <Plus size={16} />
+                                            Ekle
+                                        </button>
+                                    </div>
+
+                                    {snowConfig.excludedPages.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {snowConfig.excludedPages.map((page) => (
+                                                <div
+                                                    key={page}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm"
+                                                >
+                                                    <span className="text-slate-700 dark:text-slate-300">{page}</span>
+                                                    <button
+                                                        onClick={() => removeExcludedPage(page)}
+                                                        className="text-slate-400 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-slate-400 italic">Henüz hariç tutulan sayfa yok</p>
+                                    )}
+                                </Card>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

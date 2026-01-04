@@ -27,6 +27,8 @@ import {
     Moon,
     Monitor,
     X,
+    Bell,
+    ImagePlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -60,7 +62,7 @@ const menuConfig: MenuCategory[] = [
         label: 'Kullanıcı & Yetkilendirme',
         icon: Users,
         items: [
-            { label: 'Üyeler', path: '/admin/users', icon: Users },
+            { label: 'Üyeler', path: '/admin/members', icon: Users },
         ],
     },
     {
@@ -108,9 +110,11 @@ const menuConfig: MenuCategory[] = [
         icon: Settings,
         items: [
             { label: 'Site Ayarları', path: '/admin/site-settings', icon: Settings },
+            { label: 'Push Bildirimleri', path: '/admin/push-notifications', icon: Bell },
             { label: 'Medya Kütüphanesi', path: '/admin/media', icon: FolderOpen },
             { label: 'İletişim', path: '/admin/contact', icon: Mail },
             { label: 'E-posta Bildirimleri', path: '/admin/email-notifications', icon: Mail },
+            { label: 'Sosyal Medya Görseli', path: '/admin/social-media-generator', icon: ImagePlus },
         ],
     },
 ];

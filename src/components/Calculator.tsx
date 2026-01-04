@@ -12,14 +12,18 @@ import { LoginModal } from './auth/LoginModal';
 import { RegisterModal } from './auth/RegisterModal';
 import { PasswordResetModal } from './auth/PasswordResetModal';
 import { SponsorArea, SponsorTrigger } from './SponsorArea';
-import { parseQueryToState, buildShareableUrl, debounce, updateUrlWithParams } from '../utils/calculatorUrlParams';
+import {
+  parseQueryToState,
+  buildShareUrl,
+  hasUrlParams
+} from '../utils/calculatorUrlParams';
 
 
 // Default fallback values (used if Supabase settings not loaded)
 const DEFAULT_MIN_TARGET = 50000;
 const DEFAULT_MAX_TARGET = 5000000;
 const MAX_MONTHS = 360;
-const LEGAL_DELIVERY_MIN_MONTH = 5;
+const LEGAL_DELIVERY_MIN_MONTH = 6;
 const DELIVERY_THRESHOLD_RATE = 0.40; // %40
 
 // Participation Rate Limits
@@ -71,6 +75,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [showIncreaseSettings, setShowIncreaseSettings] = useState(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aiAdvice, setAiAdvice] = useState<string>('');
+
+  // Manuel Teslimat Ayı - Kullanıcı kendi teslimat ayını belirleyebilir
+  const [useManualDeliveryMonth, setUseManualDeliveryMonth] = useState(false);
+  const [manualDeliveryMonth, setManualDeliveryMonth] = useState(5); // Default 5. ay (minimum)
 
 
   // Auth modals state
@@ -216,17 +224,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
     }
   }, []);
 
-  // Debounced URL update - syncs params to URL with 300ms delay
-  const debouncedUrlUpdate = useCallback(
-    debounce((p: CalculationParams) => {
-      updateUrlWithParams(p);
-    }, 300),
-    []
-  );
 
-  useEffect(() => {
-    debouncedUrlUpdate(params);
-  }, [params, debouncedUrlUpdate]);
 
   // Determine current min rate based on system type
   const currentMinRate = params.systemType === SystemType.LOTTERY ? MIN_RATE_LOTTERY : MIN_RATE_NON_LOTTERY;
@@ -354,19 +352,30 @@ export const Calculator: React.FC<CalculatorProps> = ({
       if (increaseType === IncreaseType.CUSTOM && params.customIncreasePeriod) increasePeriod = params.customIncreasePeriod;
 
       if (increaseType === IncreaseType.POST_DELIVERY) {
-        // First pass: flat
+        // Iterate to find the correct base installment that satisfies the condition:
+        // Sum(installments) = baseFinancingAmount
+        // Where installments increase after delivery, and delivery depends on accumulated capital.
+
+        // Since we can't easily invert the delivery dependency without complex algebra,
+        // we can iterate or use a binary search/approximation.
+        // However, for simplicity and performance in this context, we can improve the estimate:
+
+        // 1. Calculate assuming flat to find approximate delivery month
+        let estDeliveryMonth = 0;
+        const threshold = targetAmount * DELIVERY_THRESHOLD_RATE;
         const flatInstallment = baseFinancingAmount / months;
         let tempAccumulated = downPayment;
-        const threshold = targetAmount * DELIVERY_THRESHOLD_RATE;
-        let estDeliveryMonth = 0;
+
         for (let k = 1; k <= months; k++) {
           tempAccumulated += flatInstallment;
           if (tempAccumulated >= threshold && estDeliveryMonth === 0) estDeliveryMonth = k;
         }
-        if (estDeliveryMonth === 0) estDeliveryMonth = Math.floor(months * 0.4); // Fallback
+
+        // Apply constraints
+        if (estDeliveryMonth === 0) estDeliveryMonth = Math.floor(months * 0.4);
         if (systemType === SystemType.NON_LOTTERY && estDeliveryMonth < LEGAL_DELIVERY_MIN_MONTH) estDeliveryMonth = LEGAL_DELIVERY_MIN_MONTH;
 
-        // Now calculate coefficient
+        // 2. Calculate coefficient based on this estimate
         let coefficientSum = 0;
         for (let i = 1; i <= months; i++) {
           if (i > estDeliveryMonth) {
@@ -375,6 +384,37 @@ export const Calculator: React.FC<CalculatorProps> = ({
             coefficientSum += 1;
           }
         }
+
+        // This gives us an initial installment.
+        // If the resulting installment shifts the delivery month, it might be slightly off, but usually negligible.
+        // To be perfect, we could re-check if the new installment changes the delivery month.
+
+        const initialInstallment = baseFinancingAmount / coefficientSum;
+
+        // Optional: Re-verify delivery month with this new installment
+        let reCheckAccumulated = downPayment;
+        let reCheckDeliveryMonth = 0;
+        for (let k = 1; k <= months; k++) {
+          // Until delivery is confirmed, we use base installment
+          // But wait, if we are recalculating delivery, we assume pre-delivery magnitude.
+          reCheckAccumulated += initialInstallment;
+          if (reCheckAccumulated >= threshold && reCheckDeliveryMonth === 0) reCheckDeliveryMonth = k;
+        }
+
+        if (systemType === SystemType.NON_LOTTERY && reCheckDeliveryMonth < LEGAL_DELIVERY_MIN_MONTH) reCheckDeliveryMonth = LEGAL_DELIVERY_MIN_MONTH;
+
+        // If estimate was wrong, re-calculate coefficient once
+        if (reCheckDeliveryMonth !== estDeliveryMonth && reCheckDeliveryMonth > 0) {
+          coefficientSum = 0;
+          for (let i = 1; i <= months; i++) {
+            if (i > reCheckDeliveryMonth) {
+              coefficientSum += (1 + (installmentIncreaseRate / 100));
+            } else {
+              coefficientSum += 1;
+            }
+          }
+        }
+
         return baseFinancingAmount / coefficientSum;
       }
 
@@ -497,13 +537,16 @@ export const Calculator: React.FC<CalculatorProps> = ({
     // Finalize Delivery Date with Legal Constraints
     let finalDeliveryMonth = deliveryMonthIndex;
 
-    if (systemType === SystemType.NON_LOTTERY) {
+    // Manuel teslimat ayı aktifse onu kullan
+    if (useManualDeliveryMonth) {
+      finalDeliveryMonth = manualDeliveryMonth;
+    } else if (systemType === SystemType.NON_LOTTERY) {
       if (finalDeliveryMonth < LEGAL_DELIVERY_MIN_MONTH) {
         finalDeliveryMonth = LEGAL_DELIVERY_MIN_MONTH;
       }
       if (finalDeliveryMonth === -1 || finalDeliveryMonth > months) finalDeliveryMonth = months;
     } else {
-      if (finalDeliveryMonth === -1) finalDeliveryMonth = Math.max(5, Math.floor(months * 0.4));
+      if (finalDeliveryMonth === -1) finalDeliveryMonth = Math.max(LEGAL_DELIVERY_MIN_MONTH, Math.floor(months * 0.4));
     }
 
     // Update schedule with correct delivery flag
@@ -526,7 +569,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
       schedule,
       initialPayment
     });
-  }, [params, calculateMonthsFromInstallment]);
+  }, [params, calculateMonthsFromInstallment, useManualDeliveryMonth, manualDeliveryMonth]);
 
   useEffect(() => {
     calculate();
@@ -662,7 +705,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
   // Copy shareable link to clipboard
   const handleCopyLink = async () => {
-    const url = buildShareableUrl(params);
+    const url = buildShareUrl(params);
     try {
       await navigator.clipboard.writeText(url);
       showToast('Link kopyalandı!', 'success');
@@ -675,7 +718,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
   // Share via WhatsApp
   const handleWhatsAppShare = () => {
-    const url = buildShareableUrl(params);
+    const url = buildShareUrl(params);
     // Format numbers with Turkish locale (1.000.000)
     const formatTL = (val: number) => new Intl.NumberFormat('tr-TR').format(val);
 
@@ -785,28 +828,88 @@ ${url}`;
               </button>
             </div>
 
-            {/* Non-Lottery Info */}
-            {params.systemType === SystemType.NON_LOTTERY && (
-              <div className="mb-6 bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm animate-fade-in">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg text-primary-600 dark:text-primary-400">
-                    <Lock size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Teslimat Zamanı Nasıl Belirlenir?</h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      Toplam ödemeniz (Peşinat + Taksitler), hedef tutarın <strong>%40'ına</strong> ulaştığında teslimat yapılır. Yasal düzenlemeler gereği teslimat <strong>en erken 5. ayda</strong> gerçekleşir.
-                    </p>
-                    {result && (
-                      <div className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded">
-                        <CalendarCheck size={14} />
-                        Mevcut plana göre teslimat: {result.deliveryMonthIndex}. Ay
+            {/* Delivery Plan & Settings - Consolidated Block */}
+            <div className="mb-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl text-primary-600 dark:text-primary-400 shrink-0">
+                  <CalendarCheck size={24} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white mb-2">Teslimat Planı</h4>
+
+                  {params.systemType === SystemType.NON_LOTTERY && (
+                    <div className="mb-4 bg-blue-50 dark:bg-slate-800/50 p-3 rounded-lg border border-blue-100 dark:border-slate-700">
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Teslimat için toplam ödemenin (Peşinat + Taksitler) hedef tutarın <strong>%40'ına</strong> ulaşması ve yasal <strong>150 günlük</strong> sürenin (en erken <strong>6. ay</strong>) dolması gerekir.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {/* Auto Calculation Info */}
+                    {result && !useManualDeliveryMonth && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        Otomatik hesaplanan teslimat: <span className="font-bold text-gray-900 dark:text-white">{result.deliveryMonthIndex}. Ay</span>
                       </div>
                     )}
+
+                    {/* Manual Override Toggle */}
+                    <div className="pt-3 border-t border-gray-100 dark:border-slate-800">
+                      <label className="flex items-center gap-3 cursor-pointer group select-none">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={useManualDeliveryMonth}
+                            onChange={(e) => setUseManualDeliveryMonth(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary-600 transition-colors">
+                          Teslimat Ayını Manuel Belirle
+                        </span>
+                      </label>
+
+                      {/* Manual Input Controls */}
+                      {useManualDeliveryMonth && (
+                        <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setManualDeliveryMonth(prev => Math.max(6, prev - 1))}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={6}
+                                max={params.months}
+                                value={manualDeliveryMonth}
+                                onChange={(e) => {
+                                  let val = parseInt(e.target.value);
+                                  if (isNaN(val)) val = 6;
+                                  setManualDeliveryMonth(Math.max(6, Math.min(params.months, val)));
+                                }}
+                                className="w-16 h-8 text-center bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                              />
+                            </div>
+                            <button
+                              onClick={() => setManualDeliveryMonth(prev => Math.min(params.months, prev + 1))}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                          <span className="text-sm font-bold text-primary-600 dark:text-primary-400">. Ayda Teslim</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Target Amount */}
             <div className="mb-8">

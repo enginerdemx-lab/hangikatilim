@@ -17,6 +17,8 @@ export interface QuickLinksItem {
     link_url: string;
     is_external: boolean;
     badge_text?: string;
+    badge_color?: string;      // 'slate' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
+    badge_animation?: string;  // 'none' | 'pulse' | 'bounce' | 'shake'
     is_active: boolean;
     order_no: number;
     created_at: string;
@@ -29,6 +31,8 @@ export interface QuickLinksItemFormData {
     link_url: string;
     is_external?: boolean;
     badge_text?: string;
+    badge_color?: string;
+    badge_animation?: string;
     is_active?: boolean;
     order_no?: number;
 }
