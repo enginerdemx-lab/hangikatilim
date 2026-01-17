@@ -127,7 +127,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // AI Cooldown State
-  const AI_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+  const AI_COOLDOWN_MS = 1 * 60 * 1000; // 1 minute
   const COOLDOWN_KEY = 'aiCooldownUntil';
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
 
@@ -623,11 +623,16 @@ export const Calculator: React.FC<CalculatorProps> = ({
     });
 
     try {
-      // Use process.env which is defined in vite.config.ts
-      const GEMINI_API_KEY = (process.env as any).GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+      // Vite uses import.meta.env for environment variables
+      const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+      console.log('API Key check:', {
+        hasKey: !!GEMINI_API_KEY,
+        keyLength: GEMINI_API_KEY?.length || 0
+      });
 
       if (!GEMINI_API_KEY) {
-        setAiAdvice('AI tavsiye özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
+        setAiAdvice('API anahtarı bulunamadı. Lütfen .env dosyasında VITE_GEMINI_API_KEY tanımlı olduğundan emin olun ve sunucuyu yeniden başlatın.');
         setLoadingAi(false);
         return;
       }
@@ -669,7 +674,9 @@ Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel b
       });
 
       if (!response.ok) {
-        throw new Error('API request failed');
+        const errorData = await response.text();
+        console.error('Gemini API Error:', response.status, errorData);
+        throw new Error(`API request failed: ${response.status}`);
       }
 
       const data = await response.json();

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { companiesApi } from '../../services/api/companies';
 import { ImageUpload } from '../../components/admin/ImageUpload';
+import { RichTextEditor } from '../../components/admin/RichTextEditor';
 import { useToast } from '../../hooks/useToast';
 import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
 import { SubmitButton } from '../../components/admin/SubmitButton';
@@ -27,6 +28,7 @@ export const Companies: React.FC = () => {
         name: '',
         logo_url: '',
         description: '',
+        about_content: '',
         founded_year: undefined,
         branch_count: undefined,
         website_url: '',
@@ -84,6 +86,7 @@ export const Companies: React.FC = () => {
             name: company.name,
             logo_url: company.logo_url || '',
             description: company.description || '',
+            about_content: company.about_content || '',
             founded_year: company.founded_year || undefined,
             branch_count: company.branch_count || undefined,
             website_url: company.website_url || '',
@@ -120,6 +123,7 @@ export const Companies: React.FC = () => {
             name: '',
             logo_url: '',
             description: '',
+            about_content: '',
             founded_year: undefined,
             branch_count: undefined,
             website_url: '',
@@ -216,6 +220,16 @@ export const Companies: React.FC = () => {
                                 rows={3}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 placeholder="Firma hakkında kısa açıklama"
+                            />
+                        </div>
+
+                        {/* Detaylı İçerik (Rich Text) */}
+                        <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Detaylı İçerik</h3>
+                            <RichTextEditor
+                                content={formData.about_content || ''}
+                                onChange={(content) => setFormData({ ...formData, about_content: content })}
+                                placeholder="Firma hakkında detaylı bilgi, görseller ve formatlı metin..."
                             />
                         </div>
 

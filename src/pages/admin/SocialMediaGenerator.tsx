@@ -219,12 +219,21 @@ export const SocialMediaGenerator: React.FC = () => {
         const fee = Math.round(targetNum * (autoRate / 100));
 
         // Calculate delivery month based on 40% threshold
+        // Teslimat için: Peşinat + Taksitler toplamı >= Hedef * %40 VE minimum 6 ay (150 gün BDDK kuralı)
         const threshold = targetNum * 0.40;
-        const remainingToThreshold = Math.max(0, threshold - downPayment);
-        const monthsToReachThreshold = installment > 0 ? Math.ceil(remainingToThreshold / installment) : 0;
-
-        // Minimum 6 months (BDDK Rule - 150 days minimum -> 6th installment) or when 40% is reached
-        const deliveryMonthCount = Math.max(6, monthsToReachThreshold);
+        
+        let deliveryMonthCount = 6; // Minimum 6 ay (yasal zorunluluk)
+        
+        if (downPayment >= threshold) {
+            // Peşinat zaten %40'a ulaşıyorsa, teslimat 6. ayda (yasal minimum)
+            deliveryMonthCount = 6;
+        } else {
+            // Kaç ay taksit ödenmesi gerekiyor? (Peşinat + N*Taksit >= %40)
+            const remainingToThreshold = threshold - downPayment;
+            const monthsNeeded = Math.ceil(remainingToThreshold / installment);
+            // Minimum 6 ay ile karşılaştır
+            deliveryMonthCount = Math.max(6, monthsNeeded);
+        }
 
         const now = new Date();
         now.setMonth(now.getMonth() + deliveryMonthCount);
@@ -722,13 +731,12 @@ export const SocialMediaGenerator: React.FC = () => {
                                     {/* Legal Text Footer */}
                                     {legalText && (
                                         <div style={{
-                                            marginTop: '15px',
-                                            fontSize: '10px',
+                                            marginTop: 'auto',
+                                            paddingTop: '15px',
+                                            fontSize: '11px',
                                             color: '#6b7280',
                                             textAlign: 'center',
                                             fontStyle: 'italic',
-                                            borderTop: '1px solid #e5e7eb',
-                                            paddingTop: '10px'
                                         }}>
                                             {legalText}
                                         </div>

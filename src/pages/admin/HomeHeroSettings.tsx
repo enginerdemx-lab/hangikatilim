@@ -43,6 +43,8 @@ export const HomeHeroSettings: React.FC = () => {
 
     const loadSlides = async () => {
         try {
+            // First normalize any NULL or duplicate sort_order values
+            await homeHeroApi.normalizeSortOrders();
             const data = await homeHeroApi.getAllSlides();
             setSlides(data);
         } catch (err) {
@@ -66,7 +68,9 @@ export const HomeHeroSettings: React.FC = () => {
                 await homeHeroApi.updateSlide(editingSlide.id, formData);
                 success('Kaydedildi');
             } else {
-                await homeHeroApi.createSlide(formData);
+                // Yeni slide için sort_order = mevcut slide sayısı (en sona ekle)
+                const newSortOrder = slides.length;
+                await homeHeroApi.createSlide({ ...formData, sort_order: newSortOrder });
                 success('Kaydedildi');
             }
 
@@ -118,10 +122,13 @@ export const HomeHeroSettings: React.FC = () => {
             const currentSlide = slides[index];
             const prevSlide = slides[index - 1];
 
-            // Swap sort_order values
+            // Swap sort_order values - use actual sort_order values from slides
+            const currentSortOrder = currentSlide.sort_order ?? index;
+            const prevSortOrder = prevSlide.sort_order ?? (index - 1);
+
             await homeHeroApi.reorderSlides([
-                { id: currentSlide.id, sort_order: index - 1 },
-                { id: prevSlide.id, sort_order: index }
+                { id: currentSlide.id, sort_order: prevSortOrder },
+                { id: prevSlide.id, sort_order: currentSortOrder }
             ]);
 
             success('Sıralama güncellendi');
@@ -139,10 +146,13 @@ export const HomeHeroSettings: React.FC = () => {
             const currentSlide = slides[index];
             const nextSlide = slides[index + 1];
 
-            // Swap sort_order values
+            // Swap sort_order values - use actual sort_order values from slides
+            const currentSortOrder = currentSlide.sort_order ?? index;
+            const nextSortOrder = nextSlide.sort_order ?? (index + 1);
+
             await homeHeroApi.reorderSlides([
-                { id: currentSlide.id, sort_order: index + 1 },
-                { id: nextSlide.id, sort_order: index }
+                { id: currentSlide.id, sort_order: nextSortOrder },
+                { id: nextSlide.id, sort_order: currentSortOrder }
             ]);
 
             success('Sıralama güncellendi');

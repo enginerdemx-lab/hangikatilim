@@ -47,6 +47,12 @@ export interface SiteSettings {
   copyright_text?: string;
   // Sponsor area toggle
   sponsor_area_enabled?: boolean;
+  // About Page
+  about_title?: string;
+  about_content?: string;
+  about_image_url?: string;
+  about_mission?: string;
+  about_vision?: string;
   created_at: string;
   updated_at: string;
 }
@@ -116,6 +122,7 @@ export interface Company {
   name: string;
   logo_url?: string;
   description?: string;
+  about_content?: string; // Rich HTML content for about page
   founded_year?: number;
   branch_count?: number;
   website_url?: string;
@@ -274,6 +281,7 @@ export interface CompanyFormData {
   name: string;
   logo_url?: string;
   description?: string;
+  about_content?: string;
   founded_year?: number;
   branch_count?: number;
   website_url?: string;

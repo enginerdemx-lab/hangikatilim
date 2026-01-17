@@ -78,7 +78,6 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
         { to: '/katilim-firmalari', label: 'Katılım Firmaları' },
         { to: '/sektor-haberleri', label: 'Sektör Haberleri' },
         { to: '/blog', label: 'Blog' },
-        { to: '/iletisim', label: 'İletişim' },
     ];
 
     return (
@@ -267,10 +266,6 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
                                 )}
                             </>
                         )}
-                        <div className="flex items-center justify-between px-4 py-2">
-                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Bildirimler</span>
-
-                        </div>
                     </div>
                 )}
             </nav>

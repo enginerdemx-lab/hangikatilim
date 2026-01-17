@@ -298,6 +298,11 @@ export const PublicLayout: React.FC = () => {
                                         <ChevronRight size={14} /> İletişim
                                     </NavLink>
                                 </li>
+                                <li>
+                                    <NavLink to="/hakkimizda" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> Hakkımızda
+                                    </NavLink>
+                                </li>
                             </ul>
                         </div>
 

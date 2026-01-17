@@ -164,8 +164,8 @@ export const CompaniesPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {company.website_url && (
-                                    <div className="flex md:flex-col gap-3 mt-2 md:mt-0">
+                                <div className="flex md:flex-col gap-3 mt-2 md:mt-0">
+                                    {company.website_url && (
                                         <a
                                             href={company.website_url}
                                             target="_blank"
@@ -174,8 +174,18 @@ export const CompaniesPage: React.FC = () => {
                                         >
                                             Siteye Git <ExternalLink size={16} />
                                         </a>
-                                    </div>
-                                )}
+                                    )}
+                                    <a
+                                        href={`/katilim-firmalari/${company.name
+                                            .toLowerCase()
+                                            .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+                                            .replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ı/g, 'i')
+                                            .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`}
+                                        className="flex-1 md:w-40 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 font-semibold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
+                                    >
+                                        <Info size={16} /> Firma Hakkında
+                                    </a>
+                                </div>
                             </div>
                         ))
                     )}

@@ -200,66 +200,68 @@ export const ContactPage: React.FC = () => {
         </div>
 
         {/* Contact Info Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8 md:mb-10">
-          {/* Email Card */}
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Mail size={20} />
+        <div className={`grid grid-cols-1 ${
+          // Dynamic grid based on visible cards
+          [settings?.email, settings?.phone, settings?.address, settings?.working_hours].filter(Boolean).length === 1 ? 'sm:grid-cols-1 max-w-xs mx-auto' :
+            [settings?.email, settings?.phone, settings?.address, settings?.working_hours].filter(Boolean).length === 2 ? 'sm:grid-cols-2 max-w-lg mx-auto' :
+              [settings?.email, settings?.phone, settings?.address, settings?.working_hours].filter(Boolean).length === 3 ? 'sm:grid-cols-3 max-w-3xl mx-auto' :
+                'sm:grid-cols-2 lg:grid-cols-4'
+          } gap-3 md:gap-4 mb-8 md:mb-10`}>
+          {/* Email Card - Always show if email exists */}
+          {(settings?.email || (!loading && true)) && (
+            <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Mail size={20} />
+              </div>
+              <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">E-Posta</h3>
+              {loading ? (
+                <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4 mx-auto"></div>
+              ) : (
+                <a href={`mailto:${settings?.email || 'info@hangikatilim.com'}`} className="text-xs md:text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                  {settings?.email || 'info@hangikatilim.com'}
+                </a>
+              )}
             </div>
-            <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">E-Posta</h3>
-            {loading ? (
-              <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4 mx-auto"></div>
-            ) : (
-              <a href={`mailto:${settings?.email || 'info@hangikatilim.com'}`} className="text-xs md:text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
-                {settings?.email || 'info@hangikatilim.com'}
-              </a>
-            )}
-          </div>
+          )}
 
-          {/* Phone Card */}
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Phone size={20} />
-            </div>
-            <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Telefon</h3>
-            {loading ? (
-              <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4 mx-auto"></div>
-            ) : (
-              <a href={`tel:${settings?.phone || ''}`} className="text-xs md:text-sm font-medium text-green-600 dark:text-green-400 hover:underline">
-                {settings?.phone || '-'}
+          {/* Phone Card - Only show if phone exists */}
+          {settings?.phone && (
+            <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Phone size={20} />
+              </div>
+              <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Telefon</h3>
+              <a href={`tel:${settings.phone}`} className="text-xs md:text-sm font-medium text-green-600 dark:text-green-400 hover:underline">
+                {settings.phone}
               </a>
-            )}
-          </div>
-
-          {/* Address Card */}
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <MapPin size={20} />
             </div>
-            <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Adres</h3>
-            {loading ? (
-              <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4 mx-auto"></div>
-            ) : (
+          )}
+
+          {/* Address Card - Only show if address exists */}
+          {settings?.address && (
+            <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <MapPin size={20} />
+              </div>
+              <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Adres</h3>
               <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                {settings?.address || '-'}
+                {settings.address}
               </p>
-            )}
-          </div>
-
-          {/* Working Hours Card */}
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
-            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Clock size={20} />
             </div>
-            <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Çalışma Saatleri</h3>
-            {loading ? (
-              <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4 mx-auto"></div>
-            ) : (
+          )}
+
+          {/* Working Hours Card - Only show if working_hours exists */}
+          {settings?.working_hours && (
+            <div className="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm text-center hover:-translate-y-0.5 transition-transform">
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Clock size={20} />
+              </div>
+              <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Çalışma Saatleri</h3>
               <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
-                {settings?.working_hours || '-'}
+                {settings.working_hours}
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Contact Form */}

@@ -25,7 +25,12 @@ import { PushNotifications } from './pages/admin/PushNotifications';
 import { Users } from './pages/admin/Members';
 import EmailNotifications from './pages/admin/EmailNotifications';
 import { SocialMediaGenerator } from './pages/admin/SocialMediaGenerator';
+import { AboutSettings } from './pages/admin/AboutSettings';
+import { CampaignBanners } from './pages/admin/CampaignBanners';
 
+// Lazy loaded popup pages
+const PopupManager = lazy(() => import('./pages/admin/PopupManager'));
+const PopupEditor = lazy(() => import('./pages/admin/PopupEditor'));
 
 
 // Public Layout
@@ -37,6 +42,7 @@ import NotFoundPage from './pages/public/NotFoundPage';
 const HomePage = lazy(() => import('./pages/public/HomePage'));
 const CampaignsPage = lazy(() => import('./pages/public/CampaignsPage'));
 const CompaniesPage = lazy(() => import('./pages/public/CompaniesPage'));
+const CompanyDetailPage = lazy(() => import('./pages/public/CompanyDetailPage'));
 const NewsPage = lazy(() => import('./pages/public/NewsPage'));
 const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
 const BlogPage = lazy(() => import('./pages/public/BlogPage'));
@@ -47,6 +53,7 @@ const RegisterPage = lazy(() => import('./pages/public/RegisterPage'));
 const ProfilePage = lazy(() => import('./pages/public/ProfilePage'));
 const SavedCalculationsPage = lazy(() => import('./pages/public/SavedCalculationsPage'));
 const UnsubscribePage = lazy(() => import('./pages/public/UnsubscribePage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -59,6 +66,7 @@ const PageLoader: React.FC = () => (
 );
 
 import { PushPermissionModal } from './components/PushPermissionModal';
+import { PopupProvider } from './components/PopupProvider';
 
 const App: React.FC = () => {
   React.useEffect(() => {
@@ -133,14 +141,20 @@ const App: React.FC = () => {
             <Route path="feedback" element={<AdminFeedback />} />
             <Route path="push-notifications" element={<PushNotifications />} />
             <Route path="social-media-generator" element={<SocialMediaGenerator />} />
+            <Route path="about-settings" element={<AboutSettings />} />
+            <Route path="campaign-banners" element={<CampaignBanners />} />
+            <Route path="popups" element={<Suspense fallback={<PageLoader />}><PopupManager /></Suspense>} />
+            <Route path="popups/new" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
+            <Route path="popups/edit/:id" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
             <Route path="push_notifications" element={<Navigate to="/admin/push-notifications" replace />} />
           </Route>
 
           {/* Public Routes */}
-          <Route path="/" element={<PublicLayout />}>
+          <Route path="/" element={<PopupProvider><PublicLayout /></PopupProvider>}>
             <Route index element={<Suspense fallback={<PageLoader />}><HomePage /></Suspense>} />
             <Route path="kampanyalar" element={<Suspense fallback={<PageLoader />}><CampaignsPage /></Suspense>} />
             <Route path="katilim-firmalari" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
+            <Route path="katilim-firmalari/:slug" element={<Suspense fallback={<PageLoader />}><CompanyDetailPage /></Suspense>} />
             <Route path="sektor-haberleri" element={<Suspense fallback={<PageLoader />}><NewsPage /></Suspense>} />
             <Route path="sektor-haberleri/:slug" element={<Suspense fallback={<PageLoader />}><NewsDetailPage /></Suspense>} />
             <Route path="blog" element={<Suspense fallback={<PageLoader />}><BlogPage /></Suspense>} />
@@ -150,6 +164,7 @@ const App: React.FC = () => {
             <Route path="register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
             <Route path="profil" element={<Suspense fallback={<PageLoader />}><ProfilePage /></Suspense>} />
             <Route path="profil/hesaplamalar" element={<Suspense fallback={<PageLoader />}><SavedCalculationsPage /></Suspense>} />
+            <Route path="hakkimizda" element={<Suspense fallback={<PageLoader />}><AboutPage /></Suspense>} />
           </Route>
 
           {/* Unsubscribe */}

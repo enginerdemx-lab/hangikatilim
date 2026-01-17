@@ -17,7 +17,6 @@ const VALID_DB_COLUMNS = [
     'cta2_label',
     'cta2_link',
     'sort_order',
-    'is_active',
 ];
 
 // Filter payload to only include valid DB columns
@@ -36,12 +35,55 @@ function filterPayload(data: Partial<HomeHero>): Partial<HomeHero> {
 }
 
 export const homeHeroApi = {
+    // Normalize sort_order values (fix NULL or duplicate values)
+    async normalizeSortOrders(): Promise<void> {
+        const { data: slides, error: fetchError } = await supabase
+            .from('home_hero')
+            .select('id, sort_order')
+            .order('sort_order', { ascending: true, nullsFirst: false })
+            .order('created_at', { ascending: true });
+
+        if (fetchError) {
+            console.error('[homeHeroApi] normalizeSortOrders fetch error:', fetchError);
+            return;
+        }
+
+        if (!slides || slides.length === 0) return;
+
+        // Check if normalization is needed (any NULL values or duplicates)
+        const sortOrders = slides.map(s => s.sort_order);
+        const hasNulls = sortOrders.some(o => o === null || o === undefined);
+        const hasDuplicates = new Set(sortOrders.filter(o => o !== null)).size !== sortOrders.filter(o => o !== null).length;
+
+        if (!hasNulls && !hasDuplicates) {
+            console.log('[homeHeroApi] sort_order values are already normalized');
+            return;
+        }
+
+        console.log('[homeHeroApi] Normalizing sort_order values...');
+
+        // Update each slide with sequential sort_order
+        for (let i = 0; i < slides.length; i++) {
+            if (slides[i].sort_order !== i) {
+                const { error: updateError } = await supabase
+                    .from('home_hero')
+                    .update({ sort_order: i })
+                    .eq('id', slides[i].id);
+
+                if (updateError) {
+                    console.error(`[homeHeroApi] Failed to update sort_order for slide ${slides[i].id}:`, updateError);
+                }
+            }
+        }
+        console.log('[homeHeroApi] sort_order normalization complete');
+    },
+
     // Get all hero slides
     async getAllSlides(): Promise<HomeHero[]> {
         const { data, error } = await supabase
             .from('home_hero')
             .select('*')
-            .order('sort_order', { ascending: true })
+            .order('sort_order', { ascending: true, nullsFirst: false })
             .order('created_at', { ascending: true });
 
         if (error) {

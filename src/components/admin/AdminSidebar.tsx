@@ -29,6 +29,7 @@ import {
     X,
     Bell,
     ImagePlus,
+    Info,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -91,7 +92,9 @@ const menuConfig: MenuCategory[] = [
             { label: 'Kampanyalar', path: '/admin/campaigns', icon: Megaphone },
             { label: 'Sektör Haberleri', path: '/admin/news', icon: Newspaper },
             { label: 'Blog', path: '/admin/blog', icon: FileText },
+            { label: 'Hakkımızda', path: '/admin/about-settings', icon: Info },
             { label: 'Sektör Gündemi', path: '/admin/ticker', icon: Zap },
+            { label: 'Kampanya Bannerları', path: '/admin/campaign-banners', icon: Image },
         ],
     },
     {
@@ -110,6 +113,7 @@ const menuConfig: MenuCategory[] = [
         icon: Settings,
         items: [
             { label: 'Site Ayarları', path: '/admin/site-settings', icon: Settings },
+            { label: 'Popup Yönetimi', path: '/admin/popups', icon: MessageSquare },
             { label: 'Push Bildirimleri', path: '/admin/push-notifications', icon: Bell },
             { label: 'Medya Kütüphanesi', path: '/admin/media', icon: FolderOpen },
             { label: 'İletişim', path: '/admin/contact', icon: Mail },

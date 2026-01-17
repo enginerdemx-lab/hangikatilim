@@ -4,6 +4,7 @@ import { ArrowRight, Check, ChevronRight, Calculator, Star, Zap, Building2, Filt
 import { AssetType, SystemType } from '../../types';
 import { campaignsApi } from '../../src/services/api/campaigns';
 import type { Campaign } from '../../src/types/database';
+import { CampaignBannerSlider } from '../CampaignBannerSlider';
 
 interface CampaignsPageProps {
    onNavigate: (page: string) => void;
@@ -322,8 +323,8 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                         </div>
                         {/* Card Header */}
                         <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
-                           <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${getBadgeColor(camp.badge_type)}`}>
-                              <Zap size={12} /> {getBadgeLabel(camp.badge_type)}
+                           <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${getBadgeColor((camp.badge_type as string) || '')}`}>
+                              <Zap size={12} /> {getBadgeLabel((camp.badge_type as string) || '')}
                            </div>
                            <div className="text-xs text-gray-400">Son Güncelleme: Bugün</div>
                         </div>
@@ -357,19 +358,19 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                                  {camp.title}
                               </h4>
                               <div className="flex items-center justify-center md:justify-start gap-4 mb-3 text-sm text-gray-600 dark:text-gray-400">
-                                 {camp.vade_months > 0 && (
+                                 {(camp.vade_months || 0) > 0 && (
                                     <>
                                        <div className="flex flex-col">
                                           <span className="text-xs text-gray-400">Vade</span>
                                           <span className="font-bold text-gray-900 dark:text-white">{camp.vade_months} Ay</span>
                                        </div>
-                                       {camp.amount_tl > 0 && <div className="w-px h-8 bg-gray-200 dark:bg-slate-600"></div>}
+                                       {(camp.amount_tl || 0) > 0 && <div className="w-px h-8 bg-gray-200 dark:bg-slate-600"></div>}
                                     </>
                                  )}
-                                 {camp.amount_tl > 0 && (
+                                 {(camp.amount_tl || 0) > 0 && (
                                     <div className="flex flex-col">
                                        <span className="text-xs text-gray-400">Tutar</span>
-                                       <span className="font-bold text-gray-900 dark:text-white">{formatMoney(camp.amount_tl)} TL</span>
+                                       <span className="font-bold text-gray-900 dark:text-white">{formatMoney(camp.amount_tl || 0)} TL</span>
                                     </div>
                                  )}
                               </div>
@@ -406,17 +407,21 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                   ))}
 
                   {/* Info Banner */}
-                  <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 flex items-start gap-3">
-                     <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-600 p-2 rounded-lg">
-                        <Filter size={20} />
+                  {/* Info Banner */}
+                  <div className="bg-blue-50/30 dark:bg-blue-900/5 p-3 rounded-lg border border-blue-100/50 dark:border-blue-900/20 flex items-start gap-2">
+                     <div className="text-blue-400 dark:text-blue-500 mt-0.5">
+                        <Filter size={14} />
                      </div>
                      <div>
-                        <h5 className="font-bold text-blue-800 dark:text-blue-300 text-sm">Doğru Karşılaştırma</h5>
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        <h5 className="font-semibold text-blue-700 dark:text-blue-300 text-xs">Doğru Karşılaştırma</h5>
+                        <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 leading-relaxed mt-0.5">
                            Listelenen kampanyalar şirketlerin genel verilerine dayanmaktadır. Size özel ödeme planı ve kesin organizasyon ücreti için lütfen "Ödeme Planı Hesapla" butonunu kullanın veya şirketle iletişime geçin.
                         </p>
                      </div>
                   </div>
+
+                  {/* Campaign Banner Slider */}
+                  <CampaignBannerSlider />
 
                </div>
             </div>

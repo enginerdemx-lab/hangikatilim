@@ -37,6 +37,29 @@ export const companiesApi = {
         return data;
     },
 
+    // Get single company by slug (name converted to URL-friendly format)
+    async getCompanyBySlug(slug: string): Promise<Company | null> {
+        // First try to find by exact name match (slug is URL-decoded)
+        const { data, error } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('is_active', true);
+
+        if (error) throw error;
+
+        // Find company by matching slug
+        const company = data?.find(c => {
+            const companySlug = c.name
+                .toLowerCase()
+                .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+                .replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/ı/g, 'i')
+                .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            return companySlug === slug;
+        });
+
+        return company || null;
+    },
+
     // Create new company
     async createCompany(companyData: CompanyFormData): Promise<Company> {
         const { data, error } = await supabase
