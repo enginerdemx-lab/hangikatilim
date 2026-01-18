@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Calculator, Download, Plus, Trash2, Upload, RefreshCw, X, Image, Info } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { supabase } from '../../services/supabaseClient';
+import { calculateDeliveryMonth } from '../../utils/deliveryCalculation';
 
 interface CalculationRow {
     id: string;
@@ -218,26 +219,16 @@ export const SocialMediaGenerator: React.FC = () => {
         const installment = Math.round(financingAmount / autoMonths);
         const fee = Math.round(targetNum * (autoRate / 100));
 
-        // Calculate delivery month based on 40% threshold
-        // Teslimat için: Peşinat + Taksitler toplamı >= Hedef * %40 VE minimum 6 ay (150 gün BDDK kuralı)
-        const threshold = targetNum * 0.40;
-        
-        let deliveryMonthCount = 6; // Minimum 6 ay (yasal zorunluluk)
-        
-        if (downPayment >= threshold) {
-            // Peşinat zaten %40'a ulaşıyorsa, teslimat 6. ayda (yasal minimum)
-            deliveryMonthCount = 6;
-        } else {
-            // Kaç ay taksit ödenmesi gerekiyor? (Peşinat + N*Taksit >= %40)
-            const remainingToThreshold = threshold - downPayment;
-            const monthsNeeded = Math.ceil(remainingToThreshold / installment);
-            // Minimum 6 ay ile karşılaştır
-            deliveryMonthCount = Math.max(6, monthsNeeded);
-        }
+        // Calculate delivery month using shared utility function
+        // Correct formula: %40'a ulaşılan ay + 6 (not max(6, monthsNeeded))
+        const deliveryResult = calculateDeliveryMonth({
+            amount: targetNum,
+            dpAmount: downPayment,
+            monthlyPayment: installment,
+            termMonths: autoMonths
+        });
 
-        const now = new Date();
-        now.setMonth(now.getMonth() + deliveryMonthCount);
-        const deliveryDate = now.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+        const deliveryDate = deliveryResult.deliveryDateFormatted;
 
         const newRow: CalculationRow = {
             id: Date.now().toString(),
