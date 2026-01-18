@@ -4,10 +4,10 @@ import { uiEffectsApi, SnowConfig, DEFAULT_SNOW_CONFIG } from '../../services/ap
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { SiteSettings } from '../../types/database';
-import { Save, RefreshCw, Search, Settings, Globe, Mail, Share2, Smartphone, FileText, Copy, Check, Snowflake, Eye, X, Plus } from 'lucide-react';
+import { Save, RefreshCw, Search, Settings, Globe, Mail, Share2, Smartphone, FileText, Copy, Check, Snowflake, Eye, X, Plus, TrendingUp } from 'lucide-react';
 import { startSnow, stopSnow, updateSnow, isSnowRunning } from '../../utils/snowEffect';
 
-type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'uygulama' | 'hukuki' | 'efektler';
+type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'uygulama' | 'hukuki' | 'efektler' | 'piyasa';
 
 // Reusable Card Component
 const Card: React.FC<{ children: React.ReactNode; className?: string; title?: string }> = ({ children, className = '', title }) => (
@@ -177,6 +177,8 @@ export const SiteSettings: React.FC = () => {
         instagram_url: '',
         linkedin_url: '',
         copyright_text: '',
+        ticker_active: true,
+        gold_ons_price: '2060',
     });
 
     const [originalData, setOriginalData] = useState<typeof formData | null>(null);
@@ -222,6 +224,8 @@ export const SiteSettings: React.FC = () => {
                     instagram_url: data.instagram_url || '',
                     linkedin_url: data.linkedin_url || '',
                     copyright_text: data.copyright_text || '',
+                    ticker_active: data.ticker_active !== false,
+                    gold_ons_price: data.gold_ons_price?.toString() || '2060',
                 };
                 setFormData(newFormData);
                 setOriginalData(newFormData);
@@ -326,7 +330,10 @@ export const SiteSettings: React.FC = () => {
         try {
             setSaving(true);
             // Renk alanları hariç tüm formData'yı gönder
-            const updateData: Partial<SiteSettings> = { ...formData };
+            const updateData: Partial<SiteSettings> = {
+                ...formData,
+                gold_ons_price: parseFloat(formData.gold_ons_price) || 2060
+            };
             if (settings?.id) {
                 await siteSettingsApi.updateSettings(settings.id, updateData);
                 success('Ayarlar kaydedildi');
@@ -351,6 +358,7 @@ export const SiteSettings: React.FC = () => {
         { id: 'uygulama', label: 'Uygulama', icon: <Smartphone size={16} />, keywords: ['app store', 'google play', 'app gallery', 'uygulama', 'mobil'] },
         { id: 'hukuki', label: 'Hukuki', icon: <FileText size={16} />, keywords: ['kvkk', 'gizlilik', 'kullanım', 'çerez', 'politika', 'hukuki'] },
         { id: 'efektler', label: 'Efektler', icon: <Snowflake size={16} />, keywords: ['kar', 'snow', 'efekt', 'animasyon', 'kış'] },
+        { id: 'piyasa', label: 'Piyasa Şeridi', icon: <TrendingUp size={16} />, keywords: ['ticker', 'kur', 'döviz', 'altın', 'piyasa', 'market', 'finance'] },
     ];
 
     // Search filter
@@ -799,8 +807,8 @@ export const SiteSettings: React.FC = () => {
                                         <button
                                             onClick={handleSnowPreview}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${snowPreviewing
-                                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                                                 }`}
                                         >
                                             <Eye size={16} />
@@ -993,6 +1001,35 @@ export const SiteSettings: React.FC = () => {
                             </>
                         )}
                     </div>
+                )}
+
+                {activeTab === 'piyasa' && (
+                    <Card title="Piyasa Şeridi Ayarları">
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Piyasa Şeridi (Ticker)</h4>
+                                    <p className="text-sm text-slate-500">Üst menü altında döviz ve altın kurlarını gösterir.</p>
+                                </div>
+                                <Toggle
+                                    checked={formData.ticker_active}
+                                    onChange={(v) => handleFormChange({ ticker_active: v })}
+                                    label={formData.ticker_active ? 'Aktif' : 'Pasif'}
+                                />
+                            </div>
+
+                            <div className="border-t border-slate-100 dark:border-slate-700 pt-6">
+                                <InputField
+                                    label="Ons Altın Fiyatı (USD)"
+                                    value={formData.gold_ons_price}
+                                    onChange={(v) => handleFormChange({ gold_ons_price: v })}
+                                    type="number"
+                                    placeholder="2060"
+                                    helper="Gram altın hesaplaması için kullanılır: (Ons * Dolar) / 31.1035"
+                                />
+                            </div>
+                        </div>
+                    </Card>
                 )}
             </div>
         </div>

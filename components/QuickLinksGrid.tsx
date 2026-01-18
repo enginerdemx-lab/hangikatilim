@@ -39,11 +39,11 @@ const badgeAnimationClasses: Record<string, string> = {
     ping: 'animate-ping',
 };
 
-// Skeleton loader - matches actual card size to prevent FOUC
+// Skeleton loader - matches actual card size to prevent CLS (Cumulative Layout Shift)
 const QuickLinksSkeleton: React.FC = () => (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 animate-pulse text-center">
+            <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 animate-pulse text-center min-h-[112px]">
                 <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-xl mx-auto mb-3"></div>
                 <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mx-auto"></div>
             </div>
@@ -113,7 +113,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
         const IconComponent = getIconComponent(item.icon);
 
         return (
-            <div className="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-center relative overflow-hidden transition-all duration-200 hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer">
+            <div className="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-center relative overflow-hidden transition-all duration-200 hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer min-h-[112px]">
                 {/* Badge with color and animation */}
                 {renderBadge(item)}
 

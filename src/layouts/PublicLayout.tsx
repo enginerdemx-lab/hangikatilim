@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin, Mail, ChevronRight, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { PublicNavbar } from '../components/PublicNavbar';
+import MarketTicker from '../components/MarketTicker';
 import { NewsTicker } from '../../components/NewsTicker';
 import { LegalModal, LegalType } from '../../components/LegalModal';
 import { siteSettingsApi } from '../services/api/siteSettings';
@@ -209,6 +210,7 @@ export const PublicLayout: React.FC = () => {
             <SnowOverlay />
             <NewsTicker />
             <PublicNavbar theme={theme} toggleTheme={toggleTheme} />
+            <MarketTicker />
 
             <main className="flex-grow">
                 <Outlet context={{ theme }} />

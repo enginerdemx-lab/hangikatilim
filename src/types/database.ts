@@ -53,6 +53,9 @@ export interface SiteSettings {
   about_image_url?: string;
   about_mission?: string;
   about_vision?: string;
+  // Ticker Settings
+  ticker_active?: boolean;
+  gold_ons_price?: number;
   created_at: string;
   updated_at: string;
 }
