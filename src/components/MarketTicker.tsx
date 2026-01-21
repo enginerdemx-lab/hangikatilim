@@ -55,6 +55,14 @@ const MarketTicker: React.FC = () => {
                     if (!response.ok) throw new Error('Network response was not ok');
 
                     const data = await response.json();
+
+                    // Override Gold Change if manual rate is set in settings
+                    if (settings.market_gold_change_rate !== undefined && settings.market_gold_change_rate !== null) {
+                        // Ensure changes object exists
+                        if (!data.changes) data.changes = {};
+                        data.changes.GOLD = settings.market_gold_change_rate;
+                    }
+
                     setTickerData(data);
                 } catch (fetchError) {
                     console.warn('[MarketTicker] API Error:', fetchError);

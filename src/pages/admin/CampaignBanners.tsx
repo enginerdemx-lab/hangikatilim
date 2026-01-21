@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { campaignBannersApi, CampaignBanner, CampaignBannerFormData } from '../../services/api/campaignBanners';
 import { supabase } from '../../services/supabaseClient';
-import { Plus, Trash2, GripVertical, ExternalLink, Eye, EyeOff, Loader2, Save, X, Image } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Eye, EyeOff, Loader2, Save, X, Image, ChevronUp, ChevronDown } from 'lucide-react';
 
 export const CampaignBanners: React.FC = () => {
     const [banners, setBanners] = useState<CampaignBanner[]>([]);
@@ -115,6 +115,36 @@ export const CampaignBanners: React.FC = () => {
         }
     };
 
+    const handleMoveUp = async (index: number) => {
+        if (index === 0) return; // Already at top
+        const newBanners = [...banners];
+        [newBanners[index - 1], newBanners[index]] = [newBanners[index], newBanners[index - 1]];
+        setBanners(newBanners);
+
+        try {
+            await campaignBannersApi.reorderBanners(newBanners.map(b => b.id));
+            showToast('Sıralama güncellendi', 'success');
+        } catch (error) {
+            showToast('Sıralama güncellenemedi', 'error');
+            loadBanners(); // Revert on error
+        }
+    };
+
+    const handleMoveDown = async (index: number) => {
+        if (index === banners.length - 1) return; // Already at bottom
+        const newBanners = [...banners];
+        [newBanners[index], newBanners[index + 1]] = [newBanners[index + 1], newBanners[index]];
+        setBanners(newBanners);
+
+        try {
+            await campaignBannersApi.reorderBanners(newBanners.map(b => b.id));
+            showToast('Sıralama güncellendi', 'success');
+        } catch (error) {
+            showToast('Sıralama güncellenemedi', 'error');
+            loadBanners(); // Revert on error
+        }
+    };
+
     const openEditModal = (banner: CampaignBanner) => {
         setEditingBanner(banner);
         setFormData({
@@ -191,7 +221,7 @@ export const CampaignBanners: React.FC = () => {
                         </button>
                     </div>
                 ) : (
-                    banners.map((banner) => (
+                    banners.map((banner, index) => (
                         <div
                             key={banner.id}
                             className={`flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl border ${banner.is_active
@@ -199,7 +229,25 @@ export const CampaignBanners: React.FC = () => {
                                 : 'border-gray-200 dark:border-slate-700 opacity-50'
                                 }`}
                         >
-                            <GripVertical size={20} className="text-gray-400 cursor-grab" />
+                            {/* Reorder Buttons */}
+                            <div className="flex flex-col gap-1">
+                                <button
+                                    onClick={() => handleMoveUp(index)}
+                                    disabled={index === 0}
+                                    className={`p-1 rounded transition-colors ${index === 0 ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                                    title="Yukarı Taşı"
+                                >
+                                    <ChevronUp size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleMoveDown(index)}
+                                    disabled={index === banners.length - 1}
+                                    className={`p-1 rounded transition-colors ${index === banners.length - 1 ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700'}`}
+                                    title="Aşağı Taşı"
+                                >
+                                    <ChevronDown size={16} />
+                                </button>
+                            </div>
 
                             <img
                                 src={banner.image_url}

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
+import { useAuth, type AdminRole } from '../../hooks/useAuth';
 import {
     LayoutDashboard,
     Users,
@@ -33,11 +34,12 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-// Menu Item Interface
+// Menu Item Interface - with role-based access
 interface MenuItem {
     label: string;
     path: string;
     icon: LucideIcon;
+    allowedRoles?: AdminRole[]; // If undefined, superadmin only. If empty array, all admins can access.
 }
 
 // Category Interface
@@ -46,22 +48,28 @@ interface MenuCategory {
     label: string;
     icon: LucideIcon;
     items: MenuItem[];
+    allowedRoles?: AdminRole[]; // Category-level role restriction
 }
 
-// Menu Configuration - Centralized & Config-based
+// Role definitions for easier configuration
+const ALL_ROLES: AdminRole[] = ['superadmin', 'social_media', 'news_editor', 'content_manager'];
+const CONTENT_ROLES: AdminRole[] = ['superadmin', 'content_manager', 'news_editor'];
+
+// Menu Configuration - Centralized & Config-based with role permissions
 const menuConfig: MenuCategory[] = [
     {
         id: 'general',
         label: 'Genel',
         icon: LayoutDashboard,
         items: [
-            { label: 'Dashboard', path: '/admin', icon: Home },
+            { label: 'Dashboard', path: '/admin', icon: Home, allowedRoles: ALL_ROLES },
         ],
     },
     {
         id: 'users',
         label: 'Kullanıcı & Yetkilendirme',
         icon: Users,
+        allowedRoles: ['superadmin'],
         items: [
             { label: 'Üyeler', path: '/admin/members', icon: Users },
         ],
@@ -70,6 +78,7 @@ const menuConfig: MenuCategory[] = [
         id: 'calculator',
         label: 'Hesaplama & Finans',
         icon: Calculator,
+        allowedRoles: ['superadmin'],
         items: [
             { label: 'Hesaplama Ayarları', path: '/admin/calculator', icon: Calculator },
             { label: 'Geri Bildirimler', path: '/admin/feedback', icon: MessageSquare },
@@ -79,6 +88,7 @@ const menuConfig: MenuCategory[] = [
         id: 'sponsors',
         label: 'Sponsor & Gelir',
         icon: Star,
+        allowedRoles: ['superadmin'],
         items: [
             { label: 'Sponsor Yönetimi', path: '/admin/sponsors', icon: Star },
         ],
@@ -87,20 +97,22 @@ const menuConfig: MenuCategory[] = [
         id: 'content',
         label: 'İçerik Yönetimi',
         icon: FileText,
+        allowedRoles: CONTENT_ROLES,
         items: [
-            { label: 'Firmalar', path: '/admin/companies', icon: Building2 },
-            { label: 'Kampanyalar', path: '/admin/campaigns', icon: Megaphone },
-            { label: 'Sektör Haberleri', path: '/admin/news', icon: Newspaper },
-            { label: 'Blog', path: '/admin/blog', icon: FileText },
-            { label: 'Hakkımızda', path: '/admin/about-settings', icon: Info },
-            { label: 'Sektör Gündemi', path: '/admin/ticker', icon: Zap },
-            { label: 'Kampanya Bannerları', path: '/admin/campaign-banners', icon: Image },
+            { label: 'Firmalar', path: '/admin/companies', icon: Building2, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Kampanyalar', path: '/admin/campaigns', icon: Megaphone, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Sektör Haberleri', path: '/admin/news', icon: Newspaper, allowedRoles: ['superadmin', 'news_editor', 'content_manager'] },
+            { label: 'Blog', path: '/admin/blog', icon: FileText, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Hakkımızda', path: '/admin/about-settings', icon: Info, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Sektör Gündemi', path: '/admin/ticker', icon: Zap, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Kampanya Bannerları', path: '/admin/campaign-banners', icon: Image, allowedRoles: ['superadmin', 'content_manager'] },
         ],
     },
     {
         id: 'homepage',
         label: 'Ana Sayfa & UI',
         icon: Grid3X3,
+        allowedRoles: ['superadmin'],
         items: [
             { label: 'Ana Sayfa Hero', path: '/admin/home-hero', icon: Image },
             { label: 'Kısayol Kareleri', path: '/admin/quick-links', icon: Grid3X3 },
@@ -112,13 +124,13 @@ const menuConfig: MenuCategory[] = [
         label: 'Sistem',
         icon: Settings,
         items: [
-            { label: 'Site Ayarları', path: '/admin/site-settings', icon: Settings },
-            { label: 'Popup Yönetimi', path: '/admin/popups', icon: MessageSquare },
-            { label: 'Push Bildirimleri', path: '/admin/push-notifications', icon: Bell },
-            { label: 'Medya Kütüphanesi', path: '/admin/media', icon: FolderOpen },
-            { label: 'İletişim', path: '/admin/contact', icon: Mail },
-            { label: 'E-posta Bildirimleri', path: '/admin/email-notifications', icon: Mail },
-            { label: 'Sosyal Medya Görseli', path: '/admin/social-media-generator', icon: ImagePlus },
+            { label: 'Site Ayarları', path: '/admin/site-settings', icon: Settings, allowedRoles: ['superadmin'] },
+            { label: 'Popup Yönetimi', path: '/admin/popups', icon: MessageSquare, allowedRoles: ['superadmin'] },
+            { label: 'Push Bildirimleri', path: '/admin/push-notifications', icon: Bell, allowedRoles: ['superadmin'] },
+            { label: 'Medya Kütüphanesi', path: '/admin/media', icon: FolderOpen, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'İletişim', path: '/admin/contact', icon: Mail, allowedRoles: ['superadmin'] },
+            { label: 'E-posta Bildirimleri', path: '/admin/email-notifications', icon: Mail, allowedRoles: ['superadmin'] },
+            { label: 'Sosyal Medya Görseli', path: '/admin/social-media-generator', icon: ImagePlus, allowedRoles: ['superadmin', 'social_media'] },
         ],
     },
 ];
@@ -130,6 +142,7 @@ interface AdminSidebarProps {
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose }) => {
     const location = useLocation();
+    const { adminRole, loading: authLoading } = useAuth();
     const [siteName, setSiteName] = useState<string>('Katılım Uzmanı');
     const [logo, setLogo] = useState<string>('');
     const [darkLogo, setDarkLogo] = useState<string>('');
@@ -141,7 +154,53 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose })
     const [userName, setUserName] = useState<string>('');
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+    // Helper function to check if user has access to a role-restricted item
+    // Helper function to check if user has access to a role-restricted item
+    const hasAccess = (allowedRoles?: AdminRole[]): boolean => {
+        // If adminRole is 'superadmin', user has full access
+        if (adminRole === 'superadmin') return true;
+
+        // If adminRole is null (no role), deny access
+        if (!adminRole) return false;
+
+        // If no allowedRoles specified on item, it's restricted to superadmin (default secure)
+        // OR we can decide base policy. Assuming if no roles specified, it is visible to all AUTHENTICATED admins? 
+        // Let's stick to safe default: if list is empty/undefined, do checking vs superadmin (already passed) or deny?
+        // Wait, existing code said: "If no allowedRoles specified on item, only superadmin/null can access"
+        // Let's change: If allowedRoles is empty/undefined, it is accessible to ALL admins? Or specific ones?
+        // Better: require specific roles. If allowedRoles is missing, assume it requires *some* role.
+
+        if (!allowedRoles || allowedRoles.length === 0) {
+            // If no specific roles required, allow any admin role (not null)
+            return true;
+        }
+
+        // Check if user's role is in the allowed list
+        return allowedRoles.includes(adminRole);
+    };
+
+    // Filter menu based on user role
+    const filteredMenu = useMemo(() => {
+        return menuConfig
+            .filter(category => hasAccess(category.allowedRoles) || category.items.some(item => hasAccess(item.allowedRoles)))
+            .map(category => ({
+                ...category,
+                items: category.items.filter(item => hasAccess(item.allowedRoles))
+            }))
+            .filter(category => category.items.length > 0);
+    }, [adminRole]);
+
     // Fetch site settings
+    useEffect(() => {
+        // Redirect if role is null (revoked permissions)
+        if (!authLoading && !adminRole) {
+            // Use window.location for hard redirect or navigate
+            // Since we are in Sidebar, navigate is available via context usually, but Sidebar might be rendered inside Layout.
+            // Using window.location.href = '/' ensures full exit from admin app context
+            window.location.href = '/';
+        }
+    }, [adminRole, authLoading]);
+
     useEffect(() => {
         const fetchSiteSettings = async () => {
             try {
@@ -223,7 +282,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose })
 
     // Auto-expand category containing active route
     useEffect(() => {
-        const activeCategory = menuConfig.find(cat =>
+        const activeCategory = filteredMenu.find(cat =>
             cat.items.some(item =>
                 item.path === location.pathname ||
                 (item.path !== '/admin' && location.pathname.startsWith(item.path))
@@ -295,89 +354,103 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onLogout, onClose })
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto py-2 px-2">
-                {menuConfig.map((category) => {
-                    const isOpen = openCategories.has(category.id);
-                    const hasActiveItem = category.items.some(item => isItemActive(item.path));
-                    const CategoryIcon = category.icon;
+                {authLoading ? (
+                    /* Skeleton menu during role loading */
+                    <div className="space-y-2 px-2">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="animate-pulse">
+                                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded-lg mb-2" />
+                                <div className="pl-4 space-y-1">
+                                    <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    filteredMenu.map((category) => {
+                        const isOpen = openCategories.has(category.id);
+                        const hasActiveItem = category.items.some(item => isItemActive(item.path));
+                        const CategoryIcon = category.icon;
 
-                    return (
-                        <div key={category.id} className="mb-1">
-                            <button
-                                onClick={() => !isCollapsed && toggleCategory(category.id)}
-                                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3'} py-2 rounded-lg transition-colors group
+                        return (
+                            <div key={category.id} className="mb-1">
+                                <button
+                                    onClick={() => !isCollapsed && toggleCategory(category.id)}
+                                    className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-3'} py-2 rounded-lg transition-colors group
                   ${hasActiveItem ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}
                 `}
-                                title={isCollapsed ? category.label : undefined}
-                            >
-                                <div className={`flex items-center ${isCollapsed ? '' : 'gap-2'}`}>
-                                    <CategoryIcon size={18} className={`flex-shrink-0 ${hasActiveItem ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                    title={isCollapsed ? category.label : undefined}
+                                >
+                                    <div className={`flex items-center ${isCollapsed ? '' : 'gap-2'}`}>
+                                        <CategoryIcon size={18} className={`flex-shrink-0 ${hasActiveItem ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                        {!isCollapsed && (
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-left">{category.label}</span>
+                                        )}
+                                    </div>
                                     {!isCollapsed && (
-                                        <span className="text-xs font-semibold uppercase tracking-wide text-left">{category.label}</span>
+                                        <ChevronDown
+                                            size={14}
+                                            className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                                        />
                                     )}
-                                </div>
-                                {!isCollapsed && (
-                                    <ChevronDown
-                                        size={14}
-                                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                                    />
+                                </button>
+
+                                {/* Category Items */}
+                                {!isCollapsed && isOpen && (
+                                    <div className="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-0.5">
+                                        {category.items.map((item) => {
+                                            const isActive = isItemActive(item.path);
+                                            const ItemIcon = item.icon;
+
+                                            return (
+                                                <Link
+                                                    key={item.path}
+                                                    to={item.path}
+                                                    onClick={onClose}
+                                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200
+                          ${isActive
+                                                            ? 'bg-[#0855f8] text-white shadow-sm'
+                                                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                                        }
+                        `}
+                                                >
+                                                    <ItemIcon size={16} className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'} />
+                                                    <span className="font-medium">{item.label}</span>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
                                 )}
-                            </button>
 
-                            {/* Category Items */}
-                            {!isCollapsed && isOpen && (
-                                <div className="mt-1 ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-700 space-y-0.5">
-                                    {category.items.map((item) => {
-                                        const isActive = isItemActive(item.path);
-                                        const ItemIcon = item.icon;
+                                {/* Collapsed mode: show items as tooltips */}
+                                {isCollapsed && (
+                                    <div className="mt-1 space-y-0.5">
+                                        {category.items.map((item) => {
+                                            const isActive = isItemActive(item.path);
+                                            const ItemIcon = item.icon;
 
-                                        return (
-                                            <Link
-                                                key={item.path}
-                                                to={item.path}
-                                                onClick={onClose}
-                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200
+                                            return (
+                                                <Link
+                                                    key={item.path}
+                                                    to={item.path}
+                                                    className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200
                           ${isActive
-                                                        ? 'bg-[#0855f8] text-white shadow-sm'
-                                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                                    }
+                                                            ? 'bg-[#0855f8] text-white shadow-sm'
+                                                            : 'text-gray-500 hover:bg-gray-100'
+                                                        }
                         `}
-                                            >
-                                                <ItemIcon size={16} className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'} />
-                                                <span className="font-medium">{item.label}</span>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Collapsed mode: show items as tooltips */}
-                            {isCollapsed && (
-                                <div className="mt-1 space-y-0.5">
-                                    {category.items.map((item) => {
-                                        const isActive = isItemActive(item.path);
-                                        const ItemIcon = item.icon;
-
-                                        return (
-                                            <Link
-                                                key={item.path}
-                                                to={item.path}
-                                                className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200
-                          ${isActive
-                                                        ? 'bg-[#0855f8] text-white shadow-sm'
-                                                        : 'text-gray-500 hover:bg-gray-100'
-                                                    }
-                        `}
-                                                title={item.label}
-                                            >
-                                                <ItemIcon size={18} />
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
+                                                    title={item.label}
+                                                >
+                                                    <ItemIcon size={18} />
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })
+                )}
             </nav>
 
             {/* Footer: Theme Toggle + User Profile */}

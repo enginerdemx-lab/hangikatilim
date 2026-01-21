@@ -56,6 +56,7 @@ export interface SiteSettings {
   // Ticker Settings
   ticker_active?: boolean;
   gold_ons_price?: number;
+  market_gold_change_rate?: number | null;
   created_at: string;
   updated_at: string;
 }

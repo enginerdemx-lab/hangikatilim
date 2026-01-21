@@ -77,6 +77,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 heading: {
                     levels: [2, 3],
                 },
+                // Disable extensions that we add manually to avoid duplicates
+                // @ts-ignore
+                link: false,
+                // @ts-ignore
+                underline: false,
             }),
             Link.configure({
                 openOnClick: false,

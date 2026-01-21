@@ -1,6 +1,8 @@
 import { supabase } from '../supabaseClient';
 
 // Types for admin user management
+export type AdminRoleType = 'superadmin' | 'social_media' | 'news_editor' | 'content_manager' | null;
+
 export interface AdminUser {
     id: string;
     email: string;
@@ -16,6 +18,7 @@ export interface AdminUser {
     last_sign_in_ip: string | null;
     login_count: number;
     calculation_count: number;
+    admin_role: AdminRoleType;
     // Genel Bilgiler (Profile Details)
     education_level: string | null;
     employment_status: string | null;
@@ -215,6 +218,21 @@ export const adminUserService = {
             .eq('id', userId);
 
         if (error) throw error;
+    },
+
+    // ============================================
+    // UPDATE ADMIN ROLE
+    // ============================================
+    async updateAdminRole(userId: string, role: AdminRoleType): Promise<void> {
+        const { error } = await supabase.rpc('update_admin_role', {
+            target_user_id: userId,
+            new_role: role
+        });
+
+        if (error) {
+            console.error('Update admin role error:', error);
+            throw error;
+        }
     },
 
     // ============================================

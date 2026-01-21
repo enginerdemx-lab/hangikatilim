@@ -95,6 +95,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // Feedback state
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [showNegativeFeedbackReason, setShowNegativeFeedbackReason] = useState(false);
+  const [negativeFeedbackReason, setNegativeFeedbackReason] = useState('');
 
   // AI Cooldown State
   const AI_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -1459,52 +1461,89 @@ ${url}`;
                 </div>
               )}
 
-              {/* Feedback UI - Geri bildirim - CHART'TAN ÖNCE */}
               {result && !feedbackSubmitted && (
                 <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 rounded-xl border border-blue-200 dark:border-slate-700">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center font-medium">Bu hesaplama size faydalı oldu mu?</p>
-                  <div className="flex gap-3 justify-center">
-                    <button
-                      onClick={async () => {
-                        setFeedbackLoading(true);
-                        await feedbackService.submitFeedback({
-                          is_positive: true,
-                          calculation_params: {
-                            targetAmount: params.targetAmount,
-                            months: params.months,
-                            systemType: params.systemType,
-                            assetType: params.assetType
-                          }
-                        });
-                        setFeedbackSubmitted(true);
-                        setFeedbackLoading(false);
-                      }}
-                      disabled={feedbackLoading}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-                    >
-                      👍 Evet
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setFeedbackLoading(true);
-                        await feedbackService.submitFeedback({
-                          is_positive: false,
-                          calculation_params: {
-                            targetAmount: params.targetAmount,
-                            months: params.months,
-                            systemType: params.systemType,
-                            assetType: params.assetType
-                          }
-                        });
-                        setFeedbackSubmitted(true);
-                        setFeedbackLoading(false);
-                      }}
-                      disabled={feedbackLoading}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-                    >
-                      👎 Hayır
-                    </button>
-                  </div>
+                  {!showNegativeFeedbackReason ? (
+                    <>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center font-medium">Bu hesaplama size faydalı oldu mu?</p>
+                      <div className="flex gap-3 justify-center">
+                        <button
+                          onClick={async () => {
+                            setFeedbackLoading(true);
+                            await feedbackService.submitFeedback({
+                              is_positive: true,
+                              calculation_params: {
+                                targetAmount: params.targetAmount,
+                                months: params.months,
+                                systemType: params.systemType,
+                                assetType: params.assetType
+                              }
+                            });
+                            setFeedbackSubmitted(true);
+                            setFeedbackLoading(false);
+                          }}
+                          disabled={feedbackLoading}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                        >
+                          👍 Evet
+                        </button>
+                        <button
+                          onClick={() => setShowNegativeFeedbackReason(true)}
+                          disabled={feedbackLoading}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                        >
+                          👎 Hayır
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="animate-fade-in">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 text-center font-medium">Neden faydalı olmadığını paylaşır mısınız?</p>
+                      <textarea
+                        value={negativeFeedbackReason}
+                        onChange={(e) => setNegativeFeedbackReason(e.target.value)}
+                        placeholder="Örn: Daha fazla seçenek olmalı, sonuçlar anlaşılır değil..."
+                        className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 mb-3 focus:ring-2 focus:ring-blue-400 outline-none resize-none"
+                        rows={3}
+                      />
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => {
+                            setShowNegativeFeedbackReason(false);
+                            setNegativeFeedbackReason('');
+                          }}
+                          className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium transition-colors"
+                        >
+                          İptal
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setFeedbackLoading(true);
+                            await feedbackService.submitFeedback({
+                              is_positive: false,
+                              feedback_reason: negativeFeedbackReason || 'Neden belirtilmedi',
+                              calculation_params: {
+                                targetAmount: params.targetAmount,
+                                months: params.months,
+                                systemType: params.systemType,
+                                assetType: params.assetType
+                              }
+                            });
+                            setFeedbackSubmitted(true);
+                            setFeedbackLoading(false);
+                          }}
+                          disabled={feedbackLoading}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all shadow-md disabled:opacity-50"
+                        >
+                          {feedbackLoading ? (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            'Gönder'
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {feedbackSubmitted && (

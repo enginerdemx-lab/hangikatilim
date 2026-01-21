@@ -22,6 +22,7 @@ import { Sponsors as AdminSponsors } from './pages/admin/Sponsors';
 import { Feedback as AdminFeedback } from './pages/admin/Feedback';
 import { PushNotifications } from './pages/admin/PushNotifications';
 
+
 // Test components
 const TestUsersPage = () => <div>TEST USERS PAGE WORKS</div>;
 const TestEmailPage = () => (
@@ -92,6 +93,7 @@ const App: React.FC = () => {
             <Route path="sponsors" element={<AdminSponsors />} />
             <Route path="email-notifications" element={<TestEmailPage />} />
             <Route path="feedback" element={<AdminFeedback />} />
+
             <Route path="push-notifications" element={<PushNotifications />} />
             <Route path="push_notifications" element={<Navigate to="/admin/push-notifications" replace />} />
           </Route>

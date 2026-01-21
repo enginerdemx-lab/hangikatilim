@@ -21,6 +21,7 @@ export interface FeedbackStats {
 export interface SubmitFeedbackParams {
     is_positive: boolean;
     comment?: string;
+    feedback_reason?: string; // Reason for negative feedback
     calculation_params?: Record<string, unknown>;
 }
 
@@ -35,7 +36,7 @@ export const feedbackService = {
                 .insert({
                     user_id: user?.id || null,
                     is_positive: params.is_positive,
-                    comment: params.comment || null,
+                    comment: params.comment || params.feedback_reason || null,
                     calculation_params: params.calculation_params || null,
                     user_agent: navigator.userAgent,
                 });

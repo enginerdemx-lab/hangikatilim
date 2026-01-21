@@ -24,7 +24,7 @@ import {
     XCircle,
     History
 } from 'lucide-react';
-import { adminUserService, AdminUser, LoginLog, UserFilters } from '../../services/api/adminUserService';
+import { adminUserService, AdminUser, AdminRoleType, LoginLog, UserFilters } from '../../services/api/adminUserService';
 
 // Styled Toast Component
 const Toast: React.FC<{ message: string; type: 'success' | 'error' | 'warning'; onClose: () => void }> = ({ message, type, onClose }) => {
@@ -573,20 +573,21 @@ export const Users: React.FC = () => {
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Giriş</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">SON IP</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Durum</th>
+                                    <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Admin Rolü</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={10} className="p-8 text-center text-gray-500">
+                                        <td colSpan={12} className="p-8 text-center text-gray-500">
                                             <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
                                             Yükleniyor...
                                         </td>
                                     </tr>
                                 ) : paginatedUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10} className="p-8 text-center text-gray-500">
+                                        <td colSpan={12} className="p-8 text-center text-gray-500">
                                             Üye bulunamadı
                                         </td>
                                     </tr>
@@ -620,6 +621,40 @@ export const Users: React.FC = () => {
                                             <td className="p-4 text-sm text-gray-900 font-medium">{user.login_count || 0}</td>
                                             <td className="p-4 text-sm text-gray-500 font-mono">{(user as any).last_sign_in_ip || '-'}</td>
                                             <td className="p-4">{getStatusBadge(user.status, (user as any).email_confirmed_at)}</td>
+                                            <td className="p-4">
+                                                <select
+                                                    value={user.admin_role || ''}
+                                                    onChange={async (e) => {
+                                                        const newRole = e.target.value === '' ? null : e.target.value as AdminRoleType;
+
+                                                        // Confirm dialog
+                                                        if (!window.confirm(`Bu kullanıcının rolünü "${newRole || 'Yok'}" olarak değiştirmek istediğinize emin misiniz?`)) {
+                                                            // Revert select value (force re-render or just don't API call)
+                                                            // Since this is uncontrolled/controlled hybrid via 'value={user.admin_role}', 
+                                                            // just returning stops the change if component re-renders from state.
+                                                            // But to be sure UI reflects cancellation, we might need to force update or rely on React state reset next render.
+                                                            // Simple return prevents API call.
+                                                            return;
+                                                        }
+
+                                                        try {
+                                                            await adminUserService.updateAdminRole(user.id, newRole);
+                                                            setUsers(users.map(u => u.id === user.id ? { ...u, admin_role: newRole } : u));
+                                                            showToast('Admin rolü güncellendi.', 'success');
+                                                        } catch (error) {
+                                                            console.error('Role update error:', error);
+                                                            showToast('Rol güncellenemedi.', 'error');
+                                                        }
+                                                    }}
+                                                    className="text-xs px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white min-w-[140px]"
+                                                >
+                                                    <option value="">Yok</option>
+                                                    <option value="superadmin">Süper Admin</option>
+                                                    <option value="social_media">Sosyal Medya</option>
+                                                    <option value="news_editor">Haber Editörü</option>
+                                                    <option value="content_manager">İçerik Yöneticisi</option>
+                                                </select>
+                                            </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-1">
                                                     <button

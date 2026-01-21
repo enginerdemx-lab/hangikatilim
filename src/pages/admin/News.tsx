@@ -440,6 +440,17 @@ export const News: React.FC = () => {
                                         </button>
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
+                                        {post.status === 'published' && (
+                                            <a
+                                                href={`/sektor-haberleri/${post.slug || post.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition"
+                                                title="Habere Git"
+                                            >
+                                                🔗 Habere Git
+                                            </a>
+                                        )}
                                         <button
                                             onClick={() => handleEdit(post)}
                                             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition"

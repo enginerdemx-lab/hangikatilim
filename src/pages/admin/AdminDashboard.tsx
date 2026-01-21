@@ -4,6 +4,8 @@ import { campaignsApi } from '../../services/api/campaigns';
 import { companiesApi } from '../../services/api/companies';
 import { adminUserService } from '../../services/api/adminUserService';
 import { analyticsService, AnalyticsData, DataHealthInfo } from '../../services/api/analytics';
+import { serverStatsService, ServerStats } from '../../services/api/serverStats';
+import { useAuth } from '../../hooks/useAuth';
 import {
     Users,
     TrendingUp,
@@ -16,7 +18,11 @@ import {
     Megaphone,
     CalendarDays,
     Info,
-    ExternalLink
+    ExternalLink,
+    Database,
+    HardDrive,
+    FolderOpen,
+    Server
 } from 'lucide-react';
 
 // Reusable Card Component
@@ -35,16 +41,25 @@ const Card: React.FC<{
     </div>
 );
 
-// KPI Stat Card Component
+// KPI Stat Card Component - with role-based link control
 const StatCard: React.FC<{
     label: string;
     value: number;
     subValue?: string;
     icon: React.ElementType;
     to: string;
-}> = ({ label, value, subValue, icon: Icon, to }) => (
-    <Link to={to}>
-        <Card>
+    allowedRoles?: string[]; // Roles that can click the link
+}> = ({ label, value, subValue, icon: Icon, to, allowedRoles }) => {
+    const { adminRole } = useAuth();
+
+    // Check if user can access this link
+    const canAccess = !allowedRoles ||
+        adminRole === null ||
+        adminRole === 'superadmin' ||
+        allowedRoles.includes(adminRole);
+
+    const content = (
+        <Card className={!canAccess ? 'cursor-default' : ''}>
             <div className="flex items-start justify-between">
                 <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
@@ -60,8 +75,15 @@ const StatCard: React.FC<{
                 </div>
             </div>
         </Card>
-    </Link>
-);
+    );
+
+    // If user can't access, don't wrap in Link
+    if (!canAccess) {
+        return content;
+    }
+
+    return <Link to={to}>{content}</Link>;
+};
 
 // Analytics Metric Card Component  
 const MetricCard: React.FC<{
@@ -117,6 +139,11 @@ export const AdminDashboard: React.FC = () => {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
+    // Server Stats
+    const [serverStats, setServerStats] = useState<ServerStats | null>(null);
+    const [serverStatsLoading, setServerStatsLoading] = useState(true);
+    const [serverStatsError, setServerStatsError] = useState<string | null>(null);
+
     // Quick search items
     const searchItems = [
         { label: 'Üyeler', path: '/admin/users', keywords: ['üye', 'user', 'kullanıcı', 'üyeler'] },
@@ -143,6 +170,7 @@ export const AdminDashboard: React.FC = () => {
     useEffect(() => {
         loadStats();
         loadAnalytics();
+        loadServerStats();
 
         // Keyboard shortcut: "/" to focus search
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -206,8 +234,25 @@ export const AdminDashboard: React.FC = () => {
 
     const refreshAll = async () => {
         setHealthRefreshing(true);
-        await Promise.all([loadStats(), loadAnalytics(true)]);
+        await Promise.all([loadStats(), loadAnalytics(true), loadServerStats(true)]);
         setHealthRefreshing(false);
+    };
+
+    const loadServerStats = async (forceRefresh = false) => {
+        setServerStatsLoading(true);
+        setServerStatsError(null);
+        try {
+            const data = await serverStatsService.getStats(forceRefresh);
+            setServerStats(data);
+            if (data.error) {
+                setServerStatsError(data.error);
+            }
+        } catch (error) {
+            console.error('Failed to load server stats:', error);
+            setServerStatsError('Sunucu istatistikleri yüklenemedi');
+        } finally {
+            setServerStatsLoading(false);
+        }
     };
 
     const formatDate = (isoString: string | null) => {
@@ -333,14 +378,16 @@ export const AdminDashboard: React.FC = () => {
                     value={stats.totalMembers}
                     subValue={`${stats.activeMembers} aktif`}
                     icon={Users}
-                    to="/admin/users"
+                    to="/admin/members"
+                    allowedRoles={['superadmin']}
                 />
                 <StatCard
                     label="Bugün Giriş"
                     value={stats.todayLogins}
                     subValue="son 24 saat"
                     icon={CalendarDays}
-                    to="/admin/users"
+                    to="/admin/members"
+                    allowedRoles={['superadmin']}
                 />
                 <StatCard
                     label="Toplam Kampanya"
@@ -348,6 +395,7 @@ export const AdminDashboard: React.FC = () => {
                     subValue={`${stats.activeCampaigns} aktif`}
                     icon={Megaphone}
                     to="/admin/campaigns"
+                    allowedRoles={['superadmin']}
                 />
                 <StatCard
                     label="Toplam Firma"
@@ -355,6 +403,7 @@ export const AdminDashboard: React.FC = () => {
                     subValue={`${stats.activeCompanies} aktif`}
                     icon={Building2}
                     to="/admin/companies"
+                    allowedRoles={['superadmin']}
                 />
             </div>
 
@@ -503,6 +552,165 @@ export const AdminDashboard: React.FC = () => {
                                         Son güncelleme: {formatDate(analytics.lastUpdated)}
                                     </p>
                                 )}
+                            </Card>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {/* Server Stats Section */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Server size={20} className="text-slate-500 dark:text-slate-400" />
+                        Sunucu Durumu
+                    </h2>
+                </div>
+
+                {serverStatsError ? (
+                    <Card hover={false} className="text-center py-8">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{serverStatsError}</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                            server-stats Edge Function'ı deploy edilmeli.
+                        </p>
+                    </Card>
+                ) : serverStatsLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map((i) => (
+                            <Card key={i} hover={false} className="animate-pulse">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-xl"></div>
+                                    <div className="space-y-2">
+                                        <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                        <div className="h-5 w-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                ) : serverStats && (
+                    <>
+                        {/* Overview Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                                        <Database size={18} className="text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Veritabanı Boyutu</p>
+                                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                                            {serverStats.database.totalSize}
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                            <Card>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-green-100 dark:bg-green-900/30">
+                                        <HardDrive size={18} className="text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Tablo Sayısı</p>
+                                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                                            {serverStats.database.tableCount}
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                            <Card>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+                                        <FolderOpen size={18} className="text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Depolama Dosyaları</p>
+                                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                                            {serverStats.storage.totalFiles}
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                            <Card>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30">
+                                        <Users size={18} className="text-orange-600 dark:text-orange-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Auth Kullanıcıları</p>
+                                        <p className="text-xl font-bold text-slate-900 dark:text-white">
+                                            {serverStats.auth.totalUsers}
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Tables List */}
+                        {serverStats.database.tables.length > 0 && (
+                            <Card hover={false}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        En Büyük Tablolar (Kayıt Sayısı)
+                                    </h3>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                    <table className="w-full">
+                                        <thead className="sticky top-0 bg-white dark:bg-slate-800">
+                                            <tr className="border-b border-slate-100 dark:border-slate-700">
+                                                <th className="text-left text-xs font-medium text-slate-500 py-2">Tablo</th>
+                                                <th className="text-right text-xs font-medium text-slate-500 py-2">Kayıt</th>
+                                                <th className="text-right text-xs font-medium text-slate-500 py-2">Boyut</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                            {serverStats.database.tables.map((table, index) => (
+                                                <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                    <td className="py-2.5 pr-4">
+                                                        <span className="text-sm text-slate-600 dark:text-slate-300">
+                                                            {table.name}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2.5 text-right">
+                                                        <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                                            {table.rowCount.toLocaleString('tr-TR')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2.5 text-right">
+                                                        <span className="text-xs text-slate-500">
+                                                            {table.sizePretty}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {serverStats.timestamp && (
+                                    <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                        Son güncelleme: {formatDate(serverStats.timestamp)}
+                                    </p>
+                                )}
+                            </Card>
+                        )}
+
+                        {/* Storage Buckets */}
+                        {serverStats.storage.buckets.length > 0 && (
+                            <Card hover={false}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        Depolama Bucket'ları
+                                    </h3>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    {serverStats.storage.buckets.map((bucket, index) => (
+                                        <div key={index} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                                            <p className="text-xs font-medium text-slate-500 truncate">{bucket.name}</p>
+                                            <p className="text-lg font-bold text-slate-900 dark:text-white">{bucket.fileCount}</p>
+                                            <p className="text-xs text-slate-400">dosya</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </Card>
                         )}
                     </>

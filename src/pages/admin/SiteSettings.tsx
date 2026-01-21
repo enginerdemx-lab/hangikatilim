@@ -179,6 +179,7 @@ export const SiteSettings: React.FC = () => {
         copyright_text: '',
         ticker_active: true,
         gold_ons_price: '2060',
+        market_gold_change_rate: '',
     });
 
     const [originalData, setOriginalData] = useState<typeof formData | null>(null);
@@ -226,6 +227,7 @@ export const SiteSettings: React.FC = () => {
                     copyright_text: data.copyright_text || '',
                     ticker_active: data.ticker_active !== false,
                     gold_ons_price: data.gold_ons_price?.toString() || '2060',
+                    market_gold_change_rate: data.market_gold_change_rate?.toString() || '',
                 };
                 setFormData(newFormData);
                 setOriginalData(newFormData);
@@ -332,7 +334,8 @@ export const SiteSettings: React.FC = () => {
             // Renk alanları hariç tüm formData'yı gönder
             const updateData: Partial<SiteSettings> = {
                 ...formData,
-                gold_ons_price: parseFloat(formData.gold_ons_price) || 2060
+                gold_ons_price: parseFloat(formData.gold_ons_price) || 2060,
+                market_gold_change_rate: formData.market_gold_change_rate ? parseFloat(formData.market_gold_change_rate) : null
             };
             if (settings?.id) {
                 await siteSettingsApi.updateSettings(settings.id, updateData);
@@ -1018,7 +1021,7 @@ export const SiteSettings: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="border-t border-slate-100 dark:border-slate-700 pt-6">
+                            <div className="border-t border-slate-100 dark:border-slate-700 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <InputField
                                     label="Ons Altın Fiyatı (USD)"
                                     value={formData.gold_ons_price}
@@ -1026,6 +1029,14 @@ export const SiteSettings: React.FC = () => {
                                     type="number"
                                     placeholder="2060"
                                     helper="Gram altın hesaplaması için kullanılır: (Ons * Dolar) / 31.1035"
+                                />
+                                <InputField
+                                    label="Manuel Altın Değişim Oranı (%)"
+                                    value={formData.market_gold_change_rate || ''}
+                                    onChange={(v) => handleFormChange({ market_gold_change_rate: v })}
+                                    type="number"
+                                    placeholder="0.50"
+                                    helper="Boş bırakılırsa otomatik hesaplanır. Değer girilirse bu oran ve yön (pozitif/negatif) kullanılır."
                                 />
                             </div>
                         </div>
