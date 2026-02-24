@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Link, MessageCircle } from 'lucide-react';
+import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Link, MessageCircle, Info } from 'lucide-react';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../../types';
 import { generatePDF, generatePDFBlob } from '../services/pdfService';
 import { calculationService } from '../services/api/calculationService';
+import { pdfDownloadService } from '../services/api/pdfDownloadService';
 import { feedbackService } from '../services/api/feedbackService';
 import { calculatorApi } from '../services/api/calculator';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,7 +22,7 @@ import {
 
 // Default fallback values (used if Supabase settings not loaded)
 const DEFAULT_MIN_TARGET = 50000;
-const DEFAULT_MAX_TARGET = 5000000;
+const DEFAULT_MAX_TARGET = 8000000;
 const MAX_MONTHS = 360;
 const LEGAL_DELIVERY_MIN_MONTH = 6;
 const DELIVERY_THRESHOLD_RATE = 0.40; // %40
@@ -73,6 +74,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [showInterim1, setShowInterim1] = useState(false);
   const [showInterim2, setShowInterim2] = useState(false);
   const [showIncreaseSettings, setShowIncreaseSettings] = useState(false);
+  // Artışlı Ödeme Tab Modu: 'periodic' = Periyodik Artış, 'delivery' = Teslimata Göre
+  const [increaseTabMode, setIncreaseTabMode] = useState<'periodic' | 'delivery'>('periodic');
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aiAdvice, setAiAdvice] = useState<string>('');
 
@@ -85,6 +88,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showPdfLoginPrompt, setShowPdfLoginPrompt] = useState(false);
   const [savingCalculation, setSavingCalculation] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
 
@@ -621,10 +625,36 @@ export const Calculator: React.FC<CalculatorProps> = ({
     }
   };
 
-  // Mevcut kod:
+  // PDF İndirme - Üye girişi gerektirir
   const downloadPDF = () => {
     if (!result) return;
-    generatePDF(params, result, 'Ziyaretçi');
+
+    // Üye değilse popup göster
+    if (!user) {
+      setShowPdfLoginPrompt(true);
+      return;
+    }
+
+    // Üye girişi yapılmış, PDF indir
+    const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Üye';
+    generatePDF(params, result, userName);
+
+    // PDF indirme logunu kaydet (fire-and-forget)
+    pdfDownloadService.logDownload({
+      userId: user.id,
+      calculationType: mapAssetTypeToCalculationType(params.assetType),
+      targetAmount: params.targetAmount,
+      downPayment: params.downPayment,
+      months: params.months,
+      systemType: params.systemType,
+    });
+
+    // GA4 Event: PDF Download
+    trackEvent('pdf_download', {
+      file_name: 'katilim_hesaplama.pdf',
+      page: window.location.pathname
+    });
+
     // Trigger sponsor area on PDF download
     setShowSponsor(true);
     setSponsorTrigger('pdf');
@@ -779,11 +809,16 @@ ${url}`;
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 dark:border-slate-700 transition-colors duration-300">
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 border-b border-gray-100 dark:border-slate-700 pb-4">
-              <h2 className="text-xl font-bold text-primary-900 dark:text-white flex items-center gap-2">
-                <CalcIcon className="text-primary-400" />
-                Hesaplama Aracı
-              </h2>
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4 border-b border-gray-100 dark:border-slate-700 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-primary-900 dark:text-white flex items-center gap-2">
+                  <CalcIcon className="text-primary-400" />
+                  Hesaplama Aracı
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Tasarruf finansmanı hesaplama aracı ile peşinat, vade, teslimat tarihi ve aylık ödeme tutarlarını anında öğrenin.
+                </p>
+              </div>
             </div>
 
             {/* ASSET TYPE SELECTION - UPDATED TO TABS */}
@@ -856,58 +891,60 @@ ${url}`;
                       </div>
                     )}
 
-                    {/* Manual Override Toggle */}
-                    <div className="pt-3 border-t border-gray-100 dark:border-slate-800">
-                      <label className="flex items-center gap-3 cursor-pointer group select-none">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={useManualDeliveryMonth}
-                            onChange={(e) => setUseManualDeliveryMonth(e.target.checked)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
-                        </div>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary-600 transition-colors">
-                          Teslimat Ayını Manuel Belirle
-                        </span>
-                      </label>
-
-                      {/* Manual Input Controls */}
-                      {useManualDeliveryMonth && (
-                        <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setManualDeliveryMonth(prev => Math.max(6, prev - 1))}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
-                            >
-                              <Minus size={16} />
-                            </button>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min={6}
-                                max={params.months}
-                                value={manualDeliveryMonth}
-                                onChange={(e) => {
-                                  let val = parseInt(e.target.value);
-                                  if (isNaN(val)) val = 6;
-                                  setManualDeliveryMonth(Math.max(6, Math.min(params.months, val)));
-                                }}
-                                className="w-16 h-8 text-center bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                              />
-                            </div>
-                            <button
-                              onClick={() => setManualDeliveryMonth(prev => Math.min(params.months, prev + 1))}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
-                            >
-                              <Plus size={16} />
-                            </button>
+                    {/* Manual Override Toggle - SADECE ÇEKİLİŞSİZ SİSTEMDE GÖSTERİLİR */}
+                    {params.systemType === SystemType.NON_LOTTERY && (
+                      <div className="pt-3 border-t border-gray-100 dark:border-slate-800">
+                        <label className="flex items-center gap-3 cursor-pointer group select-none">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={useManualDeliveryMonth}
+                              onChange={(e) => setUseManualDeliveryMonth(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
                           </div>
-                          <span className="text-sm font-bold text-primary-600 dark:text-primary-400">. Ayda Teslim</span>
-                        </div>
-                      )}
-                    </div>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary-600 transition-colors">
+                            Teslimat Ayını Manuel Belirle
+                          </span>
+                        </label>
+
+                        {/* Manual Input Controls */}
+                        {useManualDeliveryMonth && (
+                          <div className="mt-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setManualDeliveryMonth(prev => Math.max(6, prev - 1))}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+                              >
+                                <Minus size={16} />
+                              </button>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min={6}
+                                  max={params.months}
+                                  value={manualDeliveryMonth}
+                                  onChange={(e) => {
+                                    let val = parseInt(e.target.value);
+                                    if (isNaN(val)) val = 6;
+                                    setManualDeliveryMonth(Math.max(6, Math.min(params.months, val)));
+                                  }}
+                                  className="w-16 h-8 text-center bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                />
+                              </div>
+                              <button
+                                onClick={() => setManualDeliveryMonth(prev => Math.min(params.months, prev + 1))}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+                              >
+                                <Plus size={16} />
+                              </button>
+                            </div>
+                            <span className="text-sm font-bold text-primary-600 dark:text-primary-400">. Ayda Teslim</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1220,8 +1257,8 @@ ${url}`;
               </p>
             </div>
 
-            {/* ENHANCED INCREASE PAYMENT SECTION */}
-            <div className={`p-4 rounded-xl border transition-all duration-300 ${showIncreaseSettings ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700'}`}>
+            {/* ENHANCED INCREASE PAYMENT SECTION - İKİ SEKMELİ TASARIM */}
+            <div className={`p-4 rounded-xl border transition-all duration-300 ${showIncreaseSettings ? 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700' : 'bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700'}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${showIncreaseSettings ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-gray-200 text-gray-500'}`}>
@@ -1241,89 +1278,182 @@ ${url}`;
               </div>
 
               {showIncreaseSettings && (
-                <div className="animate-fade-in mt-4 border-t border-primary-100 dark:border-primary-900/50 pt-4">
+                <div className="animate-fade-in mt-4 border-t border-gray-200 dark:border-slate-700 pt-4">
 
-                  <div className="mb-4">
-                    <label className="text-xs font-bold text-primary-700 dark:text-primary-400 uppercase block mb-2">Artış Sıklığı</label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
-                      <button
-                        onClick={() => setParams({ ...params, increaseType: IncreaseType.POST_DELIVERY })}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.POST_DELIVERY ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
-                      >
-                        <CalendarCheck size={18} className="mb-1" />
-                        Teslimattan Sonra
-                      </button>
-                      <button
-                        onClick={() => setParams({ ...params, increaseType: IncreaseType.ANNUAL })}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.ANNUAL ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
-                      >
-                        <Calendar size={18} className="mb-1" />
-                        12 Ayda Bir
-                      </button>
-                      <button
-                        onClick={() => setParams({ ...params, increaseType: IncreaseType.SIX_MONTHS })}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.SIX_MONTHS ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
-                      >
-                        <Calendar size={18} className="mb-1" />
-                        6 Ayda Bir
-                      </button>
-                      <button
-                        onClick={() => setParams({ ...params, increaseType: IncreaseType.THREE_MONTHS })}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.THREE_MONTHS ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
-                      >
-                        <Zap size={18} className="mb-1" />
-                        3 Ayda Bir
-                      </button>
-                      <button
-                        onClick={() => setParams({ ...params, increaseType: IncreaseType.CUSTOM })}
-                        className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-bold transition-all ${params.increaseType === IncreaseType.CUSTOM ? 'bg-white border-primary-500 text-primary-700 shadow-md' : 'bg-transparent border-transparent hover:bg-white/50 text-gray-600'}`}
-                      >
-                        <Sparkles size={18} className="mb-1" />
-                        Özel Sıklık
-                      </button>
-                    </div>
-
-                    {/* Custom Interval Input */}
-                    {params.increaseType === IncreaseType.CUSTOM && (
-                      <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-lg border border-primary-200 dark:border-primary-800 animate-fade-in">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Her</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={24}
-                          step={1}
-                          value={params.customIncreasePeriod || 4}
-                          onChange={(e) => setParams({ ...params, customIncreasePeriod: Math.max(1, Math.min(24, Number(e.target.value))) })}
-                          className="w-16 px-2 py-1.5 text-center text-sm font-bold bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg outline-none text-primary-700 dark:text-white focus:ring-2 focus:ring-primary-400"
-                        />
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">ayda bir artış uygula</label>
-                      </div>
-                    )}
+                  {/* TAB BUTTONS */}
+                  <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-900 rounded-xl mb-4">
+                    <button
+                      onClick={() => {
+                        setIncreaseTabMode('periodic');
+                        if (params.increaseType === IncreaseType.POST_DELIVERY) {
+                          setParams({ ...params, increaseType: IncreaseType.SIX_MONTHS });
+                        }
+                      }}
+                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all ${increaseTabMode === 'periodic'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                      Periyodik Artış
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIncreaseTabMode('delivery');
+                        setParams({ ...params, increaseType: IncreaseType.POST_DELIVERY });
+                      }}
+                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all ${increaseTabMode === 'delivery'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                      Teslimata Göre
+                    </button>
                   </div>
 
-                  <div className="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-lg border border-primary-100 dark:border-primary-900/30">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Artış Oranı (%)</label>
-                    <div className="flex items-center gap-3 flex-1 justify-end">
-                      <input
-                        type="range"
-                        min={0}
-                        max={50}
-                        step={5}
-                        value={params.installmentIncreaseRate}
-                        onChange={(e) => setParams({ ...params, installmentIncreaseRate: Number(e.target.value) })}
-                        className="w-32 h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
-                      />
-                      <div className="relative w-20">
-                        <input
-                          type="number"
-                          className="w-full pl-2 pr-6 py-1.5 text-right text-sm font-bold bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded outline-none text-primary-700 dark:text-white"
-                          value={params.installmentIncreaseRate}
-                          onChange={(e) => setParams({ ...params, installmentIncreaseRate: Number(e.target.value) })}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">%</span>
+                  {/* PERIODIC TAB CONTENT */}
+                  {increaseTabMode === 'periodic' && (
+                    <div className="space-y-4">
+                      {/* Otomatik Artış Oranı & Periyod */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="flex items-center gap-2 text-sm text-primary-700 dark:text-primary-400 font-medium mb-2">
+                            <input
+                              type="checkbox"
+                              checked={params.installmentIncreaseRate > 0}
+                              onChange={(e) => setParams({ ...params, installmentIncreaseRate: e.target.checked ? 10 : 0 })}
+                              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            />
+                            Otomatik Artış Oranı (%)
+                          </label>
+                          <input
+                            type="number"
+                            value={params.installmentIncreaseRate}
+                            onChange={(e) => setParams({ ...params, installmentIncreaseRate: Number(e.target.value) })}
+                            className="w-full p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">
+                            Artış Periyodu (Ay)
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={60}
+                            value={
+                              params.increaseType === IncreaseType.ANNUAL ? 12 :
+                                params.increaseType === IncreaseType.SIX_MONTHS ? 6 :
+                                  params.increaseType === IncreaseType.THREE_MONTHS ? 3 :
+                                    params.customIncreasePeriod || 6
+                            }
+                            onChange={(e) => {
+                              const val = Math.max(1, Math.min(60, Number(e.target.value)));
+                              if (val === 12) setParams({ ...params, increaseType: IncreaseType.ANNUAL });
+                              else if (val === 6) setParams({ ...params, increaseType: IncreaseType.SIX_MONTHS });
+                              else if (val === 3) setParams({ ...params, increaseType: IncreaseType.THREE_MONTHS });
+                              else setParams({ ...params, increaseType: IncreaseType.CUSTOM, customIncreasePeriod: val });
+                            }}
+                            className="w-full p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                            placeholder="Ay"
+                          />
+                        </div>
+                      </div>
+
+                      {/* DÖNEM BAZLI TAKSİTLER */}
+                      {result && params.installmentIncreaseRate > 0 && (
+                        <div>
+                          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 block">
+                            DÖNEM BAZLI TAKSİTLER
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {(() => {
+                              const period = params.increaseType === IncreaseType.ANNUAL ? 12 :
+                                params.increaseType === IncreaseType.SIX_MONTHS ? 6 :
+                                  params.increaseType === IncreaseType.THREE_MONTHS ? 3 :
+                                    params.customIncreasePeriod || 6;
+                              const months = params.calculationMode === 'BY_INSTALLMENT' && result ? result.schedule.length : params.months;
+                              const periods = Math.ceil(months / period);
+                              const baseInstallment = result.monthlyInstallment;
+
+                              return Array.from({ length: Math.min(periods, 8) }, (_, i) => {
+                                const startMonth = i * period + 1;
+                                const endMonth = Math.min((i + 1) * period, months);
+                                const periodInstallment = baseInstallment * Math.pow(1 + params.installmentIncreaseRate / 100, i);
+
+                                return (
+                                  <div key={i} className="bg-gray-50 dark:bg-slate-900 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Ay {startMonth}-{endMonth}</p>
+                                    <p className="text-base font-bold text-primary-600 dark:text-primary-400">
+                                      {formatCurrency(Math.round(periodInstallment))}
+                                    </p>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* DELIVERY TAB CONTENT */}
+                  {increaseTabMode === 'delivery' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">
+                            Teslim Öncesi (TL/ay)
+                          </label>
+                          <input
+                            type="text"
+                            value={result ? formatInputNumber(Math.round(result.monthlyInstallment)) : ''}
+                            readOnly
+                            className="w-full p-3 bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">
+                            Teslim Sonrası (TL/ay)
+                          </label>
+                          <input
+                            type="text"
+                            value={result ? formatInputNumber(Math.round(result.monthlyInstallment * (1 + params.installmentIncreaseRate / 100))) : ''}
+                            readOnly
+                            className="w-full p-3 bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">
+                            Artış Oranı (%)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={params.installmentIncreaseRate}
+                              onChange={(e) => setParams({ ...params, installmentIncreaseRate: Number(e.target.value) })}
+                              className="w-full p-3 pr-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                              placeholder="0"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Info Banner */}
+                      <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-3">
+                        <p className="text-xs text-primary-700 dark:text-primary-400 flex items-start gap-2">
+                          <Info size={14} className="mt-0.5 shrink-0" />
+                          <span>
+                            Vade, toplam ödeme tutarına göre otomatik hesaplanır.
+                            {result && (
+                              <> Teslim öncesi: <strong>{formatCurrency(Math.round(result.monthlyInstallment))}</strong> → Teslim sonrası: <strong>{formatCurrency(Math.round(result.monthlyInstallment * (1 + params.installmentIncreaseRate / 100)))}</strong></>
+                            )}
+                          </span>
+                        </p>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1402,30 +1532,6 @@ ${url}`;
                     </>
                   )}
                 </button>
-
-                <button
-                  onClick={() => {
-                    if (cooldownRemaining > 0) return;
-                    const now = Date.now();
-                    const cooldownUntil = now + AI_COOLDOWN_MS;
-                    localStorage.setItem(COOLDOWN_KEY, String(cooldownUntil));
-                    setCooldownRemaining(AI_COOLDOWN_MS);
-                    handleAiAdvice();
-                  }}
-                  disabled={loadingAi || cooldownRemaining > 0}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#0855f8] hover:bg-[#0645d0] text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-[#0855f8]/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingAi ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : cooldownRemaining > 0 ? (
-                    <span className="text-xs">Tekrar denemek için {formatCooldown(cooldownRemaining)}</span>
-                  ) : (
-                    <>
-                      <Sparkles size={18} />
-                      Yapay Zekaya Sor
-                    </>
-                  )}
-                </button>
               </div>
 
               {/* Share Buttons Row */}
@@ -1451,15 +1557,7 @@ ${url}`;
                 <SponsorArea trigger={sponsorTrigger} />
               )}
 
-              {aiAdvice && (
-                <div className="bg-purple-50 dark:bg-slate-800 p-4 rounded-xl border border-purple-100 dark:border-slate-600 text-sm text-purple-900 dark:text-purple-100 animate-fade-in mb-6">
-                  <div className="flex items-center gap-2 mb-2 text-purple-700 dark:text-purple-300 font-bold">
-                    <Sparkles size={14} />
-                    <span>AI Asistan Tavsiyesi</span>
-                  </div>
-                  <p className="leading-relaxed opacity-90">{aiAdvice}</p>
-                </div>
-              )}
+
 
               {result && !feedbackSubmitted && (
                 <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900 rounded-xl border border-blue-200 dark:border-slate-700">
@@ -1701,6 +1799,92 @@ ${url}`;
         </div>
       )}
 
+      {/* PDF Üyelik Gerekli Popup */}
+      {showPdfLoginPrompt && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowPdfLoginPrompt(false)}>
+          <div
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 relative border border-gray-100 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowPdfLoginPrompt(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-5">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <FileDown className="w-8 h-8 text-white" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
+              PDF İndirmek İçin Üye Olun
+            </h3>
+
+            {/* Description */}
+            <p className="text-center text-gray-500 dark:text-gray-400 text-sm mb-2">
+              Hesaplama sonuçlarınızı PDF olarak indirmek ve kaydetmek için üye girişi yapmanız gerekmektedir.
+            </p>
+
+            {/* Free Badge */}
+            <div className="flex justify-center mb-6">
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-semibold rounded-full border border-green-200 dark:border-green-800">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Üyelik tamamen ücretsizdir
+              </span>
+            </div>
+
+            {/* Benefits */}
+            <div className="bg-gray-50 dark:bg-slate-900 rounded-xl p-4 mb-6 space-y-2">
+              {[
+                'Hesaplamalarınızı PDF olarak indirin',
+                'Hesaplamalarınızı profilinize kaydedin',
+                'Farklı senaryoları karşılaştırın',
+              ].map((benefit, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {benefit}
+                </div>
+              ))}
+            </div>
+
+            {/* Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowPdfLoginPrompt(false);
+                  setShowRegisterModal(true);
+                }}
+                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <UserPlus className="w-5 h-5" />
+                Ücretsiz Üye Ol
+              </button>
+              <button
+                onClick={() => {
+                  setShowPdfLoginPrompt(false);
+                  setShowLoginModal(true);
+                }}
+                className="w-full py-3 px-4 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                Zaten üyeyim, Giriş Yap
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Auth Modals */}
       <LoginModal
         isOpen={showLoginModal}
@@ -1751,6 +1935,32 @@ ${url}`;
           setShowLoginModal(true);
         }}
       />
+
+      {/* SEO Content Section */}
+      <div className="mt-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100 dark:border-slate-700">
+        <article className="prose prose-sm dark:prose-invert max-w-none">
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+            Tasarruf finansmanı hesaplama, faizsiz ev veya araç sahibi olmak isteyenlerin en çok ihtiyaç duyduğu araçlardan biridir. Evim sistemi olarak da bilinen bu modelde, peşinat tutarı, vade süresi, katılım oranı ve teslimat tarihi gibi detaylar kişiye özel olarak belirlenir.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+            KatılımUzmanı üzerinde yer alan tasarruf finansmanı hesaplama aracı sayesinde; çekilişli ve çekilişsiz sistemleri karşılaştırabilir, aylık ödeme tutarınızı net şekilde görebilir ve hangi firmada ne zaman teslim alabileceğinizi öğrenebilirsiniz.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+            Özellikle çekilişsiz sistemlerde teslimat tarihi, peşinat oranı ve ödeme planına göre değişiklik gösterebilir. Bu nedenle doğru hesaplama yapmak, uzun vadede sürpriz maliyetlerin önüne geçer.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+            Faizsiz konut hesaplama, evim sistemi hesaplama ve teslimat tarihi hesaplama işlemlerini tek ekranda yapmak isteyenler için KatılımUzmanı, tarafsız ve güncel veriler sunar.
+          </p>
+        </article>
+
+        {/* Legal Disclaimer */}
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
+          <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+            <strong>Hukuki Bilgilendirme:</strong> Bu sayfada yer alan hesaplama sonuçları ve bilgiler yatırım tavsiyesi niteliğinde değildir. Tasarruf finansmanı sistemleri firmalara göre farklılık gösterebilir.
+          </p>
+        </div>
+      </div>
+
 
     </div>
   );

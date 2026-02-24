@@ -22,9 +22,13 @@ import {
     AlertTriangle,
     CheckCircle,
     XCircle,
-    History
+    History,
+    FileDown,
 } from 'lucide-react';
 import { adminUserService, AdminUser, AdminRoleType, LoginLog, UserFilters } from '../../services/api/adminUserService';
+import { pdfDownloadService, PdfDownloadLog } from '../../services/api/pdfDownloadService';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { useAuth } from '../../hooks/useAuth';
 
 // Styled Toast Component
 const Toast: React.FC<{ message: string; type: 'success' | 'error' | 'warning'; onClose: () => void }> = ({ message, type, onClose }) => {
@@ -105,14 +109,49 @@ export const Users: React.FC = () => {
     // Toast state
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
-    // Confirm dialog state
-    const [confirmDialog, setConfirmDialog] = useState<{
+    // Confirm dialog state - Custom Modal
+    const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         title: string;
         message: string;
-        type: 'danger' | 'warning' | 'info';
-        onConfirm: () => void;
-    } | null>(null);
+        onConfirm: () => void | Promise<void>;
+        isDanger?: boolean;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        isDanger: false
+    });
+
+    const { user: currentUser } = useAuth(); // Get current user for self-edit prevention
+
+    const handleRoleChange = (userId: string, newRole: AdminRoleType | null) => {
+        // Prevent changing own role
+        if (currentUser?.id === userId) {
+            showToast('Kendi rolünüzü değiştiremezsiniz.', 'error');
+            return;
+        }
+
+        setConfirmModal({
+            isOpen: true,
+            title: 'Rol Değişikliği',
+            message: `Bu kullanıcının rolünü "${newRole || 'Yok'}" olarak değiştirmek istediğinize emin misiniz?`,
+            onConfirm: async () => {
+                try {
+                    await adminUserService.updateAdminRole(userId, newRole);
+                    setUsers(users.map(u => u.id === userId ? { ...u, admin_role: newRole } : u));
+                    showToast('Admin rolü güncellendi.', 'success');
+                } catch (error) {
+                    console.error('Role update error:', error);
+                    showToast('Rol güncellenirken bir hata oluştu.', 'error');
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            },
+            isDanger: true
+        });
+    };
 
     // Modal states
     const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
@@ -120,6 +159,8 @@ export const Users: React.FC = () => {
     const [banReason, setBanReason] = useState('');
     const [loginHistory, setLoginHistory] = useState<LoginLog[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    const [pdfDownloadLogs, setPdfDownloadLogs] = useState<PdfDownloadLog[]>([]);
+    const [loadingPdfLogs, setLoadingPdfLogs] = useState(false);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -144,7 +185,13 @@ export const Users: React.FC = () => {
     };
 
     const showConfirm = (title: string, message: string, type: 'danger' | 'warning' | 'info', onConfirm: () => void) => {
-        setConfirmDialog({ isOpen: true, title, message, type, onConfirm });
+        setConfirmModal({
+            isOpen: true,
+            title,
+            message,
+            onConfirm,
+            isDanger: type === 'danger'
+        });
     };
 
     // Load users
@@ -283,7 +330,7 @@ export const Users: React.FC = () => {
             'Bu üyeyi kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz ve tüm kullanıcı verileri silinecektir.',
             'danger',
             async () => {
-                setConfirmDialog(null);
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 try {
                     await adminUserService.hardDeleteUser(userId);
                     showToast('Üye kalıcı olarak silindi.', 'success');
@@ -321,6 +368,17 @@ export const Users: React.FC = () => {
             console.error('Load history error:', error);
         } finally {
             setLoadingHistory(false);
+        }
+
+        // Load PDF download logs
+        setLoadingPdfLogs(true);
+        try {
+            const dlLogs = await pdfDownloadService.getUserLogs(user.id);
+            setPdfDownloadLogs(dlLogs);
+        } catch (error) {
+            console.error('Load PDF logs error:', error);
+        } finally {
+            setLoadingPdfLogs(false);
         }
     };
 
@@ -410,18 +468,7 @@ export const Users: React.FC = () => {
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
             {/* Confirm Dialog */}
-            {confirmDialog && (
-                <ConfirmDialog
-                    isOpen={confirmDialog.isOpen}
-                    title={confirmDialog.title}
-                    message={confirmDialog.message}
-                    type={confirmDialog.type}
-                    confirmText="Evet, Sil"
-                    cancelText="Vazgeç"
-                    onConfirm={confirmDialog.onConfirm}
-                    onCancel={() => setConfirmDialog(null)}
-                />
-            )}
+
 
             <div className="space-y-6">
                 {/* Header */}
@@ -624,35 +671,22 @@ export const Users: React.FC = () => {
                                             <td className="p-4">
                                                 <select
                                                     value={user.admin_role || ''}
-                                                    onChange={async (e) => {
+                                                    onChange={(e) => {
                                                         const newRole = e.target.value === '' ? null : e.target.value as AdminRoleType;
-
-                                                        // Confirm dialog
-                                                        if (!window.confirm(`Bu kullanıcının rolünü "${newRole || 'Yok'}" olarak değiştirmek istediğinize emin misiniz?`)) {
-                                                            // Revert select value (force re-render or just don't API call)
-                                                            // Since this is uncontrolled/controlled hybrid via 'value={user.admin_role}', 
-                                                            // just returning stops the change if component re-renders from state.
-                                                            // But to be sure UI reflects cancellation, we might need to force update or rely on React state reset next render.
-                                                            // Simple return prevents API call.
-                                                            return;
-                                                        }
-
-                                                        try {
-                                                            await adminUserService.updateAdminRole(user.id, newRole);
-                                                            setUsers(users.map(u => u.id === user.id ? { ...u, admin_role: newRole } : u));
-                                                            showToast('Admin rolü güncellendi.', 'success');
-                                                        } catch (error) {
-                                                            console.error('Role update error:', error);
-                                                            showToast('Rol güncellenemedi.', 'error');
-                                                        }
+                                                        handleRoleChange(user.id, newRole);
                                                     }}
-                                                    className="text-xs px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white min-w-[140px]"
+                                                    disabled={currentUser?.id === user.id} // Disable input for self
+                                                    className={`min-w-[160px] bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed
+                                                        ${user.admin_role === 'superadmin' ? 'text-red-600 font-medium' : ''}
+                                                        ${user.admin_role === 'social_media' ? 'text-blue-600 font-medium' : ''}
+                                                        ${user.admin_role === 'content_manager' ? 'text-purple-600 font-medium' : ''}
+                                                    `}
                                                 >
                                                     <option value="">Yok</option>
                                                     <option value="superadmin">Süper Admin</option>
-                                                    <option value="social_media">Sosyal Medya</option>
-                                                    <option value="news_editor">Haber Editörü</option>
                                                     <option value="content_manager">İçerik Yöneticisi</option>
+                                                    <option value="news_editor">Haber Editörü</option>
+                                                    <option value="social_media">Sosyal Medya</option>
                                                 </select>
                                             </td>
                                             <td className="p-4">
@@ -733,7 +767,7 @@ export const Users: React.FC = () => {
                             </div>
                         </div>
                     )}
-                </div>
+                </div >
 
                 {/* User Detail Modal */}
                 {
@@ -1044,6 +1078,45 @@ export const Users: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* PDF Download History */}
+                                    <div>
+                                        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                            <FileDown size={16} /> PDF İndirme Geçmişi
+                                        </h4>
+                                        {loadingPdfLogs ? (
+                                            <div className="p-4 text-center text-gray-500">
+                                                <RefreshCw className="animate-spin mx-auto" size={20} />
+                                            </div>
+                                        ) : pdfDownloadLogs.length === 0 ? (
+                                            <p className="text-gray-500 text-sm">Henüz PDF indirme kaydı yok</p>
+                                        ) : (
+                                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                {pdfDownloadLogs.slice(0, 10).map((log) => (
+                                                    <div key={log.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg text-sm">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${log.calculation_type === 'ev' ? 'bg-blue-100 text-blue-700' :
+                                                                    log.calculation_type === 'arac' ? 'bg-green-100 text-green-700' :
+                                                                        log.calculation_type === 'isyeri' ? 'bg-purple-100 text-purple-700' :
+                                                                            'bg-gray-100 text-gray-700'
+                                                                }`}>
+                                                                {log.calculation_type === 'ev' ? 'Gayrimenkul' :
+                                                                    log.calculation_type === 'arac' ? 'Araç' :
+                                                                        log.calculation_type === 'isyeri' ? 'İş Yeri' : 'Tümü'}
+                                                            </span>
+                                                            <span className="text-gray-600">
+                                                                {log.target_amount ? new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(log.target_amount) : '-'}
+                                                            </span>
+                                                            {log.ip_address && (
+                                                                <span className="text-gray-400 font-mono text-xs">{log.ip_address}</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-gray-500">{formatDate(log.created_at)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1100,6 +1173,18 @@ export const Users: React.FC = () => {
                     )
                 }
             </div >
+
+            {/* Role Change Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                isDanger={confirmModal.isDanger}
+                confirmText="Evet, Değiştir"
+                cancelText="İptal"
+            />
         </>
     );
 };

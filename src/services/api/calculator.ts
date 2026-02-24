@@ -17,27 +17,42 @@ export const calculatorApi = {
         const { data, error } = await supabase
             .from('calculator_settings')
             .select('*')
-            .single();
+            .limit(1)
+            .maybeSingle();
 
         if (error) {
-            // If no record exists, return null
-            if (error.code === 'PGRST116') return null;
-            throw error;
+            console.error('Failed to get calculator settings:', error);
+            return null;
         }
         return data;
     },
 
     // Update calculator settings
     async updateSettings(id: string, settingsData: Partial<CalculatorSettingsFormData>): Promise<CalculatorSettings> {
+        // First try normal update
         const { data, error } = await supabase
             .from('calculator_settings')
             .update(settingsData)
             .eq('id', id)
-            .select()
-            .single();
+            .select();
 
-        if (error) throw error;
-        return data;
+        if (error) {
+            console.error('Update failed, trying upsert:', error);
+            // Fallback: try upsert
+            const { data: upsertData, error: upsertError } = await supabase
+                .from('calculator_settings')
+                .upsert({ id, ...settingsData })
+                .select();
+
+            if (upsertError) throw upsertError;
+            if (!upsertData || upsertData.length === 0) throw new Error('Kayıt güncellenemedi');
+            return upsertData[0];
+        }
+
+        if (!data || data.length === 0) {
+            throw new Error('Kayıt bulunamadı veya yetki hatası. Lütfen sayfayı yenileyip tekrar deneyin.');
+        }
+        return data[0];
     },
 
     // Create calculator settings (if doesn't exist)

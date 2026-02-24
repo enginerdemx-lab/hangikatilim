@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, Share2, Tag, Building2, TrendingUp } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
+import { newsApi } from '../../services/api/news';
 import { BlogContent } from '../../components/BlogContent';
 import type { NewsPost } from '../../types/database';
 
@@ -66,6 +67,11 @@ const NewsDetailPage: React.FC = () => {
                 setError('Haber bulunamadı');
             } else {
                 setNews(data);
+
+                // Increment view count in the background
+                newsApi.incrementViewCount(data.id).catch(err => {
+                    console.error('Failed to increment view count:', err);
+                });
             }
         } catch (err: any) {
             console.error('Error loading news:', err);

@@ -105,4 +105,13 @@ export const blogApi = {
         if (error) throw error;
         return data || [];
     },
+
+    // Increment view count
+    async incrementViewCount(id: string): Promise<void> {
+        try {
+            await supabase.rpc('increment_blog_view_count', { row_id: id });
+        } catch (error) {
+            console.error('Error incrementing view count:', error);
+        }
+    },
 };

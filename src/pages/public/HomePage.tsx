@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ArrowRight, Home, Car, Wallet, Info, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Calculator } from '../../../components/Calculator';
+import { Calculator } from '../../components/Calculator';
 import { FAQ } from '../../../components/FAQ';
 import { CompanyLogos } from '../../../components/CompanyLogos';
 import { QuickLinksGrid } from '../../../components/QuickLinksGrid';

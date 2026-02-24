@@ -1,56 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, Sparkles } from 'lucide-react';
+import { sponsorsApi, Sponsor } from '../services/api/sponsors';
+import { siteSettingsApi } from '../services/api/siteSettings';
 
 export type SponsorTrigger = 'pdf' | 'save' | 'ai';
-
-interface Sponsor {
-    id: string;
-    name: string;
-    logo?: string;
-    title: string;
-    description: string;
-    ctaText: string;
-    ctaUrl: string;
-    color: string;
-}
 
 interface SponsorAreaProps {
     trigger: SponsorTrigger;
 }
-
-// Placeholder sponsor data - bu veriler admin panelinden veya API'den gelebilir
-const defaultSponsors: Sponsor[] = [
-    {
-        id: 'sponsor_1',
-        name: 'Katılım Finans',
-        logo: undefined,
-        title: 'Faizsiz Finansman Fırsatı',
-        description: 'Özel kampanyalarla hayallerinize ulaşın.',
-        ctaText: 'Detayları Gör',
-        ctaUrl: '/kampanyalar',
-        color: 'from-blue-500 to-blue-600'
-    },
-    {
-        id: 'sponsor_2',
-        name: 'Tasarruf Danışmanlık',
-        logo: undefined,
-        title: 'Uzman Danışmanlık Hizmeti',
-        description: 'Tasarruf planınızı profesyonellerle oluşturun.',
-        ctaText: 'Randevu Al',
-        ctaUrl: '/iletisim',
-        color: 'from-green-500 to-green-600'
-    },
-    {
-        id: 'sponsor_3',
-        name: 'Karşılaştırma Merkezi',
-        logo: undefined,
-        title: 'Tüm Firmaları Karşılaştırın',
-        description: 'En uygun seçeneği keşfedin.',
-        ctaText: 'Karşılaştır',
-        ctaUrl: '/katilim-firmalari',
-        color: 'from-purple-500 to-purple-600'
-    }
-];
 
 // Declare gtag globally for TypeScript
 declare global {
@@ -60,12 +17,35 @@ declare global {
 }
 
 export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
-    const [sponsors] = useState<Sponsor[]>(defaultSponsors);
+    const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+    const [isEnabled, setIsEnabled] = useState<boolean | null>(null); // null = loading
     const [hasTrackedView, setHasTrackedView] = useState(false);
+
+    // Load sponsor area enabled setting and sponsors from database
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                // Check if sponsor area is enabled
+                const settings = await siteSettingsApi.getSettings();
+                const enabled = settings?.sponsor_area_enabled ?? true;
+                setIsEnabled(enabled);
+
+                // Only load sponsors if enabled
+                if (enabled) {
+                    const sponsorData = await sponsorsApi.getActive();
+                    setSponsors(sponsorData);
+                }
+            } catch (error) {
+                console.error('Failed to load sponsor data:', error);
+                setIsEnabled(false);
+            }
+        };
+        loadData();
+    }, []);
 
     // Track sponsor area view on first render
     useEffect(() => {
-        if (!hasTrackedView && trigger) {
+        if (!hasTrackedView && trigger && isEnabled && sponsors.length > 0) {
             // GA4 Event: sponsor_area_view
             if (typeof window !== 'undefined' && window.gtag) {
                 window.gtag('event', 'sponsor_area_view', {
@@ -74,7 +54,7 @@ export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
             }
             setHasTrackedView(true);
         }
-    }, [trigger, hasTrackedView]);
+    }, [trigger, hasTrackedView, isEnabled, sponsors.length]);
 
     const handleSponsorClick = (sponsor: Sponsor) => {
         // GA4 Event: sponsor_click
@@ -86,6 +66,11 @@ export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
             });
         }
     };
+
+    // Don't render if disabled or loading or no sponsors
+    if (isEnabled === null || !isEnabled || sponsors.length === 0) {
+        return null;
+    }
 
     return (
         <div className="mt-6 animate-fade-in">
@@ -102,7 +87,7 @@ export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
                 {sponsors.map((sponsor) => (
                     <a
                         key={sponsor.id}
-                        href={sponsor.ctaUrl}
+                        href={sponsor.cta_url}
                         onClick={() => handleSponsorClick(sponsor)}
                         className="group block bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-300"
                     >
@@ -111,8 +96,8 @@ export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
 
                         {/* Logo Placeholder or Name */}
                         <div className="flex items-center gap-2 mb-2">
-                            {sponsor.logo ? (
-                                <img src={sponsor.logo} alt={sponsor.name} className="h-6 w-auto" />
+                            {sponsor.logo_url ? (
+                                <img src={sponsor.logo_url} alt={sponsor.name} className="h-6 w-auto" />
                             ) : (
                                 <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
                                     {sponsor.name}
@@ -132,7 +117,7 @@ export const SponsorArea: React.FC<SponsorAreaProps> = ({ trigger }) => {
 
                         {/* CTA */}
                         <div className="flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 group-hover:gap-2 transition-all">
-                            <span>{sponsor.ctaText}</span>
+                            <span>{sponsor.cta_text}</span>
                             <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                     </a>

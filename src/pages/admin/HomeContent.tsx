@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { homeContentApi } from '../../services/api/homeContent';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
-import { Search, Plus, ExternalLink, RefreshCw, ChevronDown, ChevronUp, Pencil, Trash2, HelpCircle, LayoutGrid, Building2, X, Check } from 'lucide-react';
+import { Search, Plus, ExternalLink, RefreshCw, ChevronDown, ChevronUp, Pencil, Trash2, HelpCircle, LayoutGrid, Building2, X, Check, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 
 type TabType = 'faq' | 'info-cards' | 'logos';
 
@@ -97,6 +97,7 @@ export const HomeContent: React.FC = () => {
     const [editingLogo, setEditingLogo] = useState<CompanyLogo | null>(null);
     const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
     const [addingNew, setAddingNew] = useState(false);
+    const [draggedFAQ, setDraggedFAQ] = useState<string | null>(null);
 
     // Form states
     const [faqForm, setFaqForm] = useState({ question: '', answer: '' });
@@ -196,6 +197,79 @@ export const HomeContent: React.FC = () => {
         } catch (err: any) {
             showToast(err.message || 'Hata oluştu', 'error');
         }
+    };
+
+    // FAQ Reordering
+    const handleMoveFAQUp = async (faq: FAQ) => {
+        const currentIndex = faqs.findIndex(f => f.id === faq.id);
+        if (currentIndex <= 0) return; // Already at top
+
+        const prevFaq = faqs[currentIndex - 1];
+        try {
+            // Swap order_index values
+            await homeContentApi.updateFAQ(faq.id, { ...faq, order_index: prevFaq.order_index });
+            await homeContentApi.updateFAQ(prevFaq.id, { ...prevFaq, order_index: faq.order_index });
+            showToast('Sıralama güncellendi', 'success');
+            loadData();
+        } catch (err: any) {
+            showToast(err.message || 'Sıralama hatası', 'error');
+        }
+    };
+
+    const handleMoveFAQDown = async (faq: FAQ) => {
+        const currentIndex = faqs.findIndex(f => f.id === faq.id);
+        if (currentIndex >= faqs.length - 1) return; // Already at bottom
+
+        const nextFaq = faqs[currentIndex + 1];
+        try {
+            // Swap order_index values
+            await homeContentApi.updateFAQ(faq.id, { ...faq, order_index: nextFaq.order_index });
+            await homeContentApi.updateFAQ(nextFaq.id, { ...nextFaq, order_index: faq.order_index });
+            showToast('Sıralama güncellendi', 'success');
+            loadData();
+        } catch (err: any) {
+            showToast(err.message || 'Sıralama hatası', 'error');
+        }
+    };
+
+    // Drag and Drop handlers
+    const handleDragStart = (e: React.DragEvent, faqId: string) => {
+        setDraggedFAQ(faqId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetFaq: FAQ) => {
+        e.preventDefault();
+        if (!draggedFAQ || draggedFAQ === targetFaq.id) {
+            setDraggedFAQ(null);
+            return;
+        }
+
+        const draggedItem = faqs.find(f => f.id === draggedFAQ);
+        if (!draggedItem) {
+            setDraggedFAQ(null);
+            return;
+        }
+
+        try {
+            // Swap order_index values
+            await homeContentApi.updateFAQ(draggedItem.id, { ...draggedItem, order_index: targetFaq.order_index });
+            await homeContentApi.updateFAQ(targetFaq.id, { ...targetFaq, order_index: draggedItem.order_index });
+            showToast('Sıralama güncellendi', 'success');
+            loadData();
+        } catch (err: any) {
+            showToast(err.message || 'Sıralama hatası', 'error');
+        }
+        setDraggedFAQ(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedFAQ(null);
     };
 
     // Info Card CRUD
@@ -341,8 +415,8 @@ export const HomeContent: React.FC = () => {
                             key={tab.id}
                             onClick={() => { setActiveTab(tab.id); setSearchQuery(''); setAddingNew(false); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id
-                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-600'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-slate-600'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                         >
                             {tab.icon}
@@ -396,7 +470,7 @@ export const HomeContent: React.FC = () => {
                                 </Card>
                             )}
 
-                            {/* FAQ List - Accordion Style */}
+                            {/* FAQ List - Accordion Style with Drag & Drop */}
                             {filteredFaqs.length === 0 ? (
                                 <div className="text-center py-12 text-slate-500">
                                     <HelpCircle size={40} className="mx-auto mb-3 text-slate-300" />
@@ -404,8 +478,16 @@ export const HomeContent: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {filteredFaqs.map((faq) => (
-                                        <div key={faq.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all duration-200 hover:shadow-md">
+                                    {filteredFaqs.map((faq, index) => (
+                                        <div
+                                            key={faq.id}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, faq.id)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, faq)}
+                                            onDragEnd={handleDragEnd}
+                                            className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all duration-200 hover:shadow-md ${draggedFAQ === faq.id ? 'opacity-50 scale-[0.98]' : ''}`}
+                                        >
                                             {editingFAQ?.id === faq.id ? (
                                                 <div className="p-4 space-y-3">
                                                     <InputField value={editingFAQ.question} onChange={(v) => setEditingFAQ({ ...editingFAQ, question: v })} placeholder="Soru" />
@@ -417,15 +499,41 @@ export const HomeContent: React.FC = () => {
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <button
-                                                        onClick={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
-                                                        className="w-full flex items-center justify-between p-4 text-left"
-                                                    >
-                                                        <span className="font-medium text-slate-900 dark:text-white">{faq.question}</span>
-                                                        {expandedFAQ === faq.id ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
-                                                    </button>
+                                                    <div className="flex items-center">
+                                                        {/* Drag Handle + Reorder Buttons - Always Visible */}
+                                                        <div className="flex flex-col items-center px-2 py-3 border-r border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                                                            <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 mb-1" title="Sürükle">
+                                                                <GripVertical size={16} />
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleMoveFAQUp(faq); }}
+                                                                disabled={index === 0}
+                                                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                title="Yukarı"
+                                                            >
+                                                                <ArrowUp size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleMoveFAQDown(faq); }}
+                                                                disabled={index === faqs.length - 1}
+                                                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                                                                title="Aşağı"
+                                                            >
+                                                                <ArrowDown size={14} />
+                                                            </button>
+                                                        </div>
+
+                                                        {/* FAQ Content */}
+                                                        <button
+                                                            onClick={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
+                                                            className="flex-1 flex items-center justify-between p-4 text-left"
+                                                        >
+                                                            <span className="font-medium text-slate-900 dark:text-white">{faq.question}</span>
+                                                            {expandedFAQ === faq.id ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                                                        </button>
+                                                    </div>
                                                     {expandedFAQ === faq.id && (
-                                                        <div className="px-4 pb-4 pt-0">
+                                                        <div className="px-4 pb-4 pt-0 ml-12">
                                                             <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{faq.answer}</p>
                                                             <div className="flex gap-2">
                                                                 <button onClick={() => setEditingFAQ(faq)} className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">

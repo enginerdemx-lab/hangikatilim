@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Share2, Tag, Clock } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
+import { blogApi } from '../../services/api/blog';
 import { BlogContent } from '../../components/BlogContent';
 import type { BlogPost } from '../../types/database';
 
@@ -66,6 +67,11 @@ const BlogDetailPage: React.FC = () => {
                 setError('Blog yazısı bulunamadı');
             } else {
                 setPost(data);
+
+                // Increment view count in the background
+                blogApi.incrementViewCount(data.id).catch(err => {
+                    console.error('Failed to increment view count:', err);
+                });
             }
         } catch (err: any) {
             console.error('Error loading blog post:', err);

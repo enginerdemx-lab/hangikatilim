@@ -397,6 +397,7 @@ export const Blog: React.FC = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Yazı</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Yazar</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Görüntülenme</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">İşlemler</th>
@@ -419,6 +420,7 @@ export const Blog: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">{post.author}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">{post.view_count?.toLocaleString('tr-TR') || 0}</td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
                                         {new Date(post.published_at).toLocaleDateString('tr-TR')}
                                     </td>

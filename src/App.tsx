@@ -27,6 +27,7 @@ import EmailNotifications from './pages/admin/EmailNotifications';
 import { SocialMediaGenerator } from './pages/admin/SocialMediaGenerator';
 import { AboutSettings } from './pages/admin/AboutSettings';
 import { CampaignBanners } from './pages/admin/CampaignBanners';
+import { PdfDownloadLogs } from './pages/admin/PdfDownloadLogs';
 
 // Lazy loaded popup pages
 const PopupManager = lazy(() => import('./pages/admin/PopupManager'));
@@ -143,6 +144,7 @@ const App: React.FC = () => {
             <Route path="social-media-generator" element={<SocialMediaGenerator />} />
             <Route path="about-settings" element={<AboutSettings />} />
             <Route path="campaign-banners" element={<CampaignBanners />} />
+            <Route path="pdf-logs" element={<PdfDownloadLogs />} />
             <Route path="popups" element={<Suspense fallback={<PageLoader />}><PopupManager /></Suspense>} />
             <Route path="popups/new" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
             <Route path="popups/edit/:id" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />

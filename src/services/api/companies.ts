@@ -102,15 +102,21 @@ export const companiesApi = {
         if (companyData.is_active !== undefined) safeData.is_active = companyData.is_active;
         if (companyData.about_content !== undefined) safeData.about_content = companyData.about_content;
 
+        // Use .select() without .single() to avoid PGRST116 error when RLS blocks the result
         const { data, error } = await supabase
             .from('companies')
             .update(safeData)
             .eq('id', id)
-            .select()
-            .single();
+            .select();
 
         if (error) throw error;
-        return data;
+
+        // Check if update was successful
+        if (!data || data.length === 0) {
+            throw new Error('Güncelleme başarısız: Kayıt bulunamadı veya erişim izni yok');
+        }
+
+        return data[0];
     },
 
     // Delete company

@@ -175,6 +175,7 @@ export interface NewsPost {
   created_at: string;
   updated_at: string;
   published_at?: string;
+  view_count?: number;
 }
 
 // ===== HOMEPAGE CONTENT TYPES =====
@@ -237,6 +238,7 @@ export interface BlogPost {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  view_count?: number;
 }
 
 export interface ContactSettings {

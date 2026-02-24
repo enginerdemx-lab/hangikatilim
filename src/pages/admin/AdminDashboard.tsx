@@ -5,6 +5,7 @@ import { companiesApi } from '../../services/api/companies';
 import { adminUserService } from '../../services/api/adminUserService';
 import { analyticsService, AnalyticsData, DataHealthInfo } from '../../services/api/analytics';
 import { serverStatsService, ServerStats } from '../../services/api/serverStats';
+import { pdfDownloadService, MemberDownloadStat } from '../../services/api/pdfDownloadService';
 import { useAuth } from '../../hooks/useAuth';
 import {
     Users,
@@ -22,7 +23,9 @@ import {
     Database,
     HardDrive,
     FolderOpen,
-    Server
+    Server,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 
 // Reusable Card Component
@@ -144,6 +147,12 @@ export const AdminDashboard: React.FC = () => {
     const [serverStatsLoading, setServerStatsLoading] = useState(true);
     const [serverStatsError, setServerStatsError] = useState<string | null>(null);
 
+    // PDF Stats
+    const [pdfStats, setPdfStats] = useState<MemberDownloadStat[]>([]);
+    const [pdfStatsLoading, setPdfStatsLoading] = useState(true);
+    const [pdfStatsError, setPdfStatsError] = useState<string | null>(null);
+    const [expandedPdfUser, setExpandedPdfUser] = useState<string | null>(null);
+
     // Quick search items
     const searchItems = [
         { label: 'Üyeler', path: '/admin/users', keywords: ['üye', 'user', 'kullanıcı', 'üyeler'] },
@@ -171,6 +180,7 @@ export const AdminDashboard: React.FC = () => {
         loadStats();
         loadAnalytics();
         loadServerStats();
+        loadPdfStats();
 
         // Keyboard shortcut: "/" to focus search
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -234,8 +244,22 @@ export const AdminDashboard: React.FC = () => {
 
     const refreshAll = async () => {
         setHealthRefreshing(true);
-        await Promise.all([loadStats(), loadAnalytics(true), loadServerStats(true)]);
+        await Promise.all([loadStats(), loadAnalytics(true), loadServerStats(true), loadPdfStats()]);
         setHealthRefreshing(false);
+    };
+
+    const loadPdfStats = async () => {
+        setPdfStatsLoading(true);
+        setPdfStatsError(null);
+        try {
+            const data = await pdfDownloadService.getMemberDownloadStats();
+            setPdfStats(data);
+        } catch (error) {
+            console.error('Failed to load PDF stats:', error);
+            setPdfStatsError('PDF istatistikleri yüklenemedi');
+        } finally {
+            setPdfStatsLoading(false);
+        }
     };
 
     const loadServerStats = async (forceRefresh = false) => {
@@ -558,7 +582,129 @@ export const AdminDashboard: React.FC = () => {
                 )}
             </div>
 
+            {/* PDF Download Stats Section */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <FileDown size={20} className="text-slate-500 dark:text-slate-400" />
+                        PDF İndirme İstatistikleri
+                    </h2>
+                </div>
+
+                {pdfStatsError ? (
+                    <Card hover={false} className="text-center py-8">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{pdfStatsError}</p>
+                    </Card>
+                ) : pdfStatsLoading ? (
+                    <Card hover={false} className="animate-pulse">
+                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mb-4"></div>
+                        <div className="space-y-3">
+                            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                        </div>
+                    </Card>
+                ) : pdfStats.length > 0 ? (
+                    <Card hover={false}>
+                        <div className="max-h-96 overflow-y-auto">
+                            <table className="w-full">
+                                <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10">
+                                    <tr className="border-b border-slate-100 dark:border-slate-700">
+                                        <th className="text-left text-xs font-medium text-slate-500 py-2">Üye</th>
+                                        <th className="text-right text-xs font-medium text-slate-500 py-2">İndirme Sayısı</th>
+                                        <th className="text-right text-xs font-medium text-slate-500 py-2">Son İndirme</th>
+                                        <th className="py-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {pdfStats.map((stat) => (
+                                        <React.Fragment key={stat.user_id}>
+                                            <tr
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
+                                                onClick={() => setExpandedPdfUser(expandedPdfUser === stat.user_id ? null : stat.user_id)}
+                                            >
+                                                <td className="py-3 pr-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
+                                                            {stat.user_full_name?.[0]?.toUpperCase() || '?'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                                                {stat.user_full_name}
+                                                            </div>
+                                                            {stat.user_phone && (
+                                                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                                                    {stat.user_phone}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 text-right">
+                                                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                        {stat.download_count}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-right">
+                                                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                                                        {formatDate(stat.last_download_at)}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 pl-4 text-right">
+                                                    <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                                        {expandedPdfUser === stat.user_id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {/* Expanded Details Row */}
+                                            {expandedPdfUser === stat.user_id && (
+                                                <tr>
+                                                    <td colSpan={4} className="bg-slate-50 dark:bg-slate-900/50 p-0">
+                                                        <div className="px-4 py-3 border-l-4 border-blue-500">
+                                                            <div className="text-xs font-semibold text-slate-500 uppercase mb-2">İndirme Detayları</div>
+                                                            <div className="space-y-2">
+                                                                {stat.downloads.map(dl => (
+                                                                    <div key={dl.id} className="flex flex-wrap items-center justify-between text-sm bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold uppercase
+                                                                                ${dl.calculation_type === 'ev' ? 'bg-blue-100 text-blue-700' :
+                                                                                    dl.calculation_type === 'arac' ? 'bg-green-100 text-green-700' :
+                                                                                        dl.calculation_type === 'isyeri' ? 'bg-purple-100 text-purple-700' :
+                                                                                            'bg-gray-100 text-gray-700'}
+                                                                            `}>
+                                                                                {dl.calculation_type === 'ev' ? 'Gayrimenkul' : dl.calculation_type === 'arac' ? 'Araç' : dl.calculation_type === 'isyeri' ? 'İş Yeri' : dl.calculation_type}
+                                                                            </span>
+                                                                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                                                {dl.target_amount ? dl.target_amount.toLocaleString('tr-TR') + ' ₺' : '-'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-4 text-slate-500 text-xs mt-1 sm:mt-0">
+                                                                            <span>{dl.months ? `${dl.months} Ay` : '-'}</span>
+                                                                            <span>{dl.system_type === 'LOTTERY' ? 'Çekilişli' : 'Çekilişsiz'}</span>
+                                                                            <span>{formatDate(dl.created_at)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                ) : (
+                    <Card hover={false} className="text-center py-8">
+                        <FileDown className="mx-auto mb-2 opacity-30" size={32} />
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Henüz PDF indirme kaydı bulunmuyor</p>
+                    </Card>
+                )}
+            </div>
+
             {/* Server Stats Section */}
+
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">

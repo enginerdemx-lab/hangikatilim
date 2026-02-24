@@ -116,17 +116,19 @@ const CompanyDetailPage: React.FC = () => {
                                 {company.name} TASARRUF FİNANSMAN A.Ş.
                             </p>
 
-                            {company.about_content ? (
+                            {/* Description */}
+                            {company.description && (
+                                <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                                    {company.description}
+                                </p>
+                            )}
+
+                            {/* Detailed About Content (Rich Text) */}
+                            {company.about_content && (
                                 <div
                                     className="prose prose-sm md:prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300"
                                     dangerouslySetInnerHTML={{ __html: company.about_content }}
                                 />
-                            ) : (
-                                company.description && (
-                                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                                        {company.description}
-                                    </p>
-                                )
                             )}
                         </div>
                     </div>

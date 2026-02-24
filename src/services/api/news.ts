@@ -179,4 +179,13 @@ export const newsApi = {
 
         if (error) throw error;
     },
+
+    // Increment view count
+    async incrementViewCount(id: string): Promise<void> {
+        try {
+            await supabase.rpc('increment_news_view_count', { row_id: id });
+        } catch (error) {
+            console.error('Error incrementing view count:', error);
+        }
+    },
 };

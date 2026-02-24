@@ -31,6 +31,7 @@ import {
     Bell,
     ImagePlus,
     Info,
+    FileDown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -71,7 +72,7 @@ const menuConfig: MenuCategory[] = [
         icon: Users,
         allowedRoles: ['superadmin'],
         items: [
-            { label: 'Üyeler', path: '/admin/members', icon: Users },
+            { label: 'Üyeler', path: '/admin/members', icon: Users, allowedRoles: ['superadmin'] },
         ],
     },
     {
@@ -80,8 +81,9 @@ const menuConfig: MenuCategory[] = [
         icon: Calculator,
         allowedRoles: ['superadmin'],
         items: [
-            { label: 'Hesaplama Ayarları', path: '/admin/calculator', icon: Calculator },
-            { label: 'Geri Bildirimler', path: '/admin/feedback', icon: MessageSquare },
+            { label: 'Hesaplama Ayarları', path: '/admin/calculator', icon: Calculator, allowedRoles: ['superadmin'] },
+            { label: 'PDF İndirme Logları', path: '/admin/pdf-logs', icon: FileDown, allowedRoles: ['superadmin'] },
+            { label: 'Geri Bildirimler', path: '/admin/feedback', icon: MessageSquare, allowedRoles: ['superadmin'] },
         ],
     },
     {
@@ -90,7 +92,7 @@ const menuConfig: MenuCategory[] = [
         icon: Star,
         allowedRoles: ['superadmin'],
         items: [
-            { label: 'Sponsor Yönetimi', path: '/admin/sponsors', icon: Star },
+            { label: 'Sponsor Yönetimi', path: '/admin/sponsors', icon: Star, allowedRoles: ['superadmin'] },
         ],
     },
     {
@@ -114,9 +116,9 @@ const menuConfig: MenuCategory[] = [
         icon: Grid3X3,
         allowedRoles: ['superadmin'],
         items: [
-            { label: 'Ana Sayfa Hero', path: '/admin/home-hero', icon: Image },
-            { label: 'Kısayol Kareleri', path: '/admin/quick-links', icon: Grid3X3 },
-            { label: 'Ana Sayfa İçerik', path: '/admin/home-content', icon: Home },
+            { label: 'Ana Sayfa Hero', path: '/admin/home-hero', icon: Image, allowedRoles: ['superadmin'] },
+            { label: 'Kısayol Kareleri', path: '/admin/quick-links', icon: Grid3X3, allowedRoles: ['superadmin'] },
+            { label: 'Ana Sayfa İçerik', path: '/admin/home-content', icon: Home, allowedRoles: ['superadmin'] },
         ],
     },
     {

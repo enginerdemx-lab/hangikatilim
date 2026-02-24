@@ -377,7 +377,39 @@ export const Sponsors: React.FC = () => {
                                         Logo Yükle
                                     </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">PNG veya SVG formatında, max 500KB</p>
+                                {/* URL Input */}
+                                <div className="flex gap-2 mt-2">
+                                    <input
+                                        id="sponsor-logo-url"
+                                        type="url"
+                                        placeholder="veya Logo URL yapıştır..."
+                                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 outline-none"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const val = (e.target as HTMLInputElement).value.trim();
+                                                if (val) {
+                                                    setFormData(prev => ({ ...prev, logo_url: val }));
+                                                    (e.target as HTMLInputElement).value = '';
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const input = document.querySelector('#sponsor-logo-url') as HTMLInputElement;
+                                            if (input?.value.trim()) {
+                                                setFormData(prev => ({ ...prev, logo_url: input.value.trim() }));
+                                                input.value = '';
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                                    >
+                                        Uygula
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">PNG veya SVG formatında, max 500KB — veya harici URL yapıştırın</p>
 
                                 {/* Company Logo Picker */}
                                 {companies.filter(c => c.logo_url).length > 0 && (

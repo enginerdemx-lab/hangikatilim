@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { companiesApi } from '../../services/api/companies';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { RichTextEditor } from '../../components/admin/RichTextEditor';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { useToast } from '../../hooks/useToast';
 import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
 import { SubmitButton } from '../../components/admin/SubmitButton';
@@ -19,6 +20,8 @@ export const Companies: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [pendingFormEvent, setPendingFormEvent] = useState<React.FormEvent | null>(null);
 
     const { success, error: showError } = useToast();
     const { errors, validate, clearErrors, focusFirstError } = useFormValidation<CompanyFormData>();
@@ -60,14 +63,23 @@ export const Companies: React.FC = () => {
             return;
         }
 
+        // Show styled confirmation modal
+        setPendingFormEvent(e);
+        setShowConfirmModal(true);
+    };
+
+    const handleConfirmSave = async () => {
+        setShowConfirmModal(false);
+        setPendingFormEvent(null);
+
         setSaving(true);
         try {
             if (editingCompany) {
                 await companiesApi.updateCompany(editingCompany.id, formData);
-                success('Kaydedildi');
+                success('Firma başarıyla güncellendi');
             } else {
                 await companiesApi.createCompany(formData);
-                success('Kaydedildi');
+                success('Firma başarıyla oluşturuldu');
             }
 
             resetForm();
@@ -425,6 +437,24 @@ export const Companies: React.FC = () => {
                     </table>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showConfirmModal}
+                onClose={() => {
+                    setShowConfirmModal(false);
+                    setPendingFormEvent(null);
+                }}
+                onConfirm={handleConfirmSave}
+                title={editingCompany ? 'Firma Güncelleme' : 'Yeni Firma Oluşturma'}
+                message={editingCompany
+                    ? `"${formData.name}" firmasını güncellemek istediğinize emin misiniz?`
+                    : `"${formData.name}" adında yeni bir firma oluşturmak istediğinize emin misiniz?`
+                }
+                confirmText={editingCompany ? 'Güncelle' : 'Oluştur'}
+                cancelText="İptal"
+                loading={saving}
+            />
         </div>
     );
 };
