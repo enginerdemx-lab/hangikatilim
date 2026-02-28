@@ -469,7 +469,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
       deliveryMonthIndex = 0;
     }
 
-    let runningTotalPayable = initialPayment + interimPayment1 + interimPayment2;
+    let runningTotalPayable = initialPayment;
 
     // Determine Frequency for Loop
     let increasePeriodLoop = 0;

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { adminUserService, AdminUser } from './adminUserService';
 
 // ============================================
 // TYPES
@@ -100,16 +101,10 @@ export const pdfDownloadService = {
      * Get all PDF download logs with user profile info (for admin panel)
      */
     async getAllLogs(filters?: PdfDownloadFilters): Promise<PdfDownloadLog[]> {
-        // We query pdf_download_logs and then join with profiles
+        // We query pdf_download_logs purely, and get users manually to avoid PostgREST FK errors
         let query = supabase
             .from('pdf_download_logs')
-            .select(`
-                *,
-                profiles:user_id (
-                    full_name,
-                    phone
-                )
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
 
         if (filters?.calculationType && filters.calculationType !== 'all') {
@@ -131,27 +126,28 @@ export const pdfDownloadService = {
 
         if (error) throw error;
 
-        // We also need email from auth - we'll get it separately
-        // For now, get user IDs and fetch emails via admin service
-        // Actually, since we're on anon key, we can't access auth.users directly
-        // We'll rely on profiles table having full_name + phone
-        // Email will be fetched from auth admin functions if available
+        // Fetch users to map profile data
+        const users = await adminUserService.getAllUsers().catch(() => [] as AdminUser[]);
+        const userMap = new Map<string, AdminUser>(users.map(u => [u.id, u]));
 
         // Transform joined data
-        const logs: PdfDownloadLog[] = (data || []).map((row: any) => ({
-            id: row.id,
-            user_id: row.user_id,
-            calculation_type: row.calculation_type,
-            target_amount: row.target_amount,
-            down_payment: row.down_payment,
-            months: row.months,
-            system_type: row.system_type,
-            ip_address: row.ip_address,
-            user_agent: row.user_agent,
-            created_at: row.created_at,
-            user_full_name: row.profiles?.full_name || null,
-            user_phone: row.profiles?.phone || null,
-        }));
+        const logs: PdfDownloadLog[] = (data || []).map((row: any) => {
+            const user = userMap.get(row.user_id);
+            return {
+                id: row.id,
+                user_id: row.user_id,
+                calculation_type: row.calculation_type,
+                target_amount: row.target_amount,
+                down_payment: row.down_payment,
+                months: row.months,
+                system_type: row.system_type,
+                ip_address: row.ip_address,
+                user_agent: row.user_agent,
+                created_at: row.created_at,
+                user_full_name: user?.full_name || null,
+                user_phone: user?.phone || null,
+            };
+        });
 
         // If search filter is applied, filter client-side (name/email)
         if (filters?.search) {
@@ -215,22 +211,22 @@ export const pdfDownloadService = {
     async getMemberDownloadStats(): Promise<MemberDownloadStat[]> {
         const { data, error } = await supabase
             .from('pdf_download_logs')
-            .select(`
-                *,
-                profiles:user_id (
-                    full_name,
-                    phone
-                )
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
 
         if (error) throw error;
+
+        // Fetch users to map profile data
+        const users = await adminUserService.getAllUsers().catch(() => [] as AdminUser[]);
+        const userMap = new Map<string, AdminUser>(users.map(u => [u.id, u]));
 
         // Group by user_id
         const map = new Map<string, MemberDownloadStat>();
 
         for (const row of (data || [])) {
             const uid = row.user_id;
+            const user = userMap.get(uid);
+
             const log: PdfDownloadLog = {
                 id: row.id,
                 user_id: uid,
@@ -242,8 +238,8 @@ export const pdfDownloadService = {
                 ip_address: row.ip_address,
                 user_agent: row.user_agent,
                 created_at: row.created_at,
-                user_full_name: (row as any).profiles?.full_name || null,
-                user_phone: (row as any).profiles?.phone || null,
+                user_full_name: user?.full_name || null,
+                user_phone: user?.phone || null,
             };
 
             if (map.has(uid)) {
