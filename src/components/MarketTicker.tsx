@@ -129,36 +129,77 @@ const MarketTicker: React.FC = () => {
         );
     };
 
+    // Items rendered twice for seamless loop
+    const tickerItems = (
+        <>
+            {renderItem('Dolar', formatRate(tickerData.rates.USD), tickerData.changes.USD)}
+            {renderItem('Euro', formatRate(tickerData.rates.EUR), tickerData.changes.EUR)}
+            {renderItem('Sterlin', formatRate(tickerData.rates.GBP), tickerData.changes.GBP)}
+            {renderItem('Gram Altın', `${formatGold(tickerData.gold_try)} ₺`, tickerData.changes.GOLD)}
+        </>
+    );
+
     return (
-        <div className="bg-white border-b border-gray-200 relative z-20 shadow-sm">
-            <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between h-11">
+        <>
+            {/* Keyframe animation injected via <style> tag */}
+            <style>{`
+                @keyframes ticker-scroll {
+                    0%   { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                .ticker-track {
+                    display: flex;
+                    width: max-content;
+                    animation: ticker-scroll 18s linear infinite;
+                }
+                .ticker-track:hover {
+                    animation-play-state: paused;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .ticker-track {
+                        animation: none;
+                    }
+                }
+            `}</style>
 
-                    {/* Scrolling Content for Mobile */}
-                    <div className="flex-1 overflow-x-auto no-scrollbar mask-gradient md:mask-none">
-                        <div className="flex items-center h-full">
-                            {renderItem('Dolar', formatRate(tickerData.rates.USD), tickerData.changes.USD)}
-                            {renderItem('Euro', formatRate(tickerData.rates.EUR), tickerData.changes.EUR)}
-                            {renderItem('Sterlin', formatRate(tickerData.rates.GBP), tickerData.changes.GBP)}
-                            {renderItem('Gram Altın', `${formatGold(tickerData.gold_try)} ₺`, tickerData.changes.GOLD)}
+            <div className="bg-white border-b border-gray-200 relative z-20 shadow-sm">
+                <div className="container mx-auto px-4">
+                    <div className="flex items-center justify-between h-11">
+
+                        {/* Mobile: auto-scrolling marquee | Desktop: static flex */}
+                        <div className="flex-1 overflow-hidden relative">
+
+                            {/* Mobile marquee (hidden on md+) */}
+                            <div className="flex md:hidden h-full items-center">
+                                <div className="ticker-track items-center">
+                                    {tickerItems}
+                                    {/* Duplicate for seamless loop */}
+                                    {tickerItems}
+                                </div>
+                            </div>
+
+                            {/* Desktop static (hidden below md) */}
+                            <div className="hidden md:flex items-center h-full">
+                                {tickerItems}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Last Update & Close */}
-                    <div className="flex items-center gap-4 pl-4 md:bg-white md:shadow-none bg-white shadow-[-10px_0_10px_white]">
-                        <span className="hidden md:inline-block text-[10px] text-gray-400 whitespace-nowrap">
-                            Son: {tickerData.last_update}
-                        </span>
-                        <button
-                            onClick={() => setIsVisible(false)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-                        >
-                            <X size={14} />
-                        </button>
+                        {/* Last Update & Close */}
+                        <div className="flex items-center gap-4 pl-4 md:bg-white md:shadow-none bg-white shadow-[-10px_0_10px_white]">
+                            <span className="hidden md:inline-block text-[10px] text-gray-400 whitespace-nowrap">
+                                Son: {tickerData.last_update}
+                            </span>
+                            <button
+                                onClick={() => setIsVisible(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

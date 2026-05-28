@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, Clock, Share2, Tag, Building2, TrendingUp } from '
 import { supabase } from '../../services/supabaseClient';
 import { newsApi } from '../../services/api/news';
 import { BlogContent } from '../../components/BlogContent';
+import { FavoriteButton } from '../../components/FavoriteButton';
 import type { NewsPost } from '../../types/database';
 
 const NewsDetailPage: React.FC = () => {
@@ -18,25 +19,90 @@ const NewsDetailPage: React.FC = () => {
         }
     }, [slug]);
 
-    // Update page title for SEO
+    // Update page title, meta, OG tags, canonical, and JSON-LD for SEO
     useEffect(() => {
         if (news) {
-            document.title = `${news.title} | Katılım Uzmanı Haberler`;
+            const pageTitle = `${news.title} | Katılım Uzmanı Haberler`;
+            const pageDesc = news.summary || news.title;
+            const pageUrl = `https://katilimuzmani.com/sektor-haberleri/${news.slug || news.id}`;
+            const publishDate = news.published_at || news.created_at;
 
-            // Update meta description
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', news.summary || news.title);
-            } else {
-                const meta = document.createElement('meta');
-                meta.name = 'description';
-                meta.content = news.summary || news.title;
-                document.head.appendChild(meta);
-            }
+            // Title
+            document.title = pageTitle;
+
+            // Meta description
+            let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+            if (metaDesc) { metaDesc.content = pageDesc; }
+            else { metaDesc = document.createElement('meta'); metaDesc.name = 'description'; metaDesc.content = pageDesc; document.head.appendChild(metaDesc); }
+
+            // Canonical
+            let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+            if (canonical) { canonical.href = pageUrl; }
+            else { canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = pageUrl; document.head.appendChild(canonical); }
+
+            // OG Tags
+            const ogTags: Record<string, string> = {
+                'og:title': pageTitle,
+                'og:description': pageDesc,
+                'og:url': pageUrl,
+                'og:type': 'article',
+                'og:image': news.cover_image_url || '',
+                'article:published_time': publishDate,
+            };
+            Object.entries(ogTags).forEach(([prop, content]) => {
+                if (!content) return;
+                let tag = document.querySelector(`meta[property="${prop}"]`) as HTMLMetaElement;
+                if (tag) { tag.content = content; }
+                else { tag = document.createElement('meta'); tag.setAttribute('property', prop); tag.content = content; document.head.appendChild(tag); }
+            });
+
+            // NewsArticle JSON-LD (critical for Google News)
+            const jsonLd = {
+                '@context': 'https://schema.org',
+                '@type': 'NewsArticle',
+                'headline': news.title,
+                'description': pageDesc,
+                'url': pageUrl,
+                'datePublished': publishDate,
+                'dateModified': news.updated_at || publishDate,
+                'image': news.cover_image_url ? [news.cover_image_url] : [],
+                'author': {
+                    '@type': 'Organization',
+                    'name': 'Katılım Uzmanı',
+                    'url': 'https://katilimuzmani.com'
+                },
+                'publisher': {
+                    '@type': 'Organization',
+                    'name': 'Katılım Uzmanı',
+                    'url': 'https://katilimuzmani.com',
+                    'logo': {
+                        '@type': 'ImageObject',
+                        'url': 'https://katilimuzmani.com/logo.png'
+                    }
+                },
+                'mainEntityOfPage': {
+                    '@type': 'WebPage',
+                    '@id': pageUrl
+                },
+                'inLanguage': 'tr-TR',
+            };
+
+            // Remove old JSON-LD if exists
+            const oldScript = document.querySelector('script[data-seo="news-jsonld"]');
+            if (oldScript) oldScript.remove();
+
+            const script = document.createElement('script');
+            script.type = 'application/ld+json';
+            script.setAttribute('data-seo', 'news-jsonld');
+            script.textContent = JSON.stringify(jsonLd);
+            document.head.appendChild(script);
         }
 
         return () => {
             document.title = 'Katılım Uzmanı';
+            // Clean up JSON-LD
+            const script = document.querySelector('script[data-seo="news-jsonld"]');
+            if (script) script.remove();
         };
     }, [news]);
 
@@ -172,9 +238,9 @@ const NewsDetailPage: React.FC = () => {
                 <div className="container mx-auto px-4 text-center">
                     <div className="max-w-md mx-auto">
                         <div className="text-6xl mb-4">📰</div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                             Haber Bulunamadı
-                        </h1>
+                        </h2>
                         <p className="text-gray-600 dark:text-gray-400 mb-6">
                             Aradığınız haber mevcut değil veya kaldırılmış olabilir.
                         </p>
@@ -248,14 +314,17 @@ const NewsDetailPage: React.FC = () => {
                                 {getReadingTime(news.content)}
                             </div>
                         )}
-                        <button
-                            onClick={handleShare}
-                            className="flex items-center gap-2 hover:text-red-600 dark:hover:text-red-400 transition-colors ml-auto p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
-                            aria-label="Haberi paylaş"
-                        >
-                            <Share2 size={16} />
-                            Paylaş
-                        </button>
+                        <div className="flex items-center gap-2 ml-auto">
+                            <FavoriteButton itemType="news" itemId={news.id} size={18} />
+                            <button
+                                onClick={handleShare}
+                                className="flex items-center gap-2 hover:text-red-600 dark:hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                                aria-label="Haberi paylaş"
+                            >
+                                <Share2 size={16} />
+                                Paylaş
+                            </button>
+                        </div>
                     </div>
 
                     {/* Summary */}

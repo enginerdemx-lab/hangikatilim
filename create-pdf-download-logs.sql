@@ -44,7 +44,11 @@ CREATE POLICY "Users can read own pdf download logs"
 -- For admin panel reads, we need a broader SELECT policy
 -- Since admin uses the same anon key, we allow all authenticated users to SELECT
 -- (admin role check happens at the application level)
-CREATE POLICY "Authenticated users can read all pdf download logs"
+CREATE POLICY "Admins can read all pdf download logs"
   ON pdf_download_logs
   FOR SELECT
-  USING (auth.role() = 'authenticated');
+  USING (public.is_admin(auth.uid()));
+
+
+
+

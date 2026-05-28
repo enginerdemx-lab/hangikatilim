@@ -5,13 +5,38 @@ import { AdminSidebar } from './AdminSidebar';
 import { ToastContainer } from './Toast';
 import { useToast } from '../../hooks/useToast';
 import { useUnreadMessagesCount } from '../../hooks/useUnreadMessagesCount';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Facebook, Instagram, Linkedin } from 'lucide-react';
+import { siteSettingsApi } from '../../services/api/siteSettings';
+import type { SiteSettings } from '../../types/database';
+
+// Custom X (Twitter) Icon
+const XIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
 
 export const AdminLayout: React.FC = () => {
     const { isAuthenticated, loading, logout } = useAuth();
     const { toasts, removeToast } = useToast();
     const { count: unreadCount } = useUnreadMessagesCount();
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+
+    // Load site settings to get social media URLs
+    useEffect(() => {
+        const loadSiteSettings = async () => {
+            try {
+                const settings = await siteSettingsApi.getSettings();
+                if (settings) {
+                    setSiteSettings(settings);
+                }
+            } catch (error) {
+                console.error('Error loading site settings for social icons:', error);
+            }
+        };
+        loadSiteSettings();
+    }, []);
 
     // Close mobile sidebar on route change
     useEffect(() => {
@@ -118,6 +143,60 @@ export const AdminLayout: React.FC = () => {
                                 </span>
                             )}
                         </Link>
+
+                        {/* Social Media Links - From Site Settings */}
+                        {(siteSettings?.facebook_url || siteSettings?.twitter_url || siteSettings?.instagram_url || siteSettings?.linkedin_url) && (
+                            <div className="hidden sm:flex items-center gap-1 px-2 border-l border-r border-gray-200 dark:border-gray-700">
+                                {siteSettings?.facebook_url && (
+                                    <a
+                                        href={siteSettings.facebook_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-[#1877F2] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                        title="Facebook"
+                                        aria-label="Facebook"
+                                    >
+                                        <Facebook size={18} />
+                                    </a>
+                                )}
+                                {siteSettings?.instagram_url && (
+                                    <a
+                                        href={siteSettings.instagram_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-[#E4405F] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                        title="Instagram"
+                                        aria-label="Instagram"
+                                    >
+                                        <Instagram size={18} />
+                                    </a>
+                                )}
+                                {siteSettings?.twitter_url && (
+                                    <a
+                                        href={siteSettings.twitter_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                        title="X (Twitter)"
+                                        aria-label="X (Twitter)"
+                                    >
+                                        <XIcon size={18} />
+                                    </a>
+                                )}
+                                {siteSettings?.linkedin_url && (
+                                    <a
+                                        href={siteSettings.linkedin_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-[#0A66C2] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                        title="LinkedIn"
+                                        aria-label="LinkedIn"
+                                    >
+                                        <Linkedin size={18} />
+                                    </a>
+                                )}
+                            </div>
+                        )}
 
                         {/* Site Settings Shortcut */}
                         <Link

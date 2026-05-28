@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, Building2, TrendingUp, Newspaper, Filter } from 'lucide-react';
 import { newsApi } from '../../services/api/news';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import type { NewsPost } from '../../types/database';
 
 // Category filter types
@@ -48,6 +49,7 @@ const estimateReadTime = (content?: string): number => {
 };
 
 const NewsPage: React.FC = () => {
+    usePageSeo();
     const [news, setNews] = useState<NewsPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState<CategoryFilter>('all');
@@ -108,8 +110,8 @@ const NewsPage: React.FC = () => {
                                 key={btn.key}
                                 onClick={() => setActiveFilter(btn.key)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${activeFilter === btn.key
-                                        ? 'bg-blue-600 text-white shadow-lg'
-                                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
+                                    ? 'bg-blue-600 text-white shadow-lg'
+                                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 {btn.icon}

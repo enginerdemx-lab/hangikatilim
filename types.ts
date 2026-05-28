@@ -24,10 +24,16 @@ export enum IncreaseType {
   SIX_MONTHS = 'SIX_MONTHS', // 6 Ayda bir
   THREE_MONTHS = 'THREE_MONTHS', // 3 Ayda bir
   POST_DELIVERY = 'POST_DELIVERY', // Teslimattan sonra
-  CUSTOM = 'CUSTOM' // Özel sıklık (kullanıcı belirler)
+  CUSTOM = 'CUSTOM', // Özel sıklık (kullanıcı belirler)
+  TIERED = 'TIERED' // Kademeli plan (4 dönem + opsiyonel balon ödeme), yalnızca çekilişsiz
 }
 
 export type CalculationMode = 'BY_MONTHS' | 'BY_INSTALLMENT';
+
+// Kademeli (TIERED) ödeme planında kullanıcının taksit girişini hangi yolla yaptığı.
+// 'multiplier': Kullanıcı sadece ilk dönem taksiti ve dönem geçiş çarpanını girer; diğerleri otomatik.
+// 'manual': Kullanıcı her 4 dönemin taksit tutarını ayrı ayrı elle girer.
+export type TieredInputMode = 'multiplier' | 'manual';
 
 export interface CalculationParams {
   assetType: AssetType;
@@ -51,6 +57,20 @@ export interface CalculationParams {
   increaseType: IncreaseType; // New field for increase frequency
   customIncreasePeriod?: number; // Custom period in months (for CUSTOM type)
   nonLotteryDeliveryMonth?: number; // User choice for non-lottery delivery (5, 6, or 7)
+
+  // ============================================
+  // TIERED (Kademeli Plan) parametreleri
+  // Sadece increaseType === IncreaseType.TIERED iken kullanılır.
+  // Çekilişsiz sistemde anlamlıdır (teslimat ayı önceden belli olduğu için).
+  // Dönem sayısı 4–6 arasında değişebilir (kullanıcı + / − ile ekler/çıkarır).
+  // ============================================
+  tieredInputMode?: TieredInputMode;          // 'multiplier' | 'manual'
+  tieredCount?: number;                        // Aktif dönem sayısı (4 / 5 / 6)
+  tieredDurations?: number[];                  // Her dönemin ay sayısı, örn. [6, 7, 6, 5] veya [6,6,6,6,6,6]
+  tieredFirstInstallment?: number;             // multiplier modu: 1. dönem taksit tutarı
+  tieredMultiplier?: number;                   // multiplier modu: dönem geçiş çarpanı (örn. 2.62)
+  tieredManualAmounts?: number[];              // manual modu: dönemlerin taksit tutarları (uzunluk = tieredCount)
+  tieredHasBalloon?: boolean;                  // son taksit balon (kalan bakiye) mı?
 }
 
 export interface PaymentRow {
@@ -97,6 +117,7 @@ export interface UserProfile {
   phone: string | null;
   avatar_url: string | null;
   gender: string | null;
+  birth_date: string | null;
   created_at: string;
   updated_at: string;
   // Profile Details (Genel Bilgiler)
@@ -114,7 +135,8 @@ export interface ProfileUpdate {
   full_name?: string;
   phone?: string;
   avatar_url?: string | null;
-  gender?: string;
+  gender?: string | null;
+  birth_date?: string | null;
   education_level?: string | null;
   employment_status?: string | null;
   profession?: string | null;
@@ -164,3 +186,4 @@ export interface CalculationSaveRequest {
   result: CalculationResult;
   pdfBlob: Blob;
 }
+

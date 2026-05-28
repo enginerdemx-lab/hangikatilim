@@ -78,6 +78,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ theme, toggleTheme }
         { to: '/katilim-firmalari', label: 'Katılım Firmaları' },
         { to: '/sektor-haberleri', label: 'Sektör Haberleri' },
         { to: '/blog', label: 'Blog' },
+        { to: '/sss', label: 'S.S.S' },
     ];
 
     return (

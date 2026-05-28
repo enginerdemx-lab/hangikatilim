@@ -85,14 +85,15 @@ CREATE POLICY "Public can view active popups" ON popups
   FOR SELECT USING (is_active = true);
 
 CREATE POLICY "Authenticated users can manage popups" ON popups
-  FOR ALL USING (auth.role() = 'authenticated');
+  FOR ALL USING (public.is_admin(auth.uid()))
+  WITH CHECK (public.is_admin(auth.uid()));
 
 -- Policies for email subscribers
 CREATE POLICY "Anyone can subscribe" ON popup_email_subscribers
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Authenticated users can view subscribers" ON popup_email_subscribers
-  FOR SELECT USING (auth.role() = 'authenticated');
+  FOR SELECT USING (public.is_admin(auth.uid()));
 
 -- Create indexes
 CREATE INDEX idx_popups_active ON popups(is_active);
@@ -104,3 +105,5 @@ INSERT INTO popups (name, type, template, title, subtitle, body_text, button1_te
 VALUES 
   ('Örnek Köşe Popup', 'corner', 'announcement', 'Yeni Kampanya!', 'Kaçırmayın', 'Şimdi hesaplayın ve avantajlardan yararlanın.', 'Hesapla', '/#hesaplayici', false),
   ('Hoşgeldin Modal', 'modal', 'membership', 'Üye Olun!', NULL, 'Üye olarak tüm avantajlardan yararlanın.', 'Kayıt Ol', '/auth/create-account', false);
+
+

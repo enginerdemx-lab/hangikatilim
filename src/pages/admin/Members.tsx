@@ -24,9 +24,13 @@ import {
     XCircle,
     History,
     FileDown,
+    Lock,
+    Unlock,
 } from 'lucide-react';
 import { adminUserService, AdminUser, AdminRoleType, LoginLog, UserFilters } from '../../services/api/adminUserService';
 import { pdfDownloadService, PdfDownloadLog } from '../../services/api/pdfDownloadService';
+import { calculationService } from '../../services/api/calculationService';
+import type { SavedCalculationData } from '../../../types';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -161,6 +165,8 @@ export const Users: React.FC = () => {
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [pdfDownloadLogs, setPdfDownloadLogs] = useState<PdfDownloadLog[]>([]);
     const [loadingPdfLogs, setLoadingPdfLogs] = useState(false);
+    const [savedCalculations, setSavedCalculations] = useState<SavedCalculationData[]>([]);
+    const [loadingCalculations, setLoadingCalculations] = useState(false);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -274,7 +280,7 @@ export const Users: React.FC = () => {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export error:', error);
-            alert('Dışa aktarma başarısız oldu');
+            showToast('Dışa aktarma başarısız oldu', 'error');
         }
     };
 
@@ -283,29 +289,36 @@ export const Users: React.FC = () => {
 
         try {
             await adminUserService.banUser(banModalUser.id, banReason);
-            alert('Kullanıcı banlandı');
+            showToast('Kullanıcı banlandı', 'success');
             setBanModalUser(null);
             setBanReason('');
             loadUsers();
             loadStats();
         } catch (error) {
             console.error('Ban error:', error);
-            alert('İşlem başarısız oldu');
+            showToast('İşlem başarısız oldu', 'error');
         }
     };
 
     const handleUnbanUser = async (userId: string) => {
-        if (!confirm('Bu kullanıcının banını kaldırmak istediğinize emin misiniz?')) return;
-
-        try {
-            await adminUserService.unbanUser(userId);
-            alert('Ban kaldırıldı');
-            loadUsers();
-            loadStats();
-        } catch (error) {
-            console.error('Unban error:', error);
-            alert('İşlem başarısız oldu');
-        }
+        showConfirm(
+            'Banı Kaldır',
+            'Bu kullanıcının banını kaldırmak istediğinize emin misiniz?',
+            'warning',
+            async () => {
+                try {
+                    await adminUserService.unbanUser(userId);
+                    showToast('Ban kaldırıldı', 'success');
+                    loadUsers();
+                    loadStats();
+                } catch (error) {
+                    console.error('Unban error:', error);
+                    showToast('İşlem başarısız oldu', 'error');
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            }
+        );
     };
 
     const handleToggleStatus = async (user: AdminUser) => {
@@ -380,6 +393,17 @@ export const Users: React.FC = () => {
         } finally {
             setLoadingPdfLogs(false);
         }
+
+        // Load Saved Calculations
+        setLoadingCalculations(true);
+        try {
+            const calcData = await adminUserService.getUserCalculations(user.id);
+            setSavedCalculations(calcData);
+        } catch (error) {
+            console.error('Load calculations error:', error);
+        } finally {
+            setLoadingCalculations(false);
+        }
     };
 
     const handleUpdateUser = async () => {
@@ -401,19 +425,27 @@ export const Users: React.FC = () => {
 
     const handleRemoveAvatar = async () => {
         if (!detailUser) return;
-        if (!confirm('Profil fotoğrafını kaldırmak istediğinize emin misiniz?')) return;
-
-        try {
-            await adminUserService.removeAvatar(detailUser.id);
-            // Update local state
-            const updatedUser = { ...detailUser, avatar_url: null };
-            setUsers(users.map(u => u.id === detailUser.id ? updatedUser : u));
-            setDetailUser(updatedUser);
-            alert('Profil fotoğrafı kaldırıldı.');
-        } catch (error) {
-            console.error('Remove avatar error:', error);
-            alert('Fotoğraf kaldırılırken bir hata oluştu.');
-        }
+        
+        showConfirm(
+            'Fotoğrafı Kaldır',
+            'Profil fotoğrafını kaldırmak istediğinize emin misiniz?',
+            'danger',
+            async () => {
+                try {
+                    await adminUserService.removeAvatar(detailUser.id);
+                    // Update local state
+                    const updatedUser = { ...detailUser, avatar_url: null };
+                    setUsers(users.map(u => u.id === detailUser.id ? updatedUser : u));
+                    setDetailUser(updatedUser);
+                    showToast('Profil fotoğrafı kaldırıldı.', 'success');
+                } catch (error) {
+                    console.error('Remove avatar error:', error);
+                    showToast('Fotoğraf kaldırılırken bir hata oluştu.', 'error');
+                } finally {
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }
+            }
+        );
     };
 
     const getStatusBadge = (status: string, emailConfirmedAt?: string | null) => {
@@ -618,7 +650,12 @@ export const Users: React.FC = () => {
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Kayıt Tarihi</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Son Giriş</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Giriş</th>
-                                    <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">SON IP</th>
+                                    <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">
+                                        <div className="flex items-center gap-1">
+                                            SON IP
+                                            <Lock size={12} className="text-red-400" />
+                                        </div>
+                                    </th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Durum</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">Admin Rolü</th>
                                     <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase">İşlemler</th>
@@ -666,7 +703,7 @@ export const Users: React.FC = () => {
                                             <td className="p-4 text-sm text-gray-600">{formatDate(user.last_login_at)}</td>
 
                                             <td className="p-4 text-sm text-gray-900 font-medium">{user.login_count || 0}</td>
-                                            <td className="p-4 text-sm text-gray-500 font-mono">{(user as any).last_sign_in_ip || '-'}</td>
+                                            <td className="p-4 text-sm text-gray-500 font-mono">•••.•••.•••</td>
                                             <td className="p-4">{getStatusBadge(user.status, (user as any).email_confirmed_at)}</td>
                                             <td className="p-4">
                                                 <select
@@ -1096,9 +1133,9 @@ export const Users: React.FC = () => {
                                                     <div key={log.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg text-sm">
                                                         <div className="flex items-center gap-3">
                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${log.calculation_type === 'ev' ? 'bg-blue-100 text-blue-700' :
-                                                                    log.calculation_type === 'arac' ? 'bg-green-100 text-green-700' :
-                                                                        log.calculation_type === 'isyeri' ? 'bg-purple-100 text-purple-700' :
-                                                                            'bg-gray-100 text-gray-700'
+                                                                log.calculation_type === 'arac' ? 'bg-green-100 text-green-700' :
+                                                                    log.calculation_type === 'isyeri' ? 'bg-purple-100 text-purple-700' :
+                                                                        'bg-gray-100 text-gray-700'
                                                                 }`}>
                                                                 {log.calculation_type === 'ev' ? 'Gayrimenkul' :
                                                                     log.calculation_type === 'arac' ? 'Araç' :
@@ -1108,10 +1145,67 @@ export const Users: React.FC = () => {
                                                                 {log.target_amount ? new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(log.target_amount) : '-'}
                                                             </span>
                                                             {log.ip_address && (
-                                                                <span className="text-gray-400 font-mono text-xs">{log.ip_address}</span>
+                                                                <span className="text-gray-400 font-mono text-xs">•••.•••.•••</span>
                                                             )}
                                                         </div>
                                                         <span className="text-gray-500">{formatDate(log.created_at)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Saved Calculations */}
+                                    <div className="mt-6">
+                                        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                            <FileDown size={16} /> Kayıtlı Hesaplamalar
+                                        </h4>
+                                        {loadingCalculations ? (
+                                            <div className="p-4 text-center text-gray-500">
+                                                <RefreshCw className="animate-spin mx-auto" size={20} />
+                                            </div>
+                                        ) : savedCalculations.length === 0 ? (
+                                            <p className="text-gray-500 text-sm">Henüz kayıtlı hesaplama yok</p>
+                                        ) : (
+                                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                                {savedCalculations.map((calc: SavedCalculationData) => (
+                                                    <div key={calc.id} className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm transition-colors hover:bg-slate-100">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${calc.type === 'ev' ? 'bg-blue-100 text-blue-700' :
+                                                                    calc.type === 'arac' ? 'bg-green-100 text-green-700' :
+                                                                        calc.type === 'isyeri' ? 'bg-purple-100 text-purple-700' :
+                                                                            'bg-gray-100 text-gray-700'
+                                                                    }`}>
+                                                                    {calc.type === 'ev' ? 'Ev' :
+                                                                        calc.type === 'arac' ? 'Araç' :
+                                                                            calc.type === 'isyeri' ? 'İş Yeri' : 'Tümü'}
+                                                                </span>
+                                                                <span className="font-medium text-gray-900">
+                                                                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(calc.data_json.params.targetAmount)}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-gray-500 text-xs">{formatDate(calc.created_at)}</span>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 p-2 bg-white rounded border border-gray-100">
+                                                            <div>
+                                                                <div className="text-[10px] text-gray-400 uppercase tracking-wider">Taksit Sayısı</div>
+                                                                <div className="font-medium text-gray-800">{calc.data_json.result.schedule.length} Ay</div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-[10px] text-gray-400 uppercase tracking-wider">Aylık Taksit</div>
+                                                                <div className="font-medium text-gray-800">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(calc.data_json.result.monthlyInstallment)}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-[10px] text-gray-400 uppercase tracking-wider">Katılım Payı</div>
+                                                                <div className="font-medium text-gray-800">%{calc.data_json.params.participationRate.toFixed(1)}</div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-[10px] text-gray-400 uppercase tracking-wider">Toplam Ödeme</div>
+                                                                <div className="font-bold text-gray-900">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(calc.data_json.result.totalPayable)}</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

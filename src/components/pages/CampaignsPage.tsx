@@ -1,15 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Check, ChevronRight, Calculator, Star, Zap, Building2, Filter, Home, Car, Calendar, Wallet, BadgeCheck, Shuffle, Lock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowRight, Check, ChevronRight, Calculator, Star, Zap, Building2, Filter, Home, Car, Calendar, Wallet, BadgeCheck, Shuffle, Lock, TrendingUp, Banknote } from 'lucide-react';
 import { AssetType, SystemType } from '../../types';
 import { campaignsApi } from '../../services/api/campaigns';
 import type { Campaign } from '../../types/database';
+import { useNavigate } from 'react-router-dom';
 
 interface CampaignsPageProps {
    onNavigate: (page: string) => void;
 }
 
+const ASSET_TYPE_URL_MAP: Record<AssetType, string> = {
+   [AssetType.HOME]: 'ev',
+   [AssetType.CAR]: 'arac',
+   [AssetType.WORKPLACE]: 'isyeri',
+   [AssetType.ALL]: 'tumu',
+};
+
 export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
+   const routerNavigate = useNavigate();
    const [amount, setAmount] = useState(1000000);
    const [months, setMonths] = useState(24);
    const [assetType, setAssetType] = useState<AssetType>(AssetType.HOME);
@@ -103,45 +112,45 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
    ];
 
    const handleCalculate = () => {
-      // Save to local storage for the Calculator component to pick up
-      const prefillData = {
-         amount,
-         months,
-         assetType,
-         downPayment: 0
-      };
-      localStorage.setItem('CALC_PREFILL', JSON.stringify(prefillData));
-
-      // Scroll to calculator on home page
-      onNavigate('home');
-      setTimeout(() => {
-         const element = document.getElementById('calculator');
-         if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-         }
-      }, 100);
+      // Navigate to home page with URL params so Calculator picks them up
+      const params = new URLSearchParams({
+         tip: ASSET_TYPE_URL_MAP[assetType] || 'ev',
+         tutar: String(amount),
+         vade: String(months),
+         pesinat: '0',
+      });
+      routerNavigate(`/?${params.toString()}#calculator`);
    };
 
    const handlePopularPlanClick = (plan: any) => {
-      const prefillData = {
-         amount: plan.amount,
-         months: plan.months,
-         assetType: popularTab === 'HOME' ? AssetType.HOME : AssetType.CAR,
-         systemType: plan.systemType,
-         downPayment: 0 // Default to 0 for popular searches
-      };
-      localStorage.setItem('CALC_PREFILL', JSON.stringify(prefillData));
-      onNavigate('home');
-      setTimeout(() => {
-         const element = document.getElementById('calculator');
-         if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-         }
-      }, 100);
+      const planAssetType = popularTab === 'HOME' ? AssetType.HOME : AssetType.CAR;
+      const params = new URLSearchParams({
+         tip: ASSET_TYPE_URL_MAP[planAssetType] || 'ev',
+         sistem: plan.systemType === SystemType.LOTTERY ? 'cekilisli' : 'cekilissiz',
+         tutar: String(plan.amount),
+         vade: String(plan.months),
+         pesinat: '0',
+      });
+      routerNavigate(`/?${params.toString()}#calculator`);
    };
 
    // Format currency
    const formatMoney = (val: number) => new Intl.NumberFormat('tr-TR').format(val);
+
+   // Quick amount presets
+   const quickAmounts = assetType === AssetType.HOME
+      ? [500000, 750000, 1000000, 1500000, 2000000, 2500000]
+      : [300000, 500000, 750000, 1000000, 1500000, 2000000];
+
+   // Live estimated installment calculation
+   const estimatedInstallment = useMemo(() => {
+      if (!amount || amount <= 0 || !months) return null;
+      // Approximate: total = amount + ~10% organization fee, then divide by months
+      const orgFeeRate = 0.10;
+      const totalPayment = amount * (1 + orgFeeRate);
+      const monthly = Math.round(totalPayment / months);
+      return monthly;
+   }, [amount, months]);
 
    return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 animate-fade-in pb-12">
@@ -170,15 +179,21 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                      <div className="flex bg-gray-100 dark:bg-slate-900 rounded-lg p-1">
                         <button
                            onClick={() => setAssetType(AssetType.HOME)}
-                           className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${assetType === AssetType.HOME ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                           className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${assetType === AssetType.HOME ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                         >
-                           Konut
+                           <Home size={15} /> Konut
                         </button>
                         <button
                            onClick={() => setAssetType(AssetType.CAR)}
-                           className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${assetType === AssetType.CAR ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                           className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${assetType === AssetType.CAR ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                         >
-                           Araç
+                           <Car size={15} /> Araç
+                        </button>
+                        <button
+                           onClick={() => setAssetType(AssetType.WORKPLACE)}
+                           className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${assetType === AssetType.WORKPLACE ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                        >
+                           <Building2 size={15} /> İş Yeri
                         </button>
                      </div>
                   </div>
@@ -187,9 +202,10 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                   <div className="w-full flex-1">
                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 block">İhtiyaç Tutarı (TL)</label>
                      <div className="relative">
+                        <Wallet size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                            type="text"
-                           className="w-full pl-3 pr-10 py-3 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
+                           className="w-full pl-10 pr-10 py-3 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all"
                            value={formatMoney(amount)}
                            onChange={(e) => {
                               const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
@@ -204,8 +220,9 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                   <div className="w-full md:w-48">
                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 block">Vade (Ay)</label>
                      <div className="relative">
+                        <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <select
-                           className="w-full pl-3 pr-8 py-3 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all appearance-none"
+                           className="w-full pl-10 pr-8 py-3 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-600 rounded-lg font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all appearance-none"
                            value={months}
                            onChange={(e) => setMonths(Number(e.target.value))}
                         >
@@ -227,6 +244,35 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                      </button>
                   </div>
                </div>
+
+               {/* Quick Amount Buttons */}
+               <div className="flex flex-wrap items-center justify-center gap-2 mt-4 max-w-4xl mx-auto">
+                  <span className="text-xs text-blue-200/70 font-medium mr-1 hidden sm:inline">Hızlı Seçim:</span>
+                  {quickAmounts.map((qa) => (
+                     <button
+                        key={qa}
+                        onClick={() => setAmount(qa)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${amount === qa
+                           ? 'bg-white text-blue-700 border-white shadow-md scale-105'
+                           : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/20 hover:border-white/40'
+                           }`}
+                     >
+                        {formatMoney(qa)} TL
+                     </button>
+                  ))}
+               </div>
+
+               {/* Live Estimated Installment Preview */}
+               {estimatedInstallment && amount > 0 && (
+                  <div className="flex items-center justify-center gap-2 mt-4 animate-fade-in">
+                     <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl">
+                        <TrendingUp size={16} className="text-emerald-400" />
+                        <span className="text-white/70 text-sm">Tahmini Taksit:</span>
+                        <span className="text-white font-bold text-lg">~{formatMoney(estimatedInstallment)} TL</span>
+                        <span className="text-white/50 text-xs">/ay</span>
+                     </div>
+                  </div>
+               )}
             </div>
          </div>
 

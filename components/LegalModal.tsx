@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { X, Shield, FileText, Mail } from 'lucide-react';
+import DOMPurify from 'dompurify';
+import { X, Shield, FileText, Mail, Share2 } from 'lucide-react';
 import type { SiteSettings } from '../src/types/database';
 
-export type LegalType = 'KVKK' | 'CONSENT' | 'COMMERCIAL' | 'TERMS' | 'PRIVACY';
+export type LegalType = 'KVKK' | 'CONSENT' | 'COMMERCIAL' | 'TERMS' | 'PRIVACY' | 'DATA_SHARING';
 
 interface ContentType {
   title: string;
@@ -35,7 +36,27 @@ Bu platform, kullanıcılarına tasarruf finansman hesaplama araçları sunan bi
 <p><strong>2. Sorumluluk</strong><br/>
 Platformda yer alan bilgilerin doğruluğu konusunda azami özen gösterilir.</p>`,
 
-  commercial: `<p>Tarafıma ticari elektronik ileti gönderilmesine onay veriyorum.</p>`
+  commercial: `<p>Tarafıma ticari elektronik ileti gönderilmesine onay veriyorum.</p>`,
+
+  data_sharing: `<p><strong>VERİ PAYLAŞIM SÖZLEŞMESİ</strong></p>
+
+<p><strong>1. Amaç ve Kapsam</strong><br/>
+İşbu sözleşme, Katılım Uzmanı ("Platform") üzerinden ücretsiz danışmanlık talebi oluşturan kullanıcıların kişisel verilerinin, kullanıcıya en uygun teklifin sunulabilmesi amacıyla yetkili tasarruf finansman şirketleri ile paylaşılmasının koşullarını düzenler.</p>
+
+<p><strong>2. Paylaşılacak Veriler</strong><br/>
+Kullanıcı tarafından sağlanan ad-soyad, telefon, e-posta, talep edilen finansman tutarı ve sistem tercihi (çekilişli/çekilişsiz) bilgileri paylaşıma konu verilerdir.</p>
+
+<p><strong>3. Veri Paylaşılan Taraflar</strong><br/>
+Kullanıcının onayı ile bu veriler, BDDK tarafından yetkilendirilmiş ve Tasarruf Finansman Şirketleri Birliği üyesi tasarruf finansman şirketleri ile paylaşılabilir. Paylaşım yalnızca kullanıcıya teklif sunulması ve iletişim kurulması amacıyla yapılır.</p>
+
+<p><strong>4. Veri İşleme Süresi</strong><br/>
+Veriler, talep tamamlandıktan sonra mevzuatta öngörülen saklama süresi boyunca muhafaza edilir; süre sonunda imha edilir veya anonim hale getirilir.</p>
+
+<p><strong>5. Kullanıcı Hakları</strong><br/>
+Kullanıcı, KVKK m.11 uyarınca verilerine erişme, düzeltme, silme ve işlemeye itiraz etme haklarına sahiptir. Onayını her zaman geri çekebilir.</p>
+
+<p><strong>6. Yürürlük</strong><br/>
+Kullanıcı bu sözleşmeyi onayladığında veri paylaşımına açık rıza vermiş sayılır. Onay verilmediğinde danışmanlık talebi işleme alınamaz.</p>`
 };
 
 export const LegalModal: React.FC<LegalModalProps> = ({ isOpen, type, onClose, onConfirm, siteSettings }) => {
@@ -112,6 +133,13 @@ export const LegalModal: React.FC<LegalModalProps> = ({ isOpen, type, onClose, o
           content: siteSettings?.privacy_content || DEFAULT_CONTENT.consent, // Using generic content if separate privacy content missing
           showConfirmButton: true
         };
+      case 'DATA_SHARING':
+        return {
+          title: siteSettings?.data_sharing_text || "Veri Paylaşım Sözleşmesi",
+          icon: <Share2 size={24} className="text-primary-600" />,
+          content: siteSettings?.data_sharing_content || DEFAULT_CONTENT.data_sharing,
+          showConfirmButton: true
+        };
       default:
         return { title: "", icon: null, content: "" };
     }
@@ -126,7 +154,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ isOpen, type, onClose, o
       return (
         <div
           className="space-y-4 text-gray-600 dark:text-gray-300 text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent, { USE_PROFILES: { html: true } }) }}
         />
       );
     }

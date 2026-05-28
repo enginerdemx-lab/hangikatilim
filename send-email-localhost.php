@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $host = 'localhost';
 $port = 25;
 $user = 'bildirim@katilimuzmani.com';
-$pass = 'MD-3rHdk:.n746P-';
+$pass = getenv('SMTP_PASS') ?: '';
 $from = 'bildirim@katilimuzmani.com';
 $fromName = 'Katılım Uzmanı';
 

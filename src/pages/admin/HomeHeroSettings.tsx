@@ -3,7 +3,7 @@ import { homeHeroApi } from '../../services/api/homeHero';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { HomeHero } from '../../types/database';
-import { Image, Type, Link, Palette, Eye, Plus, Edit, Trash2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { Image, Type, Link, Palette, Eye, Plus, Edit, Trash2, ArrowUp, ArrowDown, Search, MonitorSmartphone } from 'lucide-react';
 
 export const HomeHeroSettings: React.FC = () => {
     const [slides, setSlides] = useState<HomeHero[]>([]);
@@ -36,6 +36,8 @@ export const HomeHeroSettings: React.FC = () => {
 
     // Save confirmation modal state
     const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'passive'>('all');
 
     useEffect(() => {
         loadSlides();
@@ -182,6 +184,24 @@ export const HomeHeroSettings: React.FC = () => {
         setEditingSlide(null);
         setShowForm(false);
     };
+    const activeSlidesCount = slides.filter((slide) => slide.is_active).length;
+    const passiveSlidesCount = slides.length - activeSlidesCount;
+    const filteredSlides = slides.filter((slide) => {
+        const query = searchQuery.trim().toLowerCase();
+        const matchesQuery =
+            query.length === 0 ||
+            slide.title.toLowerCase().includes(query) ||
+            (slide.subtitle || '').toLowerCase().includes(query) ||
+            (slide.cta1_label || '').toLowerCase().includes(query) ||
+            (slide.cta2_label || '').toLowerCase().includes(query);
+
+        const matchesStatus =
+            statusFilter === 'all' ||
+            (statusFilter === 'active' && slide.is_active) ||
+            (statusFilter === 'passive' && !slide.is_active);
+
+        return matchesQuery && matchesStatus;
+    });
 
     if (loading) {
         return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
@@ -189,33 +209,38 @@ export const HomeHeroSettings: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white">
-                <div className="flex items-center justify-between">
+                        {/* Header */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">Ana Sayfa Hero Slider</h1>
-                        <p className="text-blue-100">
-                            Ana sayfadaki büyük banner alanını yönetin. Birden fazla slide ekleyerek slider oluşturabilirsiniz.
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Ana Sayfa Hero Slider</h1>
+                        <p className="text-gray-600">
+                            Ana sayfadaki buyuk banner alanini yonetin. Birden fazla slide ekleyerek slider olusturabilirsiniz.
                         </p>
-                        <div className="mt-4 flex items-center gap-4 text-sm">
-                            <span className="bg-white/20 px-3 py-1 rounded-full">
-                                {slides.length} Slide
-                            </span>
-                            <span className="text-blue-100">
-                                • Önerilen görsel boyutu: 1920x800 px
-                            </span>
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Toplam Slide</p>
+                                <p className="text-xl font-semibold text-gray-900">{slides.length}</p>
+                            </div>
+                            <div className="rounded-lg border border-green-200 p-3 bg-green-50">
+                                <p className="text-xs uppercase tracking-wide text-green-700">Aktif</p>
+                                <p className="text-xl font-semibold text-green-700">{activeSlidesCount}</p>
+                            </div>
+                            <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Pasif</p>
+                                <p className="text-xl font-semibold text-gray-900">{passiveSlidesCount}</p>
+                            </div>
                         </div>
                     </div>
                     <button
                         onClick={() => setShowForm(true)}
-                        className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all shadow-lg flex items-center gap-2"
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-sm inline-flex items-center gap-2 w-full lg:w-auto justify-center"
                     >
                         <Plus size={20} />
                         Yeni Slide Ekle
                     </button>
                 </div>
             </div>
-
             {/* Form */}
             {/* Save Confirmation Modal */}
             {showSaveConfirm && (
@@ -888,103 +913,141 @@ export const HomeHeroSettings: React.FC = () => {
                 </div >
             )}
 
-            {/* Slides List */}
+                        {/* Slides List */}
             {
                 !showForm && slides.length > 0 && (
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Mevcut Slide'lar ({slides.length})</h2>
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4">
+                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                                <div className="relative lg:col-span-2">
+                                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Baslik, alt baslik veya CTA ara..."
+                                        className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'passive')}
+                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="all">Tum Durumlar</option>
+                                    <option value="active">Sadece Aktif</option>
+                                    <option value="passive">Sadece Pasif</option>
+                                </select>
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600 flex items-center gap-2">
+                                    <MonitorSmartphone size={16} />
+                                    <span>{filteredSlides.length} / {slides.length} gosteriliyor</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Mevcut Slide'lar ({filteredSlides.length})</h2>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {slides.map((slide, index) => (
-                                <div key={slide.id} className="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-100 hover:border-blue-300 transition-all">
-                                    {/* Preview */}
-                                    <div className="relative">
-                                        <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
-                                            Slide #{index + 1}
+                            {filteredSlides.map((slide) => {
+                                const index = slides.findIndex((s) => s.id === slide.id);
+
+                                return (
+                                    <div key={slide.id} className="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-100 hover:border-blue-300 transition-all">
+                                        {/* Preview */}
+                                        <div className="relative">
+                                            <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+                                                Slide #{index + 1}
+                                            </div>
+                                            <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold z-10 ${slide.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`}>
+                                                {slide.is_active ? 'Aktif' : 'Pasif'}
+                                            </div>
+                                            <div
+                                                className="h-56 flex items-center justify-center text-white p-6"
+                                                style={{
+                                                    background: slide.background_image_url
+                                                        ? `url(${slide.background_image_url}) center/cover`
+                                                        : `linear-gradient(to right, ${slide.background_gradient_start}, ${slide.background_gradient_end})`
+                                                }}
+                                            >
+                                                <div className="absolute inset-0 bg-black/20"></div>
+                                                <div className="relative text-center">
+                                                    <h3 className="text-2xl font-bold mb-2 drop-shadow-lg">{slide.title}</h3>
+                                                    {slide.subtitle && (
+                                                        <p className="text-sm opacity-90 line-clamp-2 drop-shadow-md">{slide.subtitle}</p>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div
-                                            className="h-56 flex items-center justify-center text-white p-6"
-                                            style={{
-                                                background: slide.background_image_url
-                                                    ? `url(${slide.background_image_url}) center/cover`
-                                                    : `linear-gradient(to right, ${slide.background_gradient_start}, ${slide.background_gradient_end})`
-                                            }}
-                                        >
-                                            <div className="absolute inset-0 bg-black/20"></div>
-                                            <div className="relative text-center">
-                                                <h3 className="text-2xl font-bold mb-2 drop-shadow-lg">{slide.title}</h3>
-                                                {slide.subtitle && (
-                                                    <p className="text-sm opacity-90 line-clamp-2 drop-shadow-md">{slide.subtitle}</p>
+
+                                        {/* Info & Actions */}
+                                        <div className="p-4 bg-gray-50">
+                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                {slide.cta1_label && (
+                                                    <span className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold">
+                                                        CTA 1: {slide.cta1_label}
+                                                    </span>
                                                 )}
+                                                {slide.cta2_label && (
+                                                    <span className="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">
+                                                        CTA 2: {slide.cta2_label}
+                                                    </span>
+                                                )}
+                                                {!slide.cta1_label && !slide.cta2_label && (
+                                                    <span className="text-xs text-gray-400 italic">Buton yok</span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleMoveUp(index)}
+                                                    disabled={index === 0}
+                                                    className={`p-2.5 rounded-lg border-2 transition-all ${index === 0
+                                                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                                                        : 'border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50'
+                                                        }`}
+                                                    title="Yukari Tasi"
+                                                >
+                                                    <ArrowUp size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMoveDown(index)}
+                                                    disabled={index === slides.length - 1}
+                                                    className={`p-2.5 rounded-lg border-2 transition-all ${index === slides.length - 1
+                                                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                                                        : 'border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50'
+                                                        }`}
+                                                    title="Asagi Tasi"
+                                                >
+                                                    <ArrowDown size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleEdit(slide)}
+                                                    className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:text-white hover:bg-blue-600 font-semibold py-2.5 border border-blue-600 rounded-lg transition-all"
+                                                >
+                                                    <Edit size={16} />
+                                                    Duzenle
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(slide.id)}
+                                                    className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:text-white hover:bg-red-600 font-semibold py-2.5 border border-red-600 rounded-lg transition-all"
+                                                >
+                                                    <Trash2 size={16} />
+                                                    Sil
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Info & Actions */}
-                                    <div className="p-4 bg-gray-50">
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            {slide.cta1_label && (
-                                                <span className="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold">
-                                                    🔵 {slide.cta1_label}
-                                                </span>
-                                            )}
-                                            {slide.cta2_label && (
-                                                <span className="text-xs bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold">
-                                                    🟣 {slide.cta2_label}
-                                                </span>
-                                            )}
-                                            {!slide.cta1_label && !slide.cta2_label && (
-                                                <span className="text-xs text-gray-400 italic">Buton yok</span>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            {/* Reorder Up Button */}
-                                            <button
-                                                onClick={() => handleMoveUp(index)}
-                                                disabled={index === 0}
-                                                className={`p-2.5 rounded-lg border-2 transition-all ${index === 0
-                                                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                                                    : 'border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50'
-                                                    }`}
-                                                title="Yukarı Taşı"
-                                            >
-                                                <ArrowUp size={16} />
-                                            </button>
-                                            {/* Reorder Down Button */}
-                                            <button
-                                                onClick={() => handleMoveDown(index)}
-                                                disabled={index === slides.length - 1}
-                                                className={`p-2.5 rounded-lg border-2 transition-all ${index === slides.length - 1
-                                                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                                                    : 'border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50'
-                                                    }`}
-                                                title="Aşağı Taşı"
-                                            >
-                                                <ArrowDown size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEdit(slide)}
-                                                className="flex-1 flex items-center justify-center gap-2 text-blue-600 hover:text-white hover:bg-blue-600 font-semibold py-2.5 border-2 border-blue-600 rounded-lg transition-all"
-                                            >
-                                                <Edit size={16} />
-                                                Düzenle
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(slide.id)}
-                                                className="flex-1 flex items-center justify-center gap-2 text-red-600 hover:text-white hover:bg-red-600 font-semibold py-2.5 border-2 border-red-600 rounded-lg transition-all"
-                                            >
-                                                <Trash2 size={16} />
-                                                Sil
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
+
+                        {filteredSlides.length === 0 && (
+                            <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-gray-600">
+                                Arama ve filtreye uygun slide bulunamadi.
+                            </div>
+                        )}
                     </div>
                 )
             }
-
             {/* Empty State */}
             {
                 slides.length === 0 && !showForm && (
@@ -1007,3 +1070,7 @@ export const HomeHeroSettings: React.FC = () => {
         </div >
     );
 };
+
+
+
+

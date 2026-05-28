@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { campaignsApi } from '../../services/api/campaigns';
 import { companiesApi } from '../../services/api/companies';
 import { ImageUpload } from '../../components/admin/ImageUpload';
+import { RichTextEditor } from '../../components/admin/RichTextEditor';
 import { useToast } from '../../hooks/useToast';
 import { useFormValidation, type ValidationRules } from '../../hooks/useFormValidation';
 import { SubmitButton } from '../../components/admin/SubmitButton';
@@ -21,6 +22,7 @@ export const Campaigns: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [togglingId, setTogglingId] = useState<string | null>(null);
 
     const { success, error: showError } = useToast();
     const { errors, validate, clearErrors, focusFirstError } = useFormValidation<CampaignFormData>();
@@ -39,6 +41,8 @@ export const Campaigns: React.FC = () => {
         terms_button_text: 'Koşulları İncele',
         image_url: '',
         mobile_image_url: '',
+        slug: '',
+        content: '',
         is_active: true,
     });
     const [bulletInput, setBulletInput] = useState('');
@@ -64,9 +68,11 @@ export const Campaigns: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('[Campaigns] handleSubmit called, formData:', formData);
 
         // Validate form
         if (!validate(formData, validationRules)) {
+            console.log('[Campaigns] Validation failed');
             focusFirstError();
             return;
         }
@@ -74,16 +80,19 @@ export const Campaigns: React.FC = () => {
         setSaving(true);
         try {
             if (editingCampaign) {
+                console.log('[Campaigns] Updating campaign:', editingCampaign.id);
                 await campaignsApi.updateCampaign(editingCampaign.id, formData);
-                success('Kaydedildi');
+                success('Kampanya güncellendi');
             } else {
+                console.log('[Campaigns] Creating new campaign');
                 await campaignsApi.createCampaign(formData);
-                success('Kaydedildi');
+                success('Kampanya oluşturuldu');
             }
 
             resetForm();
             loadData();
         } catch (err) {
+            console.error('[Campaigns] Submit error:', err);
             const errorMessage = err instanceof Error ? err.message : 'Bilinmeyen hata';
             showError(`Kaydetme başarısız: ${errorMessage}`);
         } finally {
@@ -106,6 +115,8 @@ export const Campaigns: React.FC = () => {
             terms_button_text: campaign.terms_button_text || 'Koşulları İncele',
             image_url: campaign.image_url || '',
             mobile_image_url: campaign.mobile_image_url || '',
+            slug: campaign.slug || '',
+            content: campaign.content || '',
             is_active: campaign.is_active,
         });
         setShowForm(true);
@@ -124,12 +135,21 @@ export const Campaigns: React.FC = () => {
     };
 
     const handleToggleActive = async (id: string, isActive: boolean) => {
+        console.log('[Campaigns] Toggle:', id, 'current:', isActive, '-> new:', !isActive);
+        setTogglingId(id);
+        // Optimistic update - change UI immediately
+        setCampaigns(prev => prev.map(c => c.id === id ? { ...c, is_active: !isActive } : c));
         try {
             await campaignsApi.toggleActive(id, !isActive);
             success(`Kampanya ${!isActive ? 'aktif' : 'pasif'} edildi`);
-            loadData();
+            await loadData();
         } catch (err) {
+            console.error('[Campaigns] Toggle error:', err);
+            // Revert optimistic update
+            setCampaigns(prev => prev.map(c => c.id === id ? { ...c, is_active: isActive } : c));
             showError('Durum değiştirilemedi');
+        } finally {
+            setTogglingId(null);
         }
     };
 
@@ -147,11 +167,27 @@ export const Campaigns: React.FC = () => {
             terms_button_text: 'Koşulları İncele',
             image_url: '',
             mobile_image_url: '',
+            slug: '',
+            content: '',
             is_active: true,
         });
         setBulletInput('');
         setEditingCampaign(null);
         setShowForm(false);
+    };
+
+    // Slug oluşturucu
+    const generateSlug = (title: string) => {
+        return title
+            .toLowerCase()
+            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+            .replace(/Ğ/g, 'g').replace(/Ü/g, 'u').replace(/Ş/g, 's')
+            .replace(/İ/g, 'i').replace(/Ö/g, 'o').replace(/Ç/g, 'c')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
     };
 
     const addBulletPoint = () => {
@@ -275,6 +311,7 @@ export const Campaigns: React.FC = () => {
                                     <option value="faizsiz_firsat">Faizsiz Fırsat</option>
                                     <option value="ozel_kampanya">Özel Kampanya</option>
                                     <option value="sponsorlu">Sponsorlu</option>
+                                    <option value="hemen_teslim">🚗 Hemen Teslim Araç</option>
                                 </select>
                             </div>
                         </div>
@@ -332,8 +369,8 @@ export const Campaigns: React.FC = () => {
                                 <ImageUpload
                                     folder="campaign-images"
                                     currentImageUrl={formData.image_url}
-                                    onUploadComplete={(url) => setFormData({ ...formData, image_url: url })}
-                                    onDelete={() => setFormData({ ...formData, image_url: '' })}
+                                    onUploadComplete={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                                    onDelete={() => setFormData(prev => ({ ...prev, image_url: '' }))}
                                     label="Masaüstü için yatay görsel (Örn: 800x400px)"
                                 />
                             </div>
@@ -344,8 +381,8 @@ export const Campaigns: React.FC = () => {
                                 <ImageUpload
                                     folder="campaign-images"
                                     currentImageUrl={formData.mobile_image_url}
-                                    onUploadComplete={(url) => setFormData({ ...formData, mobile_image_url: url })}
-                                    onDelete={() => setFormData({ ...formData, mobile_image_url: '' })}
+                                    onUploadComplete={(url) => setFormData(prev => ({ ...prev, mobile_image_url: url }))}
+                                    onDelete={() => setFormData(prev => ({ ...prev, mobile_image_url: '' }))}
                                     label="Mobil için dikey görsel (Örn: 400x600px)"
                                 />
                             </div>
@@ -437,6 +474,43 @@ export const Campaigns: React.FC = () => {
                                     placeholder="Koşulları İncele"
                                 />
                             </div>
+                        </div>
+
+                        {/* Slug (URL) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Sayfa URL (Slug)</label>
+                            <div className="flex gap-2">
+                                <div className="flex-1 relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/kampanyalar/</span>
+                                    <input
+                                        type="text"
+                                        value={formData.slug || ''}
+                                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                        className="w-full pl-[120px] pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="kampanya-adi"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(prev => ({ ...prev, slug: generateSlug(prev.title) }))}
+                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium whitespace-nowrap"
+                                >
+                                    Otomatik Oluştur
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Boş bırakırsanız kampanya detay sayfası oluşturulmaz.</p>
+                        </div>
+
+                        {/* Rich Content Editor */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Detay İçeriği (Haber gibi)</label>
+                            <RichTextEditor
+                                key={editingCampaign?.id || 'new'}
+                                content={formData.content || ''}
+                                onChange={(val) => setFormData({ ...formData, content: val })}
+                                placeholder="Kampanya detaylarını buraya yazın. Görseller, tablolar, listeler ekleyebilirsiniz..."
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Bu içerik kampanyanın kendi detay sayfasında gösterilir.</p>
                         </div>
 
                         {/* Active Status */}
@@ -583,92 +657,158 @@ export const Campaigns: React.FC = () => {
                 </div>
             )}
 
-            {/* List */}
+            {/* Campaign List - Modern Card Design */}
             {!showForm && (
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sıra</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kampanya</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Firma</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vade/Tutar</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {filteredCampaigns.map((campaign, index) => (
-                                <tr key={campaign.id} className="hover:bg-gray-50">
+                <div className="space-y-4">
+                    {filteredCampaigns.map((campaign, index) => {
+                        const badgeMap: Record<string, { text: string; bg: string; text_color: string }> = {
+                            'faizsiz_firsat': { text: 'Faizsiz Fırsat', bg: 'bg-orange-50 dark:bg-orange-900/20', text_color: 'text-orange-700 dark:text-orange-400' },
+                            'ozel_kampanya': { text: 'Özel Kampanya', bg: 'bg-blue-50 dark:bg-blue-900/20', text_color: 'text-blue-700 dark:text-blue-400' },
+                            'sponsorlu': { text: 'Sponsorlu', bg: 'bg-purple-50 dark:bg-purple-900/20', text_color: 'text-purple-700 dark:text-purple-400' },
+                            'hemen_teslim': { text: '🚗 Hemen Teslim', bg: 'bg-red-50 dark:bg-red-900/20', text_color: 'text-red-700 dark:text-red-400' },
+                        };
+                        const badge = campaign.badge_type ? badgeMap[campaign.badge_type] : null;
+
+                        return (
+                            <div
+                                key={campaign.id}
+                                className={`bg-white dark:bg-slate-800 rounded-xl border transition-all duration-200 hover:shadow-lg ${campaign.is_active
+                                    ? 'border-gray-200 dark:border-slate-700'
+                                    : 'border-gray-200 dark:border-slate-700 opacity-60'
+                                    }`}
+                            >
+                                <div className="p-5 flex flex-col md:flex-row items-center gap-5">
                                     {/* Order Arrows */}
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col gap-1">
-                                            <button
-                                                onClick={() => handleMoveUp(campaign, index)}
-                                                disabled={index === 0}
-                                                className={`p-1 rounded hover:bg-gray-100 ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                title="Yukarı taşı"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleMoveDown(campaign, index)}
-                                                disabled={index === filteredCampaigns.length - 1}
-                                                className={`p-1 rounded hover:bg-gray-100 ${index === filteredCampaigns.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                title="Aşağı taşı"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            {campaign.image_url && (
-                                                <img src={campaign.image_url} alt="" className="w-12 h-12 object-cover rounded" />
-                                            )}
-                                            <div>
-                                                <div className="font-medium text-gray-900">{campaign.title}</div>
-                                                {campaign.badge_type && (
-                                                    <span className="text-xs text-gray-500">{campaign.badge_type}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">{campaign.company?.name}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                        {campaign.vade_months} ay / {campaign.amount_tl.toLocaleString('tr-TR')} TL
-                                    </td>
-                                    <td className="px-6 py-4">
+                                    <div className="flex md:flex-col gap-1 flex-shrink-0 order-first">
                                         <button
-                                            onClick={() => handleToggleActive(campaign.id, campaign.is_active)}
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${campaign.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                                }`}
+                                            onClick={() => handleMoveUp(campaign, index)}
+                                            disabled={index === 0}
+                                            className={`p-1.5 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                            title="Yukarı taşı"
                                         >
-                                            {campaign.is_active ? 'Aktif' : 'Pasif'}
+                                            <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                            </svg>
                                         </button>
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
+                                        <button
+                                            onClick={() => handleMoveDown(campaign, index)}
+                                            disabled={index === filteredCampaigns.length - 1}
+                                            className={`p-1.5 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${index === filteredCampaigns.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                            title="Aşağı taşı"
+                                        >
+                                            <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {/* Campaign Image */}
+                                    <div className="w-full md:w-28 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600">
+                                        {campaign.image_url ? (
+                                            <img src={campaign.image_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Campaign Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                                            <h3 className="font-bold text-gray-900 dark:text-white text-sm md:text-base truncate">
+                                                {campaign.title}
+                                            </h3>
+                                            {badge && (
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${badge.bg} ${badge.text_color}`}>
+                                                    {badge.text}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                            {campaign.company?.name && (
+                                                <span className="flex items-center gap-1">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                    </svg>
+                                                    {campaign.company.name}
+                                                </span>
+                                            )}
+                                            {(campaign.vade_months ?? 0) > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    {campaign.vade_months} Ay
+                                                </span>
+                                            )}
+                                            {(campaign.amount_tl ?? 0) > 0 && (
+                                                <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300">
+                                                    {campaign.amount_tl!.toLocaleString('tr-TR')} TL
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Toggle Switch */}
+                                    <div className="flex items-center gap-3 flex-shrink-0">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <button
+                                                onClick={() => handleToggleActive(campaign.id, campaign.is_active)}
+                                                disabled={togglingId === campaign.id}
+                                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 ${campaign.is_active
+                                                    ? 'bg-green-500 focus:ring-green-500'
+                                                    : 'bg-gray-300 dark:bg-slate-600 focus:ring-gray-400'
+                                                    }`}
+                                                title={campaign.is_active ? 'Pasife al' : 'Aktife al'}
+                                            >
+                                                <span
+                                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-300 ${campaign.is_active ? 'translate-x-6' : 'translate-x-1'
+                                                        }`}
+                                                />
+                                            </button>
+                                            <span className={`text-[10px] font-bold ${campaign.is_active ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {campaign.is_active ? 'Aktif' : 'Pasif'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-2 flex-shrink-0">
                                         <button
                                             onClick={() => handleEdit(campaign)}
-                                            className="text-blue-600 hover:text-blue-800"
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
                                         >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
                                             Düzenle
                                         </button>
                                         <button
                                             onClick={() => handleDelete(campaign.id)}
-                                            className="text-red-600 hover:text-red-800"
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
                                         >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
                                             Sil
                                         </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {filteredCampaigns.length === 0 && (
+                        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                            <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            </svg>
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">Kampanya bulunamadı</p>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -100,7 +100,7 @@ export const AdminLogin: React.FC = () => {
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
                                         className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
-                                        placeholder="ornek@sirket.com"
+                                        placeholder="E-posta adresiniz"
                                     />
                                 </div>
                             </div>

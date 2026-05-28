@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { siteSettingsApi } from '../services/api/siteSettings';
 import { SiteSettings } from '../types/database';
 import { Loader2 } from 'lucide-react';
@@ -21,6 +22,40 @@ export const AboutPage: React.FC = () => {
         fetchSettings();
     }, []);
 
+    // Inject AboutPage JSON-LD
+    useEffect(() => {
+        if (!settings) return;
+
+        const jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'AboutPage',
+            'name': settings.about_title || 'Hakkımızda',
+            'url': 'https://katilimuzmani.com/hakkimizda',
+            'description': settings.about_mission || 'Katılım Uzmanı hakkında bilgi',
+            'mainEntity': {
+                '@type': 'Organization',
+                'name': 'Katılım Uzmanı',
+                'url': 'https://katilimuzmani.com',
+                'description': settings.about_mission || '',
+            },
+            'inLanguage': 'tr-TR',
+        };
+
+        const oldScript = document.querySelector('script[data-seo="about-jsonld"]');
+        if (oldScript) oldScript.remove();
+
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.setAttribute('data-seo', 'about-jsonld');
+        script.textContent = JSON.stringify(jsonLd);
+        document.head.appendChild(script);
+
+        return () => {
+            const el = document.querySelector('script[data-seo="about-jsonld"]');
+            if (el) el.remove();
+        };
+    }, [settings]);
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
@@ -36,6 +71,13 @@ export const AboutPage: React.FC = () => {
             </div>
         );
     }
+
+    const safeAboutContent = settings.about_content
+        ? DOMPurify.sanitize(settings.about_content, {
+            USE_PROFILES: { html: true },
+        }).replace(/\n/g, '<br>')
+        : '';
+
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-900">
@@ -72,7 +114,7 @@ export const AboutPage: React.FC = () => {
                     <div className="container mx-auto px-4">
                         <div className="max-w-3xl mx-auto">
                             <div
-                                dangerouslySetInnerHTML={{ __html: settings.about_content.replace(/\n/g, '<br>') }}
+                                dangerouslySetInnerHTML={{ __html: safeAboutContent }}
                                 className="text-slate-600 dark:text-slate-300 text-base md:text-lg leading-relaxed"
                             />
                         </div>
@@ -122,3 +164,4 @@ export const AboutPage: React.FC = () => {
 };
 
 export default AboutPage;
+

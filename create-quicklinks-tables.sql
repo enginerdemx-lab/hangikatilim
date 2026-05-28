@@ -43,7 +43,8 @@ CREATE POLICY "Public can view quicklinks settings"
 DROP POLICY IF EXISTS "Admin can manage quicklinks settings" ON home_quicklinks_settings;
 CREATE POLICY "Admin can manage quicklinks settings"
     ON home_quicklinks_settings FOR ALL
-    USING (auth.uid() IS NOT NULL);
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
 
 -- RLS Policies for home_quicklinks_items
 ALTER TABLE home_quicklinks_items ENABLE ROW LEVEL SECURITY;
@@ -56,7 +57,8 @@ CREATE POLICY "Public can view active quicklinks items"
 DROP POLICY IF EXISTS "Admin can manage quicklinks items" ON home_quicklinks_items;
 CREATE POLICY "Admin can manage quicklinks items"
     ON home_quicklinks_items FOR ALL
-    USING (auth.uid() IS NOT NULL);
+    USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
 
 -- Triggers for updated_at
 CREATE TRIGGER update_home_quicklinks_settings_updated_at 
@@ -78,3 +80,5 @@ INSERT INTO home_quicklinks_items (title, icon, link_url, is_external, order_no,
 -- Verify
 SELECT 'Settings:' as info, * FROM home_quicklinks_settings;
 SELECT 'Items:' as info, * FROM home_quicklinks_items ORDER BY order_no;
+
+

@@ -22,8 +22,8 @@ ALTER TABLE faq_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read faq" ON faq_items
     FOR SELECT USING (true);
 
-CREATE POLICY "Allow all for authenticated faq" ON faq_items
-    FOR ALL USING (true);
+CREATE POLICY "Allow all for admin faq" ON faq_items
+    FOR ALL USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
 
 
 -- ===== INFO CARDS TABLOSU =====
@@ -46,8 +46,8 @@ ALTER TABLE info_cards ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read info_cards" ON info_cards
     FOR SELECT USING (true);
 
-CREATE POLICY "Allow all for authenticated info_cards" ON info_cards
-    FOR ALL USING (true);
+CREATE POLICY "Allow all for admin info_cards" ON info_cards
+    FOR ALL USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
 
 
 -- ===== LICENSED COMPANIES TABLOSU (ŞİRKET LOGOLARI) =====
@@ -69,8 +69,8 @@ ALTER TABLE licensed_companies ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read licensed_companies" ON licensed_companies
     FOR SELECT USING (true);
 
-CREATE POLICY "Allow all for authenticated licensed_companies" ON licensed_companies
-    FOR ALL USING (true);
+CREATE POLICY "Allow all for admin licensed_companies" ON licensed_companies
+    FOR ALL USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
 
 
 -- ===== HOW IT WORKS STEPS TABLOSU =====
@@ -93,8 +93,8 @@ ALTER TABLE how_it_works_steps ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read how_it_works" ON how_it_works_steps
     FOR SELECT USING (true);
 
-CREATE POLICY "Allow all for authenticated how_it_works" ON how_it_works_steps
-    FOR ALL USING (true);
+CREATE POLICY "Allow all for admin how_it_works" ON how_it_works_steps
+    FOR ALL USING (public.is_admin(auth.uid())) WITH CHECK (public.is_admin(auth.uid()));
 
 
 -- ===============================================
@@ -118,3 +118,6 @@ INSERT INTO licensed_companies (company_name, logo_url, order_index) VALUES
 ('Albayrak Katılım', 'https://hangikatilim.com/images/companies/albayrak.png', 1);
 
 SELECT 'Tablolar başarıyla oluşturuldu!' AS sonuc;
+
+
+

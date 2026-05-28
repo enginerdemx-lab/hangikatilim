@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Copy, Share2 } from 'lucide-react';
+import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Copy, Share2, AlertTriangle } from 'lucide-react';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../types';
 import { generatePDF, generatePDFBlob } from '../src/services/pdfService';
@@ -11,6 +11,8 @@ import { LoginModal } from '../src/components/auth/LoginModal';
 import { RegisterModal } from '../src/components/auth/RegisterModal';
 import { PasswordResetModal } from '../src/components/auth/PasswordResetModal';
 import { SponsorArea, SponsorTrigger } from './SponsorArea';
+import { ConsultationRequestModal } from './ConsultationRequestModal';
+import { MessageCircle as ChatIcon } from 'lucide-react';
 import { parseQueryToState, buildShareUrl, buildWhatsAppMessage, openWhatsApp, hasUrlParams, formatCurrencyForShare } from '../src/utils/calculatorUrlParams';
 
 
@@ -88,6 +90,9 @@ export const Calculator: React.FC<CalculatorProps> = ({
     setUserProperty('is_logged_in', !!user);
   }, [user]);
 
+  // Consultation Modal State
+  const [consultationOpen, setConsultationOpen] = useState(false);
+
   // State
   const [params, setParams] = useState<CalculationParams>({
     assetType: AssetType.HOME, // Default Home
@@ -143,6 +148,30 @@ export const Calculator: React.FC<CalculatorProps> = ({
   // Sponsor Area State
   const [showSponsor, setShowSponsor] = useState(false);
   const [sponsorTrigger, setSponsorTrigger] = useState<SponsorTrigger | null>(null);
+
+  // Auto-switch warning: Çekilişli Sistem'de peşinat >= %40 ise uyarı göster
+  const [autoSwitchDismissed, setAutoSwitchDismissed] = useState(false);
+
+  // Peşinat %40 eşiğini karşılıyor mu kontrolü
+  const downPaymentMeetsThreshold = useMemo(() => {
+    const totalUpfront = params.downPayment + params.interimPayment1 + params.interimPayment2;
+    return totalUpfront >= params.targetAmount * DELIVERY_THRESHOLD_RATE;
+  }, [params.downPayment, params.interimPayment1, params.interimPayment2, params.targetAmount]);
+
+  // Uyarı gösterilecek mi?
+  const showAutoSwitchWarning = useMemo(() => {
+    return params.systemType === SystemType.LOTTERY && downPaymentMeetsThreshold && !autoSwitchDismissed;
+  }, [params.systemType, downPaymentMeetsThreshold, autoSwitchDismissed]);
+
+  // Sistem değiştiğinde dismiss'i sıfırla
+  useEffect(() => {
+    setAutoSwitchDismissed(false);
+  }, [params.systemType]);
+
+  // Peşinat değiştiğinde dismiss'i sıfırla
+  useEffect(() => {
+    setAutoSwitchDismissed(false);
+  }, [params.downPayment, params.interimPayment1, params.interimPayment2, params.targetAmount]);
 
   // URL Sync - Track if initial load happened
   const [urlInitialized, setUrlInitialized] = useState(false);
@@ -866,7 +895,7 @@ Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel b
             </div>
 
             {/* SYSTEM SELECTION TOGGLE */}
-            <div className="bg-gray-50 dark:bg-slate-900 p-1.5 rounded-xl flex mb-8 shadow-inner border border-gray-100 dark:border-slate-800">
+            <div className="bg-gray-50 dark:bg-slate-900 p-1.5 rounded-xl flex mb-4 shadow-inner border border-gray-100 dark:border-slate-800">
               <button
                 onClick={() => handleSystemTypeChange(SystemType.LOTTERY)}
                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${params.systemType === SystemType.LOTTERY
@@ -888,6 +917,43 @@ Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel b
                 Çekilişsiz Sistem
               </button>
             </div>
+
+            {/* AUTO-SWITCH WARNING BANNER */}
+            {showAutoSwitchWarning && (
+              <div className="mb-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={22} className="text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">
+                      Peşinat Tutarınız %40 Eşiğini Karşılıyor
+                    </h4>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed mb-3">
+                      Peşinat tutarınız hedef tutarın <strong>%{((params.downPayment / params.targetAmount) * 100).toFixed(0)}</strong>'ini oluşturuyor.
+                      Bu durumda çekilişe gerek kalmadan <strong>6. aydan itibaren</strong> teslim alma hakkınız doğar.
+                      Plan otomatik olarak <strong>Çekilişsiz Sistem</strong> ile değerlendirilmelidir.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          handleSystemTypeChange(SystemType.NON_LOTTERY);
+                          setAutoSwitchDismissed(true);
+                        }}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2"
+                      >
+                        <Zap size={14} />
+                        Çekilişsiz Sisteme Geç
+                      </button>
+                      <button
+                        onClick={() => setAutoSwitchDismissed(true)}
+                        className="px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
+                      >
+                        Kapat
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Non-Lottery Info */}
             {params.systemType === SystemType.NON_LOTTERY && (
@@ -1487,9 +1553,33 @@ Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel b
                   className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white py-2.5 px-4 rounded-xl text-sm font-medium transition-all shadow-lg shadow-[#25D366]/20"
                 >
                   <Share2 size={16} className="flex-shrink-0" />
-                  <span>WhatsApp</span>
+                  <span>Whatsapp'da Paylaş</span>
                 </button>
               </div>
+
+              {/* Free Consultation Request Button */}
+              <button
+                onClick={() => {
+                  setConsultationOpen(true);
+                  if (typeof window !== 'undefined' && window.gtag) {
+                    window.gtag('event', 'consultation_request_opened', {
+                      amount: params.targetAmount,
+                      system_type: params.systemType,
+                    });
+                  }
+                }}
+                className="w-full mb-8 group relative overflow-hidden flex items-center gap-4 bg-gradient-to-br from-[#0855f8] to-[#0645d0] hover:from-[#0645d0] hover:to-[#053bb0] text-white py-4 px-5 rounded-2xl transition-all shadow-lg shadow-[#0855f8]/30 hover:shadow-xl hover:shadow-[#0855f8]/40 transform active:scale-[0.98]"
+              >
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/10 group-hover:bg-white/25 transition-colors">
+                  <ChatIcon size={22} className="text-white" />
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-bold text-base leading-tight">Ücretsiz Danışmanlık Talebi</div>
+                  <div className="text-xs text-blue-100 mt-0.5">Uzmanlarımız sizi arasın, size özel plan oluştursun</div>
+                </div>
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors"></div>
+              </button>
+
               {aiAdvice && (
                 <div className="bg-purple-50 dark:bg-slate-800 p-4 rounded-xl border border-purple-100 dark:border-slate-600 text-sm text-purple-900 dark:text-purple-100 animate-fade-in mb-6">
                   <div className="flex items-center gap-2 mb-2 text-purple-700 dark:text-purple-300 font-bold">
@@ -1794,6 +1884,13 @@ Yanıtı 3-4 kısa paragraf olarak ver. Türkçe yaz ve samimi ama profesyonel b
           setShowResetModal(false);
           setShowLoginModal(true);
         }}
+      />
+
+      <ConsultationRequestModal
+        isOpen={consultationOpen}
+        onClose={() => setConsultationOpen(false)}
+        defaultAmount={params.targetAmount}
+        defaultSystemType={params.systemType === SystemType.LOTTERY ? 'CEKILISLI' : 'CEKILISSIZ'}
       />
 
     </div>

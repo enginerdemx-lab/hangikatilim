@@ -1,76 +1,75 @@
 <?php
 /**
- * E-posta Gönderme API - NATRO SMTP
- * Natro hosting tarafından onaylanan SMTP ayarları kullanılıyor
+ * Secure SMTP mail endpoint
  */
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('ALLOWED_ORIGINS') ?: 'https://katilimuzmani.com,https://www.katilimuzmani.com,http://localhost:3000,http://localhost:5173')));
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin');
+}
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     http_response_code(405);
-    exit(json_encode(['success' => false, 'error' => 'Method not allowed']));
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+    exit();
+}
+
+$requiredApiKey = getenv('MAIL_API_KEY') ?: '';
+if ($requiredApiKey !== '') {
+    $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+    if ($apiKey === '') {
+        $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        if (stripos($auth, 'Bearer ') === 0) {
+            $apiKey = substr($auth, 7);
+        }
+    }
+    if (!hash_equals($requiredApiKey, $apiKey)) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+        exit();
+    }
 }
 
 class NatroSMTP
 {
     private $socket;
-    private $debug = [];
     public $lastError = '';
-
-    private function log($msg)
-    {
-        $this->debug[] = date('H:i:s') . ' - ' . $msg;
-    }
-
-    private function read()
-    {
-        $response = '';
-        while ($line = fgets($this->socket, 512)) {
-            $response .= $line;
-            if (substr($line, 3, 1) == ' ')
-                break;
-        }
-        $this->log("SERVER: " . trim($response));
-        return $response;
-    }
-
-    private function send($cmd)
-    {
-        $this->log("CLIENT: $cmd");
-        fwrite($this->socket, $cmd . "\r\n");
-        return $this->read();
-    }
 
     public function sendMail($to, $subject, $html, $from, $fromName)
     {
-        // NATRO SMTP AYARLARI (Hosting firması tarafından onaylandı)
-        $host = 'mail.kurumsaleposta.com';
-        $port = 465;
-        $user = 'destek@katilimuzmani.com';
-        $pass = 'dN_5_BXb18h6@wD:';
+        $host = getenv('SMTP_HOST') ?: 'mail.kurumsaleposta.com';
+        $port = (int)(getenv('SMTP_PORT') ?: '465');
+        $user = getenv('SMTP_USER') ?: 'destek@katilimuzmani.com';
+        $pass = getenv('SMTP_PASS') ?: '';
+
+        if ($pass === '') {
+            $this->lastError = 'SMTP_PASS is not configured';
+            return false;
+        }
 
         try {
-            $this->log("Connecting to ssl://$host:$port...");
-
             $context = stream_context_create([
                 'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
-                    'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT
-                ]
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                    'allow_self_signed' => false,
+                    'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT,
+                ],
             ]);
 
             $this->socket = @stream_socket_client(
-                "ssl://$host:$port",
+                "ssl://{$host}:{$port}",
                 $errno,
                 $errstr,
                 30,
@@ -79,114 +78,89 @@ class NatroSMTP
             );
 
             if (!$this->socket) {
-                throw new Exception("Bağlantı hatası: $errstr ($errno)");
+                throw new Exception("Connection failed: {$errstr} ({$errno})");
             }
 
-            $this->log("Connected!");
-            $this->read(); // Welcome message
+            $this->read();
+            $this->expect($this->send('EHLO ' . gethostname()), '250');
+            $this->expect($this->send('AUTH LOGIN'), '334');
+            $this->expect($this->send(base64_encode($user)), '334');
+            $this->expect($this->send(base64_encode($pass)), '235');
+            $this->expect($this->send("MAIL FROM:<{$user}>"), '250');
+            $this->expect($this->send("RCPT TO:<{$to}>"), '250');
+            $this->expect($this->send('DATA'), '354');
 
-            // EHLO
-            $response = $this->send("EHLO " . gethostname());
-            if (substr($response, 0, 3) != '250') {
-                throw new Exception("EHLO hatası: $response");
-            }
-
-            // AUTH LOGIN
-            $response = $this->send("AUTH LOGIN");
-            if (substr($response, 0, 3) != '334') {
-                throw new Exception("AUTH hatası: $response");
-            }
-
-            $response = $this->send(base64_encode($user));
-            if (substr($response, 0, 3) != '334') {
-                throw new Exception("Kullanıcı adı hatası: $response");
-            }
-
-            $response = $this->send(base64_encode($pass));
-            if (substr($response, 0, 3) != '235') {
-                throw new Exception("Şifre hatası: $response");
-            }
-
-            // MAIL FROM
-            $response = $this->send("MAIL FROM:<$user>");
-            if (substr($response, 0, 3) != '250') {
-                throw new Exception("MAIL FROM hatası: $response");
-            }
-
-            // RCPT TO
-            $response = $this->send("RCPT TO:<$to>");
-            if (substr($response, 0, 3) != '250') {
-                throw new Exception("RCPT TO hatası: $response");
-            }
-
-            // DATA
-            $response = $this->send("DATA");
-            if (substr($response, 0, 3) != '354') {
-                throw new Exception("DATA hatası: $response");
-            }
-
-            // Email içeriği
+            $subject = str_replace(["\r", "\n"], ' ', $subject);
             $headers = "MIME-Version: 1.0\r\n";
             $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-            $headers .= "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <$from>\r\n";
-            $headers .= "To: <$to>\r\n";
-            $headers .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
-            $headers .= "Date: " . date('r') . "\r\n";
+            $headers .= 'From: =?UTF-8?B?' . base64_encode($fromName) . "?= <{$from}>\r\n";
+            $headers .= "To: <{$to}>\r\n";
+            $headers .= 'Subject: =?UTF-8?B?' . base64_encode($subject) . "?=\r\n";
+            $headers .= 'Date: ' . date('r') . "\r\n\r\n";
 
-            $body = $headers . "\r\n" . $html . "\r\n.";
-            $response = $this->send($body);
-
-            if (substr($response, 0, 3) != '250') {
-                throw new Exception("Mail gönderim hatası: $response");
-            }
-
-            // QUIT
-            $this->send("QUIT");
+            $this->expect($this->send($headers . $html . "\r\n."), '250');
+            $this->send('QUIT');
             fclose($this->socket);
-
             return true;
-
         } catch (Exception $e) {
             $this->lastError = $e->getMessage();
-            $this->log("ERROR: " . $e->getMessage());
-            if ($this->socket)
+            if ($this->socket) {
                 @fclose($this->socket);
+            }
             return false;
         }
     }
 
-    public function getDebugLog()
+    private function read()
     {
-        return $this->debug;
+        $response = '';
+        while ($line = fgets($this->socket, 512)) {
+            $response .= $line;
+            if (substr($line, 3, 1) === ' ') {
+                break;
+            }
+        }
+        return $response;
+    }
+
+    private function send($cmd)
+    {
+        fwrite($this->socket, $cmd . "\r\n");
+        return $this->read();
+    }
+
+    private function expect($response, $code)
+    {
+        if (substr($response, 0, 3) !== $code) {
+            throw new Exception(trim($response));
+        }
     }
 }
 
-// Input al
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-if (!$data || !isset($data['to']) || !isset($data['subject']) || !isset($data['html'])) {
+$to = trim((string)($data['to'] ?? ''));
+$subject = trim((string)($data['subject'] ?? ''));
+$html = (string)($data['html'] ?? '');
+
+if ($to === '' || $subject === '' || $html === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
     http_response_code(400);
-    exit(json_encode(['success' => false, 'error' => 'Missing fields']));
+    echo json_encode(['success' => false, 'error' => 'Missing or invalid fields']);
+    exit();
 }
 
+$from = getenv('MAIL_FROM_EMAIL') ?: 'destek@katilimuzmani.com';
+$fromName = getenv('MAIL_FROM_NAME') ?: 'Katilim Uzmani';
+
 $smtp = new NatroSMTP();
-$success = $smtp->sendMail(
-    $data['to'],
-    $data['subject'],
-    $data['html'],
-    'destek@katilimuzmani.com',
-    'Katılım Uzmanı'
-);
+$success = $smtp->sendMail($to, $subject, $html, $from, $fromName);
 
 if ($success) {
     echo json_encode(['success' => true]);
 } else {
+    error_log('SMTP send failed: ' . $smtp->lastError);
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $smtp->lastError,
-        'debug' => $smtp->getDebugLog()
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Send failed']);
 }
 ?>

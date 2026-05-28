@@ -155,7 +155,7 @@ export const emailService = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsY2t5d25sbGFwcnJ0amdxb3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ1MTg2MDcsImV4cCI6MjA1MDA5NDYwN30.bIjQfSLQs6RihwJpCjqjNx_RmjskXxvvukIqeD5tuyQ'}`
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY }`
                 },
                 body: JSON.stringify({
                     to,
@@ -272,4 +272,5 @@ export const emailService = {
 };
 
 export default emailService;
+
 

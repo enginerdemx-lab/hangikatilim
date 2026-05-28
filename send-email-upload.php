@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $smtp_host = 'mail.katilimuzmani.com';
 $smtp_port = 587;
 $smtp_user = 'bildirim@katilimuzmani.com';
-$smtp_pass = 'MD-3rHdk:.n746P-';
+$smtp_pass = getenv('SMTP_PASS') ?: '';
 $from_email = 'bildirim@katilimuzmani.com';
 $from_name = 'Katılım Uzmanı';
 

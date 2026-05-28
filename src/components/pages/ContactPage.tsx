@@ -142,7 +142,7 @@ export const ContactPage: React.FC = () => {
                                             onChange={handleChange}
                                             required
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                            placeholder="ornek@email.com"
+                                            placeholder="E-posta adresiniz"
                                         />
                                     </div>
                                 </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { siteSettingsApi } from '../../services/api/siteSettings';
 import { uiEffectsApi, SnowConfig, DEFAULT_SNOW_CONFIG } from '../../services/api/uiEffects';
+import { pageSeoApi, PageSeoData, DEFAULT_PAGE_SEO } from '../../services/api/pageSeo';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { SiteSettings } from '../../types/database';
@@ -140,6 +141,11 @@ export const SiteSettings: React.FC = () => {
     const [snowPreviewing, setSnowPreviewing] = useState(false);
     const [newExcludedPage, setNewExcludedPage] = useState('');
 
+    // Page SEO State
+    const [pageSeoList, setPageSeoList] = useState<PageSeoData[]>([]);
+    const [pageSeoLoading, setPageSeoLoading] = useState(false);
+    const [pageSeoSaving, setPageSeoSaving] = useState(false);
+
     const { success, error: showError } = useToast();
 
     // Form state (renk alanları kaldırıldı)
@@ -172,6 +178,9 @@ export const SiteSettings: React.FC = () => {
         privacy_content: '',
         terms_content: '',
         cookie_content: '',
+        data_sharing_text: 'Veri Paylaşım Sözleşmesi',
+        data_sharing_content: '',
+        data_sharing_url: '',
         facebook_url: '',
         twitter_url: '',
         instagram_url: '',
@@ -180,6 +189,7 @@ export const SiteSettings: React.FC = () => {
         ticker_active: true,
         gold_ons_price: '2060',
         market_gold_change_rate: '',
+        social_follow_promo_enabled: true,
     });
 
     const [originalData, setOriginalData] = useState<typeof formData | null>(null);
@@ -220,6 +230,9 @@ export const SiteSettings: React.FC = () => {
                     privacy_content: data.privacy_content || '',
                     terms_content: data.terms_content || '',
                     cookie_content: data.cookie_content || '',
+                    data_sharing_text: data.data_sharing_text || 'Veri Paylaşım Sözleşmesi',
+                    data_sharing_content: data.data_sharing_content || '',
+                    data_sharing_url: data.data_sharing_url || '',
                     facebook_url: data.facebook_url || '',
                     twitter_url: data.twitter_url || '',
                     instagram_url: data.instagram_url || '',
@@ -228,6 +241,7 @@ export const SiteSettings: React.FC = () => {
                     ticker_active: data.ticker_active !== false,
                     gold_ons_price: data.gold_ons_price?.toString() || '2060',
                     market_gold_change_rate: data.market_gold_change_rate?.toString() || '',
+                    social_follow_promo_enabled: data.social_follow_promo_enabled !== false,
                 };
                 setFormData(newFormData);
                 setOriginalData(newFormData);
@@ -257,7 +271,52 @@ export const SiteSettings: React.FC = () => {
         if (activeTab === 'efektler') {
             loadSnowConfig();
         }
+        if (activeTab === 'seo') {
+            loadPageSeo();
+        }
     }, [activeTab, loadSnowConfig]);
+
+    // Load page SEO data
+    const loadPageSeo = async () => {
+        try {
+            setPageSeoLoading(true);
+            // Initialize defaults first (only inserts missing entries)
+            await pageSeoApi.initializeDefaults();
+            const data = await pageSeoApi.getAllPageSeo();
+            setPageSeoList(data);
+        } catch (err) {
+            console.error('Page SEO yüklenemedi:', err);
+            // Fallback to defaults if table doesn't exist yet
+            setPageSeoList(DEFAULT_PAGE_SEO.map((d, i) => ({ ...d, id: `default-${i}` })) as PageSeoData[]);
+        } finally {
+            setPageSeoLoading(false);
+        }
+    };
+
+    // Update a single page SEO entry in local state
+    const handlePageSeoChange = (pagePath: string, field: 'seo_title' | 'seo_description', value: string) => {
+        setPageSeoList(prev => prev.map(p => p.page_path === pagePath ? { ...p, [field]: value } : p));
+    };
+
+    // Save all page SEO entries
+    const handleSavePageSeo = async () => {
+        try {
+            setPageSeoSaving(true);
+            await pageSeoApi.bulkUpsertPageSeo(
+                pageSeoList.map(p => ({
+                    page_path: p.page_path,
+                    page_label: p.page_label,
+                    seo_title: p.seo_title,
+                    seo_description: p.seo_description,
+                }))
+            );
+            success('Sayfa SEO ayarları kaydedildi');
+        } catch (err) {
+            showError('Kaydetme başarısız');
+        } finally {
+            setPageSeoSaving(false);
+        }
+    };
 
     // Cleanup preview on unmount or tab change
     useEffect(() => {
@@ -481,34 +540,115 @@ export const SiteSettings: React.FC = () => {
                 )}
 
                 {activeTab === 'seo' && (
-                    <Card title="SEO Ayarları">
-                        <div className="space-y-4">
-                            <InputField
-                                label="Varsayılan SEO Başlığı"
-                                value={formData.default_seo_title}
-                                onChange={(v) => handleFormChange({ default_seo_title: v })}
-                                placeholder="Katılım Uzmanı - Katılım Bankacılığı Karşılaştırma"
-                            />
-                            <InputField
-                                label="Varsayılan SEO Açıklaması"
-                                value={formData.default_seo_description}
-                                onChange={(v) => handleFormChange({ default_seo_description: v })}
-                                placeholder="Katılım bankalarının kampanyalarını karşılaştırın..."
-                                rows={3}
-                            />
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">OG Görseli</label>
-                                <ImageUpload
-                                    folder="seo"
-                                    currentImageUrl={formData.og_image_url}
-                                    onUploadComplete={(url) => handleFormChange({ og_image_url: url })}
-                                    onDelete={() => handleFormChange({ og_image_url: '' })}
-                                    label="OG Image"
+                    <div className="space-y-6">
+                        {/* Default SEO */}
+                        <Card title="Varsayılan SEO Ayarları">
+                            <div className="space-y-4">
+                                <InputField
+                                    label="Varsayılan SEO Başlığı"
+                                    value={formData.default_seo_title}
+                                    onChange={(v) => handleFormChange({ default_seo_title: v })}
+                                    placeholder="Katılım Uzmanı - Katılım Bankacılığı Karşılaştırma"
                                 />
-                                <p className="mt-1 text-xs text-slate-500">Sosyal medya paylaşımlarında görünür (1200x630px önerilir)</p>
+                                <InputField
+                                    label="Varsayılan SEO Açıklaması"
+                                    value={formData.default_seo_description}
+                                    onChange={(v) => handleFormChange({ default_seo_description: v })}
+                                    placeholder="Katılım bankalarının kampanyalarını karşılaştırın..."
+                                    rows={3}
+                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">OG Görseli</label>
+                                    <ImageUpload
+                                        folder="seo"
+                                        currentImageUrl={formData.og_image_url}
+                                        onUploadComplete={(url) => handleFormChange({ og_image_url: url })}
+                                        onDelete={() => handleFormChange({ og_image_url: '' })}
+                                        label="OG Image"
+                                    />
+                                    <p className="mt-1 text-xs text-slate-500">Sosyal medya paylaşımlarında görünür (1200x630px önerilir)</p>
+                                </div>
                             </div>
-                        </div>
-                    </Card>
+                        </Card>
+
+                        {/* Per-Page SEO */}
+                        <Card>
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">Sayfa Bazlı SEO</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Her sayfa için Google'da görünecek başlık ve açıklamayı özelleştirin</p>
+                                </div>
+                                <button
+                                    onClick={handleSavePageSeo}
+                                    disabled={pageSeoSaving}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium text-sm transition-colors"
+                                >
+                                    {pageSeoSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                                    {pageSeoSaving ? 'Kaydediliyor...' : 'Sayfa SEO Kaydet'}
+                                </button>
+                            </div>
+
+                            {pageSeoLoading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-slate-600"></div>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {pageSeoList.map((page) => (
+                                        <div key={page.page_path} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+                                            {/* Page label and path */}
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white">{page.page_label}</span>
+                                                <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{page.page_path}</span>
+                                            </div>
+
+                                            {/* Title */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Sayfa Başlığı (Title Tag)</label>
+                                                <input
+                                                    type="text"
+                                                    value={page.seo_title}
+                                                    onChange={(e) => handlePageSeoChange(page.page_path, 'seo_title', e.target.value)}
+                                                    placeholder="Sayfa başlığı..."
+                                                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
+                                                />
+                                                <p className={`mt-0.5 text-xs ${(page.seo_title?.length || 0) > 60 ? 'text-orange-500' : 'text-slate-400'}`}>
+                                                    {page.seo_title?.length || 0}/60 karakter {(page.seo_title?.length || 0) > 60 ? '(çok uzun)' : ''}
+                                                </p>
+                                            </div>
+
+                                            {/* Description */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Meta Açıklama</label>
+                                                <textarea
+                                                    value={page.seo_description}
+                                                    onChange={(e) => handlePageSeoChange(page.page_path, 'seo_description', e.target.value)}
+                                                    placeholder="Sayfa açıklaması..."
+                                                    rows={2}
+                                                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent resize-none"
+                                                />
+                                                <p className={`mt-0.5 text-xs ${(page.seo_description?.length || 0) > 160 ? 'text-orange-500' : 'text-slate-400'}`}>
+                                                    {page.seo_description?.length || 0}/160 karakter {(page.seo_description?.length || 0) > 160 ? '(çok uzun)' : ''}
+                                                </p>
+                                            </div>
+
+                                            {/* Google Preview */}
+                                            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+                                                <p className="text-[10px] text-slate-400 mb-1 font-medium">Google Önizleme</p>
+                                                <p className="text-xs text-green-700 dark:text-green-400 truncate">katilimuzmani.com{page.page_path === '/' ? '' : page.page_path}</p>
+                                                <p className="text-sm text-blue-700 dark:text-blue-400 font-medium truncate mt-0.5">
+                                                    {page.seo_title || 'Başlık girilmedi...'}
+                                                </p>
+                                                <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                                                    {page.seo_description || 'Açıklama girilmedi...'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
                 )}
 
                 {activeTab === 'footer' && (
@@ -590,6 +730,22 @@ export const SiteSettings: React.FC = () => {
                                 placeholder="https://linkedin.com/company/..."
                                 showCopy
                             />
+                        </div>
+
+                        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Sosyal Medya Takip Önerisi</p>
+                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-md">
+                                        Site genelinde sağ kenarda açılır bir "Takip Et" butonu ve ara sıra beliren hareketli bir bildirim gösterir. Yukarıda linki girilmiş hesaplar otomatik listelenir. (Footer'a ek olarak çalışır.)
+                                    </p>
+                                </div>
+                                <Toggle
+                                    checked={formData.social_follow_promo_enabled}
+                                    onChange={(v) => handleFormChange({ social_follow_promo_enabled: v })}
+                                    label={formData.social_follow_promo_enabled ? 'Aktif' : 'Pasif'}
+                                />
+                            </div>
                         </div>
                     </Card>
                 )}
@@ -775,6 +931,33 @@ export const SiteSettings: React.FC = () => {
                                     rows={5}
                                     placeholder="Çerez politikası içeriği..."
                                     helper={`${formData.cookie_content.length} karakter`}
+                                />
+                            </div>
+                        </Card>
+
+                        {/* Data Sharing Consent */}
+                        <Card title="Veri Paylaşım Sözleşmesi (Tasarruf Finansman Şirketleri)">
+                            <div className="space-y-3">
+                                <InputField
+                                    label="Link Metni"
+                                    value={formData.data_sharing_text || ''}
+                                    onChange={(v) => handleFormChange({ data_sharing_text: v })}
+                                    placeholder="Veri Paylaşım Sözleşmesi"
+                                />
+                                <InputField
+                                    label="Resmi URL (opsiyonel)"
+                                    value={formData.data_sharing_url || ''}
+                                    onChange={(v) => handleFormChange({ data_sharing_url: v })}
+                                    placeholder="https://katilimuzmani.com/veri-paylasim-sozlesmesi"
+                                    helper="Doldurulursa kullanıcı bu URL'ye yönlendirilir, boş bırakılırsa aşağıdaki içerik modal olarak gösterilir."
+                                />
+                                <InputField
+                                    label="İçerik (HTML destekli)"
+                                    value={formData.data_sharing_content || ''}
+                                    onChange={(v) => handleFormChange({ data_sharing_content: v })}
+                                    rows={10}
+                                    placeholder="Veri paylaşım sözleşmesi resmi metni..."
+                                    helper={`${(formData.data_sharing_content || '').length} karakter — kullanıcı verilerinin diğer tasarruf finansman şirketleri ile paylaşılması hakkında resmi sözleşme metni.`}
                                 />
                             </div>
                         </Card>

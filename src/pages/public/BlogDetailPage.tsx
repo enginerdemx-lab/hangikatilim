@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, User, Share2, Tag, Clock } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { blogApi } from '../../services/api/blog';
 import { BlogContent } from '../../components/BlogContent';
+import { FavoriteButton } from '../../components/FavoriteButton';
 import type { BlogPost } from '../../types/database';
 
 const BlogDetailPage: React.FC = () => {
@@ -18,25 +19,88 @@ const BlogDetailPage: React.FC = () => {
         }
     }, [slug]);
 
-    // Update page title for SEO
+    // Update page title, meta, OG tags, canonical, and JSON-LD for SEO
     useEffect(() => {
         if (post) {
-            document.title = `${post.title} | Katılım Uzmanı Blog`;
+            const pageTitle = `${post.title} | Katılım Uzmanı Blog`;
+            const pageDesc = post.excerpt || post.title;
+            const pageUrl = `https://katilimuzmani.com/blog/${post.slug || post.id}`;
+            const publishDate = post.published_at || post.created_at;
 
-            // Update meta description
-            const metaDescription = document.querySelector('meta[name="description"]');
-            if (metaDescription) {
-                metaDescription.setAttribute('content', post.excerpt || post.title);
-            } else {
-                const meta = document.createElement('meta');
-                meta.name = 'description';
-                meta.content = post.excerpt || post.title;
-                document.head.appendChild(meta);
-            }
+            // Title
+            document.title = pageTitle;
+
+            // Meta description
+            let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+            if (metaDesc) { metaDesc.content = pageDesc; }
+            else { metaDesc = document.createElement('meta'); metaDesc.name = 'description'; metaDesc.content = pageDesc; document.head.appendChild(metaDesc); }
+
+            // Canonical
+            let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+            if (canonical) { canonical.href = pageUrl; }
+            else { canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = pageUrl; document.head.appendChild(canonical); }
+
+            // OG Tags
+            const ogTags: Record<string, string> = {
+                'og:title': pageTitle,
+                'og:description': pageDesc,
+                'og:url': pageUrl,
+                'og:type': 'article',
+                'og:image': post.cover_image_url || '',
+                'article:published_time': publishDate,
+                'article:author': post.author || 'Katılım Uzmanı',
+            };
+            Object.entries(ogTags).forEach(([prop, content]) => {
+                if (!content) return;
+                let tag = document.querySelector(`meta[property="${prop}"]`) as HTMLMetaElement;
+                if (tag) { tag.content = content; }
+                else { tag = document.createElement('meta'); tag.setAttribute('property', prop); tag.content = content; document.head.appendChild(tag); }
+            });
+
+            // BlogPosting JSON-LD
+            const jsonLd = {
+                '@context': 'https://schema.org',
+                '@type': 'BlogPosting',
+                'headline': post.title,
+                'description': pageDesc,
+                'url': pageUrl,
+                'datePublished': publishDate,
+                'dateModified': post.updated_at || publishDate,
+                'image': post.cover_image_url ? [post.cover_image_url] : [],
+                'author': {
+                    '@type': 'Person',
+                    'name': post.author || 'Katılım Uzmanı'
+                },
+                'publisher': {
+                    '@type': 'Organization',
+                    'name': 'Katılım Uzmanı',
+                    'url': 'https://katilimuzmani.com',
+                    'logo': {
+                        '@type': 'ImageObject',
+                        'url': 'https://katilimuzmani.com/logo.png'
+                    }
+                },
+                'mainEntityOfPage': {
+                    '@type': 'WebPage',
+                    '@id': pageUrl
+                },
+                'inLanguage': 'tr-TR',
+            };
+
+            const oldScript = document.querySelector('script[data-seo="blog-jsonld"]');
+            if (oldScript) oldScript.remove();
+
+            const script = document.createElement('script');
+            script.type = 'application/ld+json';
+            script.setAttribute('data-seo', 'blog-jsonld');
+            script.textContent = JSON.stringify(jsonLd);
+            document.head.appendChild(script);
         }
 
         return () => {
             document.title = 'Katılım Uzmanı';
+            const script = document.querySelector('script[data-seo="blog-jsonld"]');
+            if (script) script.remove();
         };
     }, [post]);
 
@@ -132,9 +196,9 @@ const BlogDetailPage: React.FC = () => {
                 <div className="container mx-auto px-4 text-center">
                     <div className="max-w-md mx-auto">
                         <div className="text-6xl mb-4">📝</div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                             İçerik Bulunamadı
-                        </h1>
+                        </h2>
                         <p className="text-gray-600 dark:text-gray-400 mb-6">
                             Aradığınız blog yazısı mevcut değil veya kaldırılmış olabilir.
                         </p>
@@ -197,14 +261,17 @@ const BlogDetailPage: React.FC = () => {
                             <Clock size={16} className="text-primary-500" />
                             {getReadingTime(post.content)}
                         </div>
-                        <button
-                            onClick={handleShare}
-                            className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors ml-auto p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
-                            aria-label="Yazıyı paylaş"
-                        >
-                            <Share2 size={16} />
-                            Paylaş
-                        </button>
+                        <div className="flex items-center gap-2 ml-auto">
+                            <FavoriteButton itemType="blog" itemId={post.id} size={18} />
+                            <button
+                                onClick={handleShare}
+                                className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                                aria-label="Yazıyı paylaş"
+                            >
+                                <Share2 size={16} />
+                                Paylaş
+                            </button>
+                        </div>
                     </div>
 
                     {/* Excerpt */}

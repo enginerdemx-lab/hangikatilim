@@ -124,9 +124,9 @@ export const adminUserService = {
         banReason?: string
     ): Promise<boolean> {
         const { data, error } = await supabase.rpc('update_user_status_admin', {
-            target_user_id: userId,
-            new_status: status,
-            reason: banReason || null
+            p_user_id: userId,
+            p_status: status,
+            p_ban_reason: banReason || null
         });
 
         if (error) {
@@ -202,7 +202,7 @@ export const adminUserService = {
     // ============================================
     async removeAvatar(userId: string) {
         const { error } = await supabase.rpc('remove_user_avatar_admin', {
-            target_user_id: userId
+            p_user_id: userId
         });
 
         if (error) throw error;
@@ -240,8 +240,7 @@ export const adminUserService = {
     // ============================================
     async getUserLoginHistory(userId: string, limit: number = 50): Promise<LoginLog[]> {
         const { data, error } = await supabase.rpc('get_user_login_history', {
-            target_user_id: userId,
-            limit_count: limit
+            p_user_id: userId
         });
 
         if (error) {
@@ -406,5 +405,21 @@ export const adminUserService = {
             console.error('Send password reset email error:', error);
             throw error;
         }
+    },
+
+    // ============================================
+    // GET SAVED CALCULATIONS (RPC Bypass)
+    // ============================================
+    async getUserCalculations(userId: string): Promise<any[]> {
+        const { data, error } = await supabase.rpc('get_user_calculations_admin', {
+            p_user_id: userId
+        });
+
+        if (error) {
+            console.error('Get user calculations admin error:', error);
+            throw error;
+        }
+
+        return data || [];
     }
 };

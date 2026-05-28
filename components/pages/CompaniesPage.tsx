@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, CheckCircle2, ExternalLink, Info, ShieldCheck } from 'lucide-react';
+import { Building2, CheckCircle2, ExternalLink, Info, ShieldCheck, Star } from 'lucide-react';
 import { companiesApi } from '../../src/services/api/companies';
-import type { Company } from '../../src/types/database';
+import { reviewsApi } from '../../src/services/api/reviews';
+import type { Company, CompanyRatingStats } from '../../src/types/database';
 
 
 
 export const CompaniesPage: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
+    const [ratings, setRatings] = useState<Record<string, CompanyRatingStats>>({});
 
     useEffect(() => {
         loadCompanies();
@@ -17,6 +19,21 @@ export const CompaniesPage: React.FC = () => {
         try {
             const data = await companiesApi.getActiveCompanies();
             setCompanies(data);
+
+            // Load ratings for all companies in parallel
+            const ratingResults = await Promise.all(
+                data.map(async (c) => {
+                    try {
+                        const stats = await reviewsApi.getRatingStats(c.id);
+                        return { id: c.id, stats };
+                    } catch { return null; }
+                })
+            );
+            const ratingsMap: Record<string, CompanyRatingStats> = {};
+            ratingResults.forEach((r) => {
+                if (r && r.stats.total_reviews > 0) ratingsMap[r.id] = r.stats;
+            });
+            setRatings(ratingsMap);
         } catch (error) {
             console.error('Failed to load companies:', error);
         } finally {
@@ -159,6 +176,12 @@ export const CompaniesPage: React.FC = () => {
                                         {company.is_licensed && (
                                             <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded flex items-center gap-1">
                                                 <ShieldCheck size={12} /> Lisanslı
+                                            </span>
+                                        )}
+                                        {ratings[company.id] && (
+                                            <span className="text-xs bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 px-2 py-1 rounded flex items-center gap-1">
+                                                <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                                                {ratings[company.id].avg_rating} ({ratings[company.id].total_reviews})
                                             </span>
                                         )}
                                     </div>

@@ -39,6 +39,7 @@ const badgeAnimationClasses: Record<string, string> = {
     ping: 'animate-ping',
 };
 
+
 // Skeleton loader - matches actual card size to prevent CLS (Cumulative Layout Shift)
 const QuickLinksSkeleton: React.FC = () => (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -109,21 +110,25 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
     }
 
     // Card content component (shared between overlay and standalone)
-    const CardContent: React.FC<{ item: QuickLinksItem }> = ({ item }) => {
+    // HangiKredi-stili: flat tek renk ikon, hover'da site mavisi (#0855f8)
+    const CardContent: React.FC<{ item: QuickLinksItem; index: number }> = ({ item, index: _index }) => {
         const IconComponent = getIconComponent(item.icon);
 
         return (
-            <div className="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-center relative overflow-hidden transition-all duration-200 hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5 cursor-pointer min-h-[112px]">
+            <div className="group bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 text-center relative overflow-hidden transition-all duration-300 hover:border-[#0855f8] hover:shadow-lg hover:shadow-[#0855f8]/15 hover:-translate-y-1 cursor-pointer min-h-[120px] shadow-sm">
                 {/* Badge with color and animation */}
                 {renderBadge(item)}
 
-                {/* Icon - Mono style */}
-                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
-                    <IconComponent className="w-6 h-6 text-slate-700 dark:text-slate-200" />
+                {/* Icon - Flat, hover'da maviye dönüşür */}
+                <div className="w-14 h-14 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[#0855f8] group-hover:scale-105">
+                    <IconComponent
+                        className="w-7 h-7 text-slate-700 dark:text-slate-200 transition-colors duration-300 group-hover:text-white"
+                        strokeWidth={2}
+                    />
                 </div>
 
                 {/* Title */}
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors line-clamp-1">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white transition-colors duration-300 group-hover:text-[#0855f8] line-clamp-1">
                     {item.title}
                 </h3>
             </div>
@@ -131,7 +136,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
     };
 
     // Render link wrapper based on link type
-    const renderLink = (item: QuickLinksItem) => {
+    const renderLink = (item: QuickLinksItem, index: number) => {
         const isExternal = item.is_external || item.link_url.startsWith('http');
 
         // External link
@@ -143,7 +148,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    <CardContent item={item} />
+                    <CardContent item={item} index={index} />
                 </a>
             );
         }
@@ -174,7 +179,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
                     href={item.link_url}
                     onClick={handleHashClick}
                 >
-                    <CardContent item={item} />
+                    <CardContent item={item} index={index} />
                 </a>
             );
         }
@@ -182,7 +187,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
         // Internal route link
         return (
             <Link key={item.id} to={item.link_url}>
-                <CardContent item={item} />
+                <CardContent item={item} index={index} />
             </Link>
         );
     };
@@ -209,7 +214,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
 
                 {/* Grid - 4 columns on desktop, 2 on mobile */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {items.map(item => renderLink(item))}
+                    {items.map((item, idx) => renderLink(item, idx))}
                 </div>
             </div>
         );
@@ -237,7 +242,7 @@ export const QuickLinksGrid: React.FC<QuickLinksGridProps> = ({ className = '', 
 
                 {/* Grid - 4 columns on desktop, 2 on mobile */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {items.map(item => renderLink(item))}
+                    {items.map((item, idx) => renderLink(item, idx))}
                 </div>
             </div>
         </section>

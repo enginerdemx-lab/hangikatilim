@@ -56,6 +56,7 @@ const RegisterPage = lazy(() => import('./pages/public/RegisterPage'));
 const ProfilePage = lazy(() => import('./pages/public/ProfilePage'));
 const SavedCalculationsPage = lazy(() => import('./pages/public/SavedCalculationsPage'));
 const UnsubscribePage = lazy(() => import('./pages/public/UnsubscribePage'));
+const FavoritesPage = lazy(() => import('./pages/public/FavoritesPage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -112,6 +113,7 @@ const App: React.FC = () => {
             <Route path="register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
             <Route path="profil" element={<Suspense fallback={<PageLoader />}><ProfilePage /></Suspense>} />
             <Route path="profil/hesaplamalar" element={<Suspense fallback={<PageLoader />}><SavedCalculationsPage /></Suspense>} />
+            <Route path="profil/favoriler" element={<Suspense fallback={<PageLoader />}><FavoritesPage /></Suspense>} />
           </Route>
 
           {/* Unsubscribe */}

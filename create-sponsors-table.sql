@@ -27,7 +27,8 @@ CREATE POLICY "Sponsors are viewable by everyone" ON sponsors
 
 -- Admin full access policy (authenticated admins can manage)
 CREATE POLICY "Authenticated users can manage sponsors" ON sponsors 
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
 
 -- Insert sample data
 INSERT INTO sponsors (name, logo_url, title, description, cta_text, cta_url, color, is_active, order_no) VALUES
@@ -48,3 +49,5 @@ CREATE TRIGGER update_sponsors_updated_at
     BEFORE UPDATE ON sponsors 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+

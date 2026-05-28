@@ -55,6 +55,38 @@ export const FAQ: React.FC = () => {
     }
   };
 
+  // Inject FAQ JSON-LD for Google rich results
+  useEffect(() => {
+    if (faqs.length === 0) return;
+
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': faqs.map(faq => ({
+        '@type': 'Question',
+        'name': faq.question,
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': faq.answer
+        }
+      }))
+    };
+
+    const oldScript = document.querySelector('script[data-seo="faq-jsonld"]');
+    if (oldScript) oldScript.remove();
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.setAttribute('data-seo', 'faq-jsonld');
+    script.textContent = JSON.stringify(jsonLd);
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.querySelector('script[data-seo="faq-jsonld"]');
+      if (el) el.remove();
+    };
+  }, [faqs]);
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16">

@@ -9,6 +9,7 @@ import { siteSettingsApi } from '../services/api/siteSettings';
 import emailService from '../services/api/emailService';
 import type { SiteSettings } from '../types/database';
 import { SnowOverlay } from '../components/SnowOverlay';
+import SocialFollowPromo from '../components/SocialFollowPromo';
 
 // Custom X (Twitter) Icon
 const XIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
@@ -208,6 +209,7 @@ export const PublicLayout: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-slate-900 font-sans text-gray-900 dark:text-gray-100 selection:bg-primary-200 selection:text-primary-900 transition-colors duration-300 relative flex flex-col">
             <SnowOverlay />
+            <SocialFollowPromo />
             <NewsTicker />
             <PublicNavbar theme={theme} toggleTheme={toggleTheme} />
             <MarketTicker />
@@ -303,6 +305,11 @@ export const PublicLayout: React.FC = () => {
                                 <li>
                                     <NavLink to="/hakkimizda" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
                                         <ChevronRight size={14} /> Hakkımızda
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink to="/sss" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> S.S.S
                                     </NavLink>
                                 </li>
                             </ul>

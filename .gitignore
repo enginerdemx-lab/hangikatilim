@@ -38,3 +38,15 @@ Thumbs.db
 
 # Sensitive files (contains SMTP password)
 # public/api/send-email.php
+
+# Local backups, zips and builds
+*.zip
+*.code-workspace
+dist-new/
+dist-v2/
+dist-v3/
+deploy/
+temp_check_zip/
+zi2xV1VX
+ziRp9Qky
+*.tmp

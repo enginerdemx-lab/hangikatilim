@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    User, Bell, Shield, FileText, Loader2, Calculator, LogOut,
+    User, Bell, Shield, FileText, Loader2, Calculator, LogOut, Heart,
     ChevronDown, ChevronUp, Camera, Check, X, AlertTriangle, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -283,14 +283,22 @@ export const ProfilePage: React.FC = () => {
                 )}
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="grid grid-cols-3 gap-3 mb-6">
                     <button
                         onClick={() => navigate('/profil/hesaplamalar')}
                         className="flex items-center justify-center gap-2 bg-[#0855f8] hover:bg-[#0645d0] text-white py-4 px-4 rounded-xl font-bold transition-colors shadow-lg shadow-[#0855f8]/20"
                     >
                         <Calculator size={20} />
-                        <span className="hidden sm:inline">Kayıtlı Hesaplamalarım</span>
-                        <span className="sm:hidden">Hesaplamalar</span>
+                        <span className="hidden sm:inline">Hesaplamalarım</span>
+                        <span className="sm:hidden">Hesaplar</span>
+                    </button>
+                    <button
+                        onClick={() => navigate('/profil/favoriler')}
+                        className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-4 px-4 rounded-xl font-bold transition-colors shadow-lg shadow-red-500/20"
+                    >
+                        <Heart size={20} />
+                        <span className="hidden sm:inline">Favorilerim</span>
+                        <span className="sm:hidden">Favoriler</span>
                     </button>
                     <button
                         onClick={handleLogout}
@@ -389,13 +397,14 @@ const ProfileInfoForm: React.FC<{
             await profileService.updateProfile(userId, {
                 full_name: fullName,
                 phone,
-                gender,
+                gender: gender || null,
                 birth_date: birthDate || null
-            } as any);
+            });
             showToast('Profil bilgileri güncellendi!', 'success');
             onUpdate();
-        } catch (error) {
-            showToast('Profil güncellenemedi', 'error');
+        } catch (error: any) {
+            console.error('Profile update failed:', error);
+            showToast('Profil güncellenemedi. ' + (error.message || ''), 'error');
         } finally {
             setSaving(false);
         }
@@ -490,8 +499,9 @@ const NotificationsForm: React.FC<{
             });
             showToast('Tercihler güncellendi!', 'success');
             onUpdate();
-        } catch (error) {
-            showToast('Tercihler güncellenemedi', 'error');
+        } catch (error: any) {
+            console.error('Notification update failed:', error);
+            showToast('Tercihler güncellenemedi. ' + (error.message || ''), 'error');
         } finally {
             setSaving(false);
         }
@@ -755,11 +765,12 @@ const GeneralInfoForm: React.FC<{
                 has_rent: hasRent,
                 rent_amount: rentAmount ? parseInt(rentAmount) : null,
                 preferred_finance_company: preferredFinanceCompany || null,
-            } as any);
+            });
             showToast('Genel bilgiler güncellendi!', 'success');
             onUpdate();
-        } catch (error) {
-            showToast('Bilgiler güncellenemedi', 'error');
+        } catch (error: any) {
+            console.error('General info update failed:', error);
+            showToast('Bilgiler güncellenemedi. ' + (error.message || ''), 'error');
         } finally {
             setSaving(false);
         }

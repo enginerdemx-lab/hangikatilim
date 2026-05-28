@@ -1,32 +1,36 @@
-Options -MultiViews
-RewriteEngine On
-RewriteBase /
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  Options -MultiViews
 
-# ===== Cache Control Headers =====
-# index.html - NO CACHE (always fetch fresh)
-<FilesMatch "index\.html">
+  # 1. Zorunlu HTTPS Yönlendirmesi
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 2. www'dan www'suz (katilimuzmani.com) yönlendirme
+  RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+  RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+  # 3. Sitemap için yönlendirme
+  RewriteRule ^sitemap\.xml$ api/sitemap.php [L]
+
+  # 4. React SPA Fallback (Tüm diğer yollar için)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule ^(.*)$ index.html [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # index.html için cache'i kapat
+  <FilesMatch "\.(html|htm)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires 0
-</FilesMatch>
-
-# Assets (JS, CSS, images with hash) - IMMUTABLE (long cache)
-<FilesMatch "\.(js|css|woff2?|eot|ttf|otf|svg|png|jpg|jpeg|gif|webp|ico)$">
+  </FilesMatch>
+  
+  # Statik dosyalar için cache'i aç
+  <FilesMatch "\.(js|css|webp|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
-</FilesMatch>
-
-# ===== CRITICAL: Exclude static assets from SPA fallback =====
-# If request is for a real file or directory, serve it directly
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
-
-# If request is for /assets/ and file doesn't exist, return 404 (NOT index.html)
-RewriteCond %{REQUEST_URI} ^/assets/
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ - [R=404,L]
-
-# ===== SPA Routing Fallback =====
-# For all other routes (non-existing files), serve index.html
-# This enables React Router client-side routing
-RewriteRule ^ index.html [L]
+  </FilesMatch>
+</IfModule>

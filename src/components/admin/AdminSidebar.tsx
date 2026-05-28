@@ -32,6 +32,8 @@ import {
     ImagePlus,
     Info,
     FileDown,
+    Layers,
+    Headphones,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -82,6 +84,8 @@ const menuConfig: MenuCategory[] = [
         allowedRoles: ['superadmin'],
         items: [
             { label: 'Hesaplama Ayarları', path: '/admin/calculator', icon: Calculator, allowedRoles: ['superadmin'] },
+            { label: 'Kademeli Plan Şablonları', path: '/admin/payment-plan-templates', icon: Layers, allowedRoles: ['superadmin'] },
+            { label: 'Danışmanlık Talepleri', path: '/admin/consultation-requests', icon: Headphones, allowedRoles: ['superadmin'] },
             { label: 'PDF İndirme Logları', path: '/admin/pdf-logs', icon: FileDown, allowedRoles: ['superadmin'] },
             { label: 'Geri Bildirimler', path: '/admin/feedback', icon: MessageSquare, allowedRoles: ['superadmin'] },
         ],
@@ -102,6 +106,7 @@ const menuConfig: MenuCategory[] = [
         allowedRoles: CONTENT_ROLES,
         items: [
             { label: 'Firmalar', path: '/admin/companies', icon: Building2, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Değerlendirmeler', path: '/admin/reviews', icon: MessageSquare, allowedRoles: ['superadmin', 'content_manager'] },
             { label: 'Kampanyalar', path: '/admin/campaigns', icon: Megaphone, allowedRoles: ['superadmin', 'content_manager'] },
             { label: 'Sektör Haberleri', path: '/admin/news', icon: Newspaper, allowedRoles: ['superadmin', 'news_editor', 'content_manager'] },
             { label: 'Blog', path: '/admin/blog', icon: FileText, allowedRoles: ['superadmin', 'content_manager'] },

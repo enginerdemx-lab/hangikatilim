@@ -773,6 +773,21 @@ export const SocialMediaGenerator: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Font Size Control */}
+                    <div className="flex items-center gap-3 mb-3 px-1">
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Yazı Boyutu</label>
+                        <input
+                            type="range"
+                            min={10}
+                            max={40}
+                            step={1}
+                            value={currentFontSize}
+                            onChange={(e) => setCurrentFontSize(parseInt(e.target.value))}
+                            className="flex-1 h-1.5 accent-blue-600 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums w-8 text-center">{currentFontSize}px</span>
+                    </div>
+
                     <div className="overflow-auto border border-gray-200 dark:border-slate-600 rounded-xl p-4 bg-gray-100 dark:bg-slate-900">
                         <div style={{
                             transform: `scale(${Math.min(0.45, 550 / selectedSize.width)})`,

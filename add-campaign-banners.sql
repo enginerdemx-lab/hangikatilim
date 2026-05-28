@@ -23,7 +23,8 @@ USING (is_active = true);
 -- Admin full access
 CREATE POLICY "Admins can manage campaign banners"
 ON campaign_banners FOR ALL
-USING (auth.role() = 'authenticated');
+USING (public.is_admin(auth.uid()))
+WITH CHECK (public.is_admin(auth.uid()));
 
 -- Grant permissions
 GRANT SELECT ON campaign_banners TO anon;
@@ -32,3 +33,5 @@ GRANT ALL ON campaign_banners TO authenticated;
 -- Create index for sorting
 CREATE INDEX idx_campaign_banners_sort ON campaign_banners(sort_order);
 CREATE INDEX idx_campaign_banners_active ON campaign_banners(is_active);
+
+

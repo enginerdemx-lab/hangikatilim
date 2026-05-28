@@ -10,6 +10,7 @@ export const campaignsApi = {
         *,
         company:companies(*)
       `)
+            .order('order_index', { ascending: true })
             .order('updated_at', { ascending: false });
 
         if (error) throw error;
@@ -63,6 +64,22 @@ export const campaignsApi = {
         return data;
     },
 
+    // Get campaign by slug (for public detail page)
+    async getCampaignBySlug(slug: string): Promise<Campaign | null> {
+        const { data, error } = await supabase
+            .from('campaigns')
+            .select(`
+        *,
+        company:companies(*)
+      `)
+            .eq('slug', slug)
+            .eq('is_active', true)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data;
+    },
+
     // Create new campaign
     async createCampaign(campaignData: CampaignFormData): Promise<Campaign> {
         const { data, error } = await supabase
@@ -79,19 +96,42 @@ export const campaignsApi = {
     },
 
     // Update campaign
-    async updateCampaign(id: string, campaignData: Partial<CampaignFormData>): Promise<Campaign> {
-        const { data, error } = await supabase
-            .from('campaigns')
-            .update(campaignData)
-            .eq('id', id)
-            .select(`
-        *,
-        company:companies(*)
-      `)
-            .single();
+    async updateCampaign(id: string, campaignData: Partial<CampaignFormData>): Promise<void> {
+        // Explicitly whitelist only fields that exist in the database
+        const safeData: Record<string, unknown> = {};
 
-        if (error) throw error;
-        return data;
+        if (campaignData.company_id !== undefined) safeData.company_id = campaignData.company_id;
+        if (campaignData.title !== undefined) safeData.title = campaignData.title;
+        if (campaignData.badge_type !== undefined) safeData.badge_type = campaignData.badge_type || null;
+        if (campaignData.vade_months !== undefined) safeData.vade_months = campaignData.vade_months;
+        if (campaignData.amount_tl !== undefined) safeData.amount_tl = campaignData.amount_tl;
+        if (campaignData.bullet_points !== undefined) safeData.bullet_points = campaignData.bullet_points;
+        if (campaignData.application_link !== undefined) safeData.application_link = campaignData.application_link;
+        if (campaignData.terms_link !== undefined) safeData.terms_link = campaignData.terms_link;
+        if (campaignData.application_button_text !== undefined) safeData.application_button_text = campaignData.application_button_text;
+        if (campaignData.terms_button_text !== undefined) safeData.terms_button_text = campaignData.terms_button_text;
+        if (campaignData.image_url !== undefined) safeData.image_url = campaignData.image_url;
+        if (campaignData.mobile_image_url !== undefined) safeData.mobile_image_url = campaignData.mobile_image_url;
+        if (campaignData.slug !== undefined) safeData.slug = campaignData.slug || null;
+        if (campaignData.content !== undefined) safeData.content = campaignData.content || null;
+        if (campaignData.is_active !== undefined) safeData.is_active = campaignData.is_active;
+
+        console.log('[campaignsApi] updateCampaign id:', id, 'safeData:', safeData);
+
+        const { error, count } = await supabase
+            .from('campaigns')
+            .update(safeData, { count: 'exact' })
+            .eq('id', id);
+
+        if (error) {
+            console.error('[campaignsApi] updateCampaign error:', error);
+            throw error;
+        }
+
+        console.log('[campaignsApi] updateCampaign count:', count);
+        if (count === 0) {
+            throw new Error('Kampanya güncellenemedi. Supabase RLS politikası UPDATE işlemini engelliyor. Supabase Dashboard > Authentication > Policies > campaigns tablosunda UPDATE politikası eklemeniz gerekiyor.');
+        }
     },
 
     // Delete campaign
@@ -106,12 +146,22 @@ export const campaignsApi = {
 
     // Toggle active status
     async toggleActive(id: string, isActive: boolean): Promise<void> {
-        const { error } = await supabase
+        console.log('[campaignsApi] toggleActive:', id, 'to:', isActive);
+
+        const { error, count } = await supabase
             .from('campaigns')
-            .update({ is_active: isActive })
+            .update({ is_active: isActive }, { count: 'exact' })
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            console.error('[campaignsApi] toggleActive error:', error);
+            throw error;
+        }
+
+        console.log('[campaignsApi] toggleActive count:', count);
+        if (count === 0) {
+            throw new Error('Durum değiştirilemedi. Supabase RLS politikası UPDATE işlemini engelliyor. Supabase Dashboard > Authentication > Policies > campaigns tablosunda UPDATE politikası eklemeniz gerekiyor.');
+        }
     },
 
     // Search campaigns

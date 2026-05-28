@@ -12,6 +12,7 @@ import { SiteSettings } from './pages/admin/SiteSettings';
 import { Ticker } from './pages/admin/Ticker';
 import { HomeHeroSettings } from './pages/admin/HomeHeroSettings';
 import { Calculator as AdminCalculator } from './pages/admin/Calculator';
+import { PaymentPlanTemplates as AdminPaymentPlanTemplates } from './pages/admin/PaymentPlanTemplates';
 import { News as AdminNews } from './pages/admin/News';
 import { Blog as AdminBlog } from './pages/admin/Blog';
 import { Contact as AdminContact } from './pages/admin/Contact';
@@ -28,6 +29,8 @@ import { SocialMediaGenerator } from './pages/admin/SocialMediaGenerator';
 import { AboutSettings } from './pages/admin/AboutSettings';
 import { CampaignBanners } from './pages/admin/CampaignBanners';
 import { PdfDownloadLogs } from './pages/admin/PdfDownloadLogs';
+import { Reviews as AdminReviews } from './pages/admin/Reviews';
+import { ConsultationRequests as AdminConsultationRequests } from './pages/admin/ConsultationRequests';
 
 // Lazy loaded popup pages
 const PopupManager = lazy(() => import('./pages/admin/PopupManager'));
@@ -44,6 +47,7 @@ const HomePage = lazy(() => import('./pages/public/HomePage'));
 const CampaignsPage = lazy(() => import('./pages/public/CampaignsPage'));
 const CompaniesPage = lazy(() => import('./pages/public/CompaniesPage'));
 const CompanyDetailPage = lazy(() => import('./pages/public/CompanyDetailPage'));
+const CampaignDetailPage = lazy(() => import('./pages/public/CampaignDetailPage'));
 const NewsPage = lazy(() => import('./pages/public/NewsPage'));
 const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
 const BlogPage = lazy(() => import('./pages/public/BlogPage'));
@@ -55,6 +59,9 @@ const ProfilePage = lazy(() => import('./pages/public/ProfilePage'));
 const SavedCalculationsPage = lazy(() => import('./pages/public/SavedCalculationsPage'));
 const UnsubscribePage = lazy(() => import('./pages/public/UnsubscribePage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const FavoritesPage = lazy(() => import('./pages/public/FavoritesPage'));
+const AuthCallback = lazy(() => import('./pages/public/AuthCallback'));
+const FAQPage = lazy(() => import('./pages/public/FAQPage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -130,6 +137,7 @@ const App: React.FC = () => {
             <Route path="ticker" element={<Ticker />} />
             <Route path="home-hero" element={<HomeHeroSettings />} />
             <Route path="calculator" element={<AdminCalculator />} />
+            <Route path="payment-plan-templates" element={<AdminPaymentPlanTemplates />} />
             <Route path="news" element={<AdminNews />} />
             <Route path="blog" element={<AdminBlog />} />
             <Route path="contact" element={<AdminContact />} />
@@ -145,6 +153,8 @@ const App: React.FC = () => {
             <Route path="about-settings" element={<AboutSettings />} />
             <Route path="campaign-banners" element={<CampaignBanners />} />
             <Route path="pdf-logs" element={<PdfDownloadLogs />} />
+            <Route path="reviews" element={<AdminReviews />} />
+            <Route path="consultation-requests" element={<AdminConsultationRequests />} />
             <Route path="popups" element={<Suspense fallback={<PageLoader />}><PopupManager /></Suspense>} />
             <Route path="popups/new" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
             <Route path="popups/edit/:id" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
@@ -155,6 +165,7 @@ const App: React.FC = () => {
           <Route path="/" element={<PopupProvider><PublicLayout /></PopupProvider>}>
             <Route index element={<Suspense fallback={<PageLoader />}><HomePage /></Suspense>} />
             <Route path="kampanyalar" element={<Suspense fallback={<PageLoader />}><CampaignsPage /></Suspense>} />
+            <Route path="kampanyalar/:slug" element={<Suspense fallback={<PageLoader />}><CampaignDetailPage /></Suspense>} />
             <Route path="katilim-firmalari" element={<Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense>} />
             <Route path="katilim-firmalari/:slug" element={<Suspense fallback={<PageLoader />}><CompanyDetailPage /></Suspense>} />
             <Route path="sektor-haberleri" element={<Suspense fallback={<PageLoader />}><NewsPage /></Suspense>} />
@@ -164,9 +175,12 @@ const App: React.FC = () => {
             <Route path="iletisim" element={<Suspense fallback={<PageLoader />}><ContactPage /></Suspense>} />
             <Route path="login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
             <Route path="register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
+            <Route path="auth/callback" element={<Suspense fallback={<PageLoader />}><AuthCallback /></Suspense>} />
             <Route path="profil" element={<Suspense fallback={<PageLoader />}><ProfilePage /></Suspense>} />
             <Route path="profil/hesaplamalar" element={<Suspense fallback={<PageLoader />}><SavedCalculationsPage /></Suspense>} />
+            <Route path="profil/favoriler" element={<Suspense fallback={<PageLoader />}><FavoritesPage /></Suspense>} />
             <Route path="hakkimizda" element={<Suspense fallback={<PageLoader />}><AboutPage /></Suspense>} />
+            <Route path="sss" element={<Suspense fallback={<PageLoader />}><FAQPage /></Suspense>} />
           </Route>
 
           {/* Unsubscribe */}

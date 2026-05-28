@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight, Calendar, Clock } from 'lucide-react';
 import { newsApi } from '../services/api/news';
@@ -36,14 +36,27 @@ interface SectorNewsCarouselProps {
 export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems = 9 }) => {
     const [news, setNews] = useState<NewsPost[]>([]);
     const [loading, setLoading] = useState(true);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(3);
     const autoSlideRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         loadNews();
     }, [maxItems]);
+
+    // Update visible count on resize
+    useEffect(() => {
+        const updateVisibleCount = () => {
+            if (window.innerWidth < 640) setVisibleCount(1);
+            else if (window.innerWidth < 1024) setVisibleCount(2);
+            else setVisibleCount(3);
+        };
+        updateVisibleCount();
+        window.addEventListener('resize', updateVisibleCount);
+        return () => window.removeEventListener('resize', updateVisibleCount);
+    }, []);
 
     const loadNews = async () => {
         try {
@@ -56,24 +69,46 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
         }
     };
 
+    const totalPages = Math.ceil(news.length / visibleCount);
+
+    const goToPage = useCallback((page: number, direction: 'left' | 'right') => {
+        if (isAnimating) return;
+        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
+        setSlideDirection(direction);
+        setIsAnimating(true);
+        // Small delay so the direction class is applied before animation starts
+        requestAnimationFrame(() => {
+            setCurrentPage(page);
+        });
+    }, [isAnimating]);
+
+    const handleNext = useCallback(() => {
+        const nextPage = currentPage + 1 < totalPages ? currentPage + 1 : 0;
+        goToPage(nextPage, 'right');
+    }, [currentPage, totalPages, goToPage]);
+
+    const handlePrev = useCallback(() => {
+        const prevPage = currentPage - 1 >= 0 ? currentPage - 1 : totalPages - 1;
+        goToPage(prevPage, 'left');
+    }, [currentPage, totalPages, goToPage]);
+
+    const handleDotClick = useCallback((pageIndex: number) => {
+        if (pageIndex === currentPage) return;
+        const direction = pageIndex > currentPage ? 'right' : 'left';
+        goToPage(pageIndex, direction);
+    }, [currentPage, goToPage]);
+
     // Auto-slide every 5 seconds
     useEffect(() => {
-        if (news.length <= 0 || loading) return;
+        if (news.length <= 0 || loading || totalPages <= 1) return;
 
         const startAutoSlide = () => {
             autoSlideRef.current = setInterval(() => {
-                setIsTransitioning(true);
-                setTimeout(() => {
-                    setCurrentIndex((prev) => {
-                        const visibleCount = getVisibleCount();
-                        const nextIndex = prev + visibleCount;
-                        if (nextIndex < news.length) {
-                            return nextIndex;
-                        }
-                        return 0;
-                    });
-                    setIsTransitioning(false);
-                }, 300);
+                setSlideDirection('right');
+                setIsAnimating(true);
+                requestAnimationFrame(() => {
+                    setCurrentPage((prev) => (prev + 1 < totalPages ? prev + 1 : 0));
+                });
             }, 5000);
         };
 
@@ -84,56 +119,7 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
                 clearInterval(autoSlideRef.current);
             }
         };
-    }, [news.length, loading]);
-
-    // Number of visible items based on screen size
-    const getVisibleCount = () => {
-        if (typeof window === 'undefined') return 3;
-        if (window.innerWidth < 640) return 1;
-        if (window.innerWidth < 1024) return 2;
-        return 3;
-    };
-
-    const visibleCount = getVisibleCount();
-    const totalPages = Math.ceil(news.length / visibleCount);
-    const currentPage = Math.floor(currentIndex / visibleCount);
-
-    const handleNext = () => {
-        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
-        setIsTransitioning(true);
-        setTimeout(() => {
-            const nextIndex = currentIndex + visibleCount;
-            if (nextIndex < news.length) {
-                setCurrentIndex(nextIndex);
-            } else {
-                setCurrentIndex(0);
-            }
-            setIsTransitioning(false);
-        }, 300);
-    };
-
-    const handlePrev = () => {
-        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
-        setIsTransitioning(true);
-        setTimeout(() => {
-            const prevIndex = currentIndex - visibleCount;
-            if (prevIndex >= 0) {
-                setCurrentIndex(prevIndex);
-            } else {
-                setCurrentIndex(Math.max(0, news.length - visibleCount));
-            }
-            setIsTransitioning(false);
-        }, 300);
-    };
-
-    const handleDotClick = (pageIndex: number) => {
-        if (autoSlideRef.current) clearInterval(autoSlideRef.current);
-        setIsTransitioning(true);
-        setTimeout(() => {
-            setCurrentIndex(pageIndex * visibleCount);
-            setIsTransitioning(false);
-        }, 300);
-    };
+    }, [news.length, loading, totalPages]);
 
     // Don't render if no news
     if (!loading && news.length === 0) {
@@ -166,10 +152,65 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
         );
     }
 
-    const visibleNews = news.slice(currentIndex, currentIndex + visibleCount);
+    const startIndex = currentPage * visibleCount;
+    const visibleNews = news.slice(startIndex, startIndex + visibleCount);
 
     return (
         <section className="bg-slate-50 dark:bg-slate-900 py-10 md:py-14">
+            {/* Inline styles for the slide + scale animation */}
+            <style>{`
+                .carousel-track {
+                    display: grid;
+                    grid-template-columns: repeat(${visibleCount}, 1fr);
+                    gap: 1.25rem;
+                }
+                @media (min-width: 768px) {
+                    .carousel-track {
+                        gap: 1.5rem;
+                    }
+                }
+
+                .carousel-card {
+                    animation-duration: 0.55s;
+                    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    animation-fill-mode: both;
+                }
+
+                .slide-right .carousel-card {
+                    animation-name: slideInFromRight;
+                }
+
+                .slide-left .carousel-card {
+                    animation-name: slideInFromLeft;
+                }
+
+                .carousel-card:nth-child(1) { animation-delay: 0ms; }
+                .carousel-card:nth-child(2) { animation-delay: 70ms; }
+                .carousel-card:nth-child(3) { animation-delay: 140ms; }
+
+                @keyframes slideInFromRight {
+                    0% {
+                        opacity: 0;
+                        transform: translateX(60px) scale(0.92);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translateX(0) scale(1);
+                    }
+                }
+
+                @keyframes slideInFromLeft {
+                    0% {
+                        opacity: 0;
+                        transform: translateX(-60px) scale(0.92);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translateX(0) scale(1);
+                    }
+                }
+            `}</style>
+
             <div className="container mx-auto px-4 md:px-6 max-w-7xl">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8 md:mb-10">
@@ -193,18 +234,20 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
                 {/* Carousel Container */}
                 <div className="relative">
                     {/* Navigation Arrows */}
-                    {news.length > visibleCount && (
+                    {totalPages > 1 && (
                         <>
                             <button
                                 onClick={handlePrev}
-                                className="absolute -left-3 md:-left-5 top-1/2 -translate-y-1/2 z-10 p-2.5 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 text-slate-600 dark:text-slate-300"
+                                disabled={isAnimating}
+                                className="absolute -left-3 md:-left-5 top-1/2 -translate-y-1/2 z-10 p-2.5 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                 aria-label="Önceki haberler"
                             >
                                 <ChevronLeft size={18} />
                             </button>
                             <button
                                 onClick={handleNext}
-                                className="absolute -right-3 md:-right-5 top-1/2 -translate-y-1/2 z-10 p-2.5 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 text-slate-600 dark:text-slate-300"
+                                disabled={isAnimating}
+                                className="absolute -right-3 md:-right-5 top-1/2 -translate-y-1/2 z-10 p-2.5 md:p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                 aria-label="Sonraki haberler"
                             >
                                 <ChevronRight size={18} />
@@ -212,16 +255,17 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
                         </>
                     )}
 
-                    {/* Cards Grid */}
+                    {/* Cards - Sliding Carousel */}
                     <div
-                        ref={scrollRef}
-                        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 transition-opacity duration-300 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+                        key={currentPage}
+                        className={`carousel-track ${slideDirection === 'right' ? 'slide-right' : 'slide-left'}`}
+                        onAnimationEnd={() => setIsAnimating(false)}
                     >
                         {visibleNews.map((item) => (
                             <Link
                                 key={item.id}
                                 to={`/sektor-haberleri/${item.slug || item.id}`}
-                                className="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                                className="carousel-card group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm hover:shadow-lg transition-shadow duration-300 hover:-translate-y-1"
                             >
                                 {/* Image */}
                                 <div className="relative h-44 md:h-48 overflow-hidden bg-slate-100 dark:bg-slate-700">

@@ -7,6 +7,7 @@ import { CompanyLogos } from '../../../components/CompanyLogos';
 import { QuickLinksGrid } from '../../../components/QuickLinksGrid';
 import { SectorNewsCarousel } from '../../components/SectorNewsCarousel';
 import { homeHeroApi } from '../../services/api/homeHero';
+import { usePageSeo } from '../../hooks/usePageSeo';
 import type { HomeHero } from '../../types/database';
 
 interface OutletContextType {
@@ -76,6 +77,7 @@ const HeroSkeleton: React.FC = () => (
 
 const HomePage: React.FC = () => {
     const { theme } = useOutletContext<OutletContextType>();
+    usePageSeo();
 
     // Initialize with cached data or null (NEVER empty array with fallbacks!)
     const [heroSlides, setHeroSlides] = useState<HomeHero[] | null>(() => getCachedSlides());
@@ -249,9 +251,9 @@ const HomePage: React.FC = () => {
                                                 <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
                                                 Katılım Uzmanı ile Geleceği Planla
                                             </div>
-                                            <h1 className="text-lg font-semibold leading-snug tracking-tight line-clamp-2">
+                                            <h2 className="text-lg font-semibold leading-snug tracking-tight line-clamp-2">
                                                 {currentSlide.title}
-                                            </h1>
+                                            </h2>
                                             {currentSlide.subtitle && (
                                                 <p className="text-xs text-gray-100 leading-relaxed opacity-90 line-clamp-2">
                                                     {currentSlide.subtitle}

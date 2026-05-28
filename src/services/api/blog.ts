@@ -109,7 +109,28 @@ export const blogApi = {
     // Increment view count
     async incrementViewCount(id: string): Promise<void> {
         try {
-            await supabase.rpc('increment_blog_view_count', { row_id: id });
+            // Önce RPC dene
+            const { error: rpcError } = await supabase.rpc('increment_blog_view_count', { row_id: id });
+
+            if (rpcError) {
+                console.warn('RPC view count failed, trying direct update:', rpcError.message);
+                // RPC başarısız olursa doğrudan güncelle
+                const { data: current } = await supabase
+                    .from('blog_posts')
+                    .select('view_count')
+                    .eq('id', id)
+                    .single();
+
+                const newCount = ((current?.view_count) || 0) + 1;
+                const { error: updateError } = await supabase
+                    .from('blog_posts')
+                    .update({ view_count: newCount })
+                    .eq('id', id);
+
+                if (updateError) {
+                    console.error('Direct view count update also failed:', updateError.message);
+                }
+            }
         } catch (error) {
             console.error('Error incrementing view count:', error);
         }

@@ -20,12 +20,13 @@ CREATE POLICY "Public read for ui_effects" ON ui_effects
 -- Authenticated users can update (for admin panel)
 DROP POLICY IF EXISTS "Auth update for ui_effects" ON ui_effects;
 CREATE POLICY "Auth update for ui_effects" ON ui_effects
-    FOR UPDATE USING (auth.role() = 'authenticated');
+    FOR UPDATE USING (public.is_admin(auth.uid()))
+    WITH CHECK (public.is_admin(auth.uid()));
 
 -- Authenticated users can insert (for initial setup)
 DROP POLICY IF EXISTS "Auth insert for ui_effects" ON ui_effects;
 CREATE POLICY "Auth insert for ui_effects" ON ui_effects
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+    FOR INSERT WITH CHECK (public.is_admin(auth.uid()));
 
 -- Insert default snow_effect config
 INSERT INTO ui_effects (key, value) VALUES (
@@ -61,3 +62,5 @@ CREATE TRIGGER ui_effects_updated_at
 
 -- Enable realtime for ui_effects table
 ALTER PUBLICATION supabase_realtime ADD TABLE ui_effects;
+
+

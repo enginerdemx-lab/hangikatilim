@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { useParams, Link } from 'react-router-dom';
 import { companiesApi } from '../../services/api/companies';
 import type { Company } from '../../types/database';
@@ -12,6 +13,8 @@ import {
     Loader2,
     ExternalLink
 } from 'lucide-react';
+import { CompanyReviews } from '../../components/CompanyReviews';
+import { FavoriteButton } from '../../components/FavoriteButton';
 
 const CompanyDetailPage: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -52,6 +55,11 @@ const CompanyDetailPage: React.FC = () => {
             </div>
         );
     }
+
+
+    const safeAboutContent = company?.about_content
+        ? DOMPurify.sanitize(company.about_content, { USE_PROFILES: { html: true } })
+        : '';
 
     if (error || !company) {
         return (
@@ -105,6 +113,7 @@ const CompanyDetailPage: React.FC = () => {
                                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                                     {company.name}
                                 </h1>
+                                <FavoriteButton itemType="company" itemId={company.id} size={22} />
                                 {company.is_licensed && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium rounded-full">
                                         <ShieldCheck size={14} />
@@ -127,7 +136,7 @@ const CompanyDetailPage: React.FC = () => {
                             {company.about_content && (
                                 <div
                                     className="prose prose-sm md:prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300"
-                                    dangerouslySetInnerHTML={{ __html: company.about_content }}
+                                    dangerouslySetInnerHTML={{ __html: safeAboutContent }}
                                 />
                             )}
                         </div>
@@ -208,6 +217,11 @@ const CompanyDetailPage: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Reviews Section */}
+                <div className="mt-8">
+                    <CompanyReviews companyId={company.id} companyName={company.name} />
+                </div>
 
                 {/* Disclaimer */}
                 <div className="mt-8 text-center">

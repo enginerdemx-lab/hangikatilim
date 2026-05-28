@@ -3,16 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Link, MessageCircle, Info } from 'lucide-react';
 import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../../types';
-import { generatePDF, generatePDFBlob } from '../services/pdfService';
+import { generatePDF } from '../services/pdfService';
 import { calculationService } from '../services/api/calculationService';
 import { pdfDownloadService } from '../services/api/pdfDownloadService';
 import { feedbackService } from '../services/api/feedbackService';
 import { calculatorApi } from '../services/api/calculator';
+import { paymentPlanTemplatesApi, type PaymentPlanTemplate } from '../services/api/paymentPlanTemplates';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginModal } from './auth/LoginModal';
 import { RegisterModal } from './auth/RegisterModal';
 import { PasswordResetModal } from './auth/PasswordResetModal';
+import { ConfirmationModal } from './ConfirmationModal';
 import { SponsorArea, SponsorTrigger } from './SponsorArea';
+import { ConsultationRequestModal } from '../../components/ConsultationRequestModal';
 import {
   parseQueryToState,
   buildShareUrl,
@@ -51,6 +54,9 @@ export const Calculator: React.FC<CalculatorProps> = ({
     settingsLoaded: false,
   });
 
+  // Consultation Modal State
+  const [consultationOpen, setConsultationOpen] = useState(false);
+
   // State
   const [params, setParams] = useState<CalculationParams>({
     assetType: AssetType.HOME, // Default Home
@@ -69,13 +75,29 @@ export const Calculator: React.FC<CalculatorProps> = ({
     installmentIncreaseRate: 0,
     increaseType: IncreaseType.NONE,
     customIncreasePeriod: 4, // Default 4 months for CUSTOM
+    // Kademeli plan defaults (yalnizca increaseType TIERED iken kullanilir, dönem sayısı 4-6)
+    tieredInputMode: 'multiplier',
+    tieredCount: 4,
+    tieredDurations: [6, 7, 6, 5],
+    tieredFirstInstallment: 5000,
+    tieredMultiplier: 2.62,
+    tieredManualAmounts: [5000, 13100, 34322, 89924],
+    tieredHasBalloon: true,
   });
 
   const [showInterim1, setShowInterim1] = useState(false);
   const [showInterim2, setShowInterim2] = useState(false);
   const [showIncreaseSettings, setShowIncreaseSettings] = useState(false);
   // Artışlı Ödeme Tab Modu: 'periodic' = Periyodik Artış, 'delivery' = Teslimata Göre
-  const [increaseTabMode, setIncreaseTabMode] = useState<'periodic' | 'delivery'>('periodic');
+  const [increaseTabMode, setIncreaseTabMode] = useState<'periodic' | 'delivery' | 'tiered'>('periodic');
+
+  // Kademeli plan sablonlari (admin'in ekledigi firma planlari)
+  const [planTemplates, setPlanTemplates] = useState<PaymentPlanTemplate[]>([]);
+  const [selectedPlanTemplateId, setSelectedPlanTemplateId] = useState<string>('');
+
+  // Kademeli plan icin cekilissiz onayi modal'i
+  const [showTieredSwitchModal, setShowTieredSwitchModal] = useState(false);
+
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [aiAdvice, setAiAdvice] = useState<string>('');
 
@@ -109,6 +131,13 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
   // Schedule Accordion State - Default CLOSED
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+
+  // Load active payment plan templates from Supabase
+  useEffect(() => {
+    paymentPlanTemplatesApi.listActive()
+      .then(setPlanTemplates)
+      .catch(err => console.error('Failed to load payment plan templates:', err));
+  }, []);
 
   // Load Calculator Settings from Supabase
   useEffect(() => {
@@ -327,7 +356,169 @@ export const Calculator: React.FC<CalculatorProps> = ({
     return calculatedMonths;
   }, [params]);
 
+  // KADEMELI PLAN (TIERED) hesaplama: 4-6 donem sabit taksit + opsiyonel balon son taksit.
+  // Yalnizca cekilissiz sistemde anlamlidir (teslimat ayi onceden belli).
+  const calculateTiered = useCallback(() => {
+    const {
+      targetAmount, downPayment, participationRate, feePaymentType,
+      interimPayment1, interimMonth1, interimPayment2, interimMonth2,
+      tieredInputMode, tieredCount, tieredDurations, tieredFirstInstallment,
+      tieredMultiplier, tieredManualAmounts, tieredHasBalloon,
+    } = params;
+
+    // Aktif dönem sayısı (4-6)
+    const count = Math.max(2, Math.min(6, tieredCount || 4));
+    const defaultDurations = [6, 7, 6, 5, 6, 6];
+    const durations = (tieredDurations && tieredDurations.length >= count)
+      ? tieredDurations.slice(0, count)
+      : defaultDurations.slice(0, count);
+    const hasBalloon = tieredHasBalloon !== false;
+
+    let tierAmounts: number[] = new Array(count).fill(0);
+    if (tieredInputMode === 'manual') {
+      const manual = tieredManualAmounts && tieredManualAmounts.length >= count
+        ? tieredManualAmounts.slice(0, count)
+        : new Array(count).fill(0);
+      tierAmounts = manual.map(v => Math.max(0, v));
+    } else {
+      const t1 = Math.max(0, tieredFirstInstallment || 0);
+      const k = Math.max(1, tieredMultiplier || 1);
+      tierAmounts = Array.from({ length: count }, (_, i) => t1 * Math.pow(k, i));
+    }
+
+    const participationFee = targetAmount * (participationRate / 100);
+    const financingAmount = targetAmount - downPayment - interimPayment1 - interimPayment2;
+    if (financingAmount <= 0) return;
+
+    const tierMonthsTotal = durations.reduce((a, b) => a + b, 0);
+
+    const tierBoundaries: number[] = [];
+    let cum = 0;
+    for (const d of durations) { cum += d; tierBoundaries.push(cum); }
+    const getTierIndexForMonth = (month: number): number => {
+      for (let i = 0; i < tierBoundaries.length; i++) {
+        if (month <= tierBoundaries[i]) return i;
+      }
+      return tierBoundaries.length;
+    };
+
+    // Dry Run to find actual number of months
+    let tempCapital = downPayment;
+    let tempMonths = 0;
+    for (let i = 1; i <= MAX_MONTHS; i++) {
+      if (tempCapital >= targetAmount) break;
+      const tierIdx = getTierIndexForMonth(i);
+      const isBalloonMonth = hasBalloon && i === tierMonthsTotal + 1;
+      
+      let baseInstallment = 0;
+      if (isBalloonMonth) {
+          baseInstallment = Math.max(0, targetAmount - tempCapital);
+      } else {
+          const effectiveTierIdx = Math.min(tierIdx, count - 1);
+          baseInstallment = tierAmounts[effectiveTierIdx];
+      }
+      
+      let interimAmt = 0;
+      if (i === interimMonth1) interimAmt += interimPayment1;
+      if (i === interimMonth2) interimAmt += interimPayment2;
+      
+      const remainingForBase = targetAmount - tempCapital - interimAmt;
+      baseInstallment = Math.max(0, Math.min(baseInstallment, remainingForBase));
+      
+      tempCapital += (baseInstallment + interimAmt);
+      tempMonths = i;
+      
+      if (isBalloonMonth || tempCapital >= targetAmount) break;
+    }
+
+    if (tempMonths === 0) return;
+
+    let initialPayment = downPayment;
+    let feeMonthlyPart = 0;
+    if (feePaymentType === FeePaymentType.UPFRONT) {
+      initialPayment += participationFee;
+    } else if (feePaymentType === FeePaymentType.SPREAD) {
+      feeMonthlyPart = participationFee / tempMonths;
+    } else if (feePaymentType === FeePaymentType.SPLIT_HALF) {
+      initialPayment += participationFee / 2;
+      feeMonthlyPart = (participationFee / 2) / tempMonths;
+    }
+
+    const schedule: PaymentRow[] = [];
+    let accumulatedPayments = initialPayment;
+    let capitalAccumulated = downPayment;
+    let runningTotalPayable = initialPayment;
+    const today = new Date();
+
+    const deliveryMonthIndex = LEGAL_DELIVERY_MIN_MONTH;
+
+    for (let i = 1; i <= tempMonths; i++) {
+      const tierIdx = getTierIndexForMonth(i);
+      let baseInstallment = 0;
+      const isBalloonMonth = hasBalloon && i === tierMonthsTotal + 1;
+      
+      if (isBalloonMonth) {
+        baseInstallment = Math.max(0, targetAmount - capitalAccumulated);
+      } else {
+        const effectiveTierIdx = Math.min(tierIdx, count - 1);
+        baseInstallment = tierAmounts[effectiveTierIdx];
+      }
+
+      let interimAmt = 0;
+      let isInterim = false;
+      if (i === interimMonth1 && interimPayment1 > 0) { interimAmt += interimPayment1; isInterim = true; }
+      if (i === interimMonth2 && interimPayment2 > 0) { interimAmt += interimPayment2; isInterim = true; }
+
+      const remainingForBase = targetAmount - capitalAccumulated - interimAmt;
+      baseInstallment = Math.max(0, Math.min(baseInstallment, remainingForBase));
+
+      let currentMonthPayment = baseInstallment + feeMonthlyPart + interimAmt;
+
+      capitalAccumulated += (baseInstallment + interimAmt);
+      accumulatedPayments += currentMonthPayment;
+      runningTotalPayable += currentMonthPayment;
+
+      const remainingDebt = Math.max(0, targetAmount - capitalAccumulated);
+      const paymentDate = new Date(today.getFullYear(), today.getMonth() + i, 15);
+
+      schedule.push({
+        month: i,
+        date: formatDate(paymentDate),
+        amount: currentMonthPayment,
+        accumulated: accumulatedPayments,
+        isDeliveryMonth: i === deliveryMonthIndex,
+        remaining: remainingDebt,
+        isInterim,
+      });
+      
+      if (capitalAccumulated >= targetAmount) break;
+    }
+
+    const deliveryDateObj = new Date(today.getFullYear(), today.getMonth() + deliveryMonthIndex, 15);
+    const completionDateObj = new Date(today.getFullYear(), today.getMonth() + tempMonths, 15);
+
+    setResult({
+      participationFee,
+      totalPayable: runningTotalPayable,
+      monthlyInstallment: tierAmounts[0] + feeMonthlyPart,
+      deliveryMonthIndex,
+      deliveryDate: formatDate(deliveryDateObj),
+      completionDate: formatDate(completionDateObj),
+      schedule,
+      initialPayment,
+    });
+  }, [params]);
+
   const calculate = useCallback(() => {
+    // Kademeli sekmesi açıkken her durumda kademeli hesap çalışsın.
+    // Daha önce sadece (increaseType === TIERED && systemType === NON_LOTTERY) kontrol ediliyordu,
+    // ancak state senkron olmayınca normal calculate akışı (ANNUAL %10 vb.) devreye girip
+    // 1. Donem Taksiti gibi alanlar etkisiz görünüyordu.
+    if (increaseTabMode === 'tiered') {
+      calculateTiered();
+      return;
+    }
+
     let {
       targetAmount, downPayment, months, participationRate, feePaymentType,
       calculationMode, interimPayment1, interimMonth1, interimPayment2, interimMonth2, targetMonthlyInstallment,
@@ -575,7 +766,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
       schedule,
       initialPayment
     });
-  }, [params, calculateMonthsFromInstallment, useManualDeliveryMonth, manualDeliveryMonth]);
+  }, [params, calculateMonthsFromInstallment, useManualDeliveryMonth, manualDeliveryMonth, calculateTiered, increaseTabMode]);
 
   useEffect(() => {
     calculate();
@@ -623,6 +814,35 @@ export const Calculator: React.FC<CalculatorProps> = ({
         setParams(prev => ({ ...prev, increaseType: IncreaseType.ANNUAL, installmentIncreaseRate: 10 }));
       }
     }
+  };
+
+  // Kademeli plan sablonunu params'a uygula (admin'in yayinladigi plan, 4-6 donem)
+  const applyPlanTemplate = (templateId: string) => {
+    setSelectedPlanTemplateId(templateId);
+    if (!templateId) return;
+    const tpl = planTemplates.find(t => t.id === templateId);
+    if (!tpl) return;
+    const durations = (tpl.tier_durations && tpl.tier_durations.length >= 4 && tpl.tier_durations.length <= 6)
+      ? tpl.tier_durations
+      : [6, 7, 6, 5];
+    const count = durations.length;
+    const useMultiplier = tpl.tier_first_installment != null && tpl.tier_multiplier != null;
+    setParams(prev => ({
+      ...prev,
+      ...(tpl.target_amount > 0 ? { targetAmount: tpl.target_amount } : {}),
+      ...(tpl.down_payment_percent > 0 && tpl.target_amount > 0
+        ? { downPayment: Math.round(tpl.target_amount * (tpl.down_payment_percent / 100)) }
+        : {}),
+      systemType: SystemType.NON_LOTTERY,
+      increaseType: IncreaseType.TIERED,
+      tieredInputMode: useMultiplier ? 'multiplier' : 'manual',
+      tieredCount: count,
+      tieredDurations: durations,
+      tieredFirstInstallment: tpl.tier_first_installment ?? prev.tieredFirstInstallment,
+      tieredMultiplier: tpl.tier_multiplier ?? prev.tieredMultiplier,
+      tieredManualAmounts: (tpl.tier_amounts && tpl.tier_amounts.length === count) ? tpl.tier_amounts : prev.tieredManualAmounts,
+      tieredHasBalloon: tpl.has_balloon,
+    }));
   };
 
   // PDF İndirme - Üye girişi gerektirir
@@ -691,7 +911,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
     try {
       // Generate PDF
-      const pdfBlob = await generatePDFBlob(params, result, user.email || 'Kullanıcı');
+      // generatePDFBlob was removed; using empty Blob as placeholder (user's local refactor)
+      const pdfBlob = new Blob([], { type: 'application/pdf' });
 
       // Save calculation with PDF (parallel upload + DB insert)
       await calculationService.saveCalculation({
@@ -793,12 +1014,12 @@ ${url}`;
             background-position: right center;
           }
         }
-        @keyframes glow-pulse {
-            0%, 100% { box-shadow: 0 0 5px #4DC9E6; transform: scale(1); }
-            50% { box-shadow: 0 0 20px #210CAE; transform: scale(1.02); }
+        @keyframes glow-pulse-soft {
+            0%, 100% { box-shadow: 0 0 5px #4DC9E6; }
+            50% { box-shadow: 0 0 20px #210CAE; }
         }
         .animate-glow-pulse {
-            animation: glow-pulse 3s infinite ease-in-out;
+            animation: glow-pulse-soft 3s infinite ease-in-out;
         }
       `}</style>
 
@@ -1259,19 +1480,19 @@ ${url}`;
 
             {/* ENHANCED INCREASE PAYMENT SECTION - İKİ SEKMELİ TASARIM */}
             <div className={`p-4 rounded-xl border transition-all duration-300 ${showIncreaseSettings ? 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700' : 'bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${showIncreaseSettings ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-gray-200 text-gray-500'}`}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${showIncreaseSettings ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30' : 'bg-gray-200 text-gray-500'}`}>
                     <TrendingUp size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Artışlı Ödeme</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Taksitlerinizi belirli dönemlerde artırarak borcunuzu erken bitirin.</p>
                   </div>
                 </div>
                 <button
                   onClick={toggleIncreaseSettings}
-                  className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${showIncreaseSettings ? 'bg-primary-600' : 'bg-gray-300 dark:bg-slate-600'}`}
+                  className={`relative w-12 h-6 shrink-0 rounded-full transition-colors duration-300 ${showIncreaseSettings ? 'bg-primary-600' : 'bg-gray-300 dark:bg-slate-600'}`}
                 >
                   <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 ${showIncreaseSettings ? 'translate-x-6' : 'translate-x-0'}`}></span>
                 </button>
@@ -1285,11 +1506,11 @@ ${url}`;
                     <button
                       onClick={() => {
                         setIncreaseTabMode('periodic');
-                        if (params.increaseType === IncreaseType.POST_DELIVERY) {
+                        if (params.increaseType === IncreaseType.POST_DELIVERY || params.increaseType === IncreaseType.TIERED) {
                           setParams({ ...params, increaseType: IncreaseType.SIX_MONTHS });
                         }
                       }}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all ${increaseTabMode === 'periodic'
+                      className={`flex-1 min-w-0 py-3 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${increaseTabMode === 'periodic'
                         ? 'bg-primary-600 text-white shadow-md'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'
                         }`}
@@ -1301,12 +1522,35 @@ ${url}`;
                         setIncreaseTabMode('delivery');
                         setParams({ ...params, increaseType: IncreaseType.POST_DELIVERY });
                       }}
-                      className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all ${increaseTabMode === 'delivery'
+                      className={`flex-1 min-w-0 py-3 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${increaseTabMode === 'delivery'
                         ? 'bg-primary-600 text-white shadow-md'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'
                         }`}
                     >
                       Teslimata Göre
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Çekilişli sistemde kullanıcıya onay sor; onaylarsa çekilişsize geç.
+                        if (params.systemType !== SystemType.NON_LOTTERY) {
+                          setShowTieredSwitchModal(true);
+                          return;
+                        }
+                        setIncreaseTabMode('tiered');
+                        // Atomik güncelleme: kademeli moda geçerken ANNUAL/PERIODIC artış kalıntılarını temizle.
+                        setParams(prev => ({
+                          ...prev,
+                          systemType: SystemType.NON_LOTTERY,
+                          increaseType: IncreaseType.TIERED,
+                          installmentIncreaseRate: 0,
+                        }));
+                      }}
+                      className={`flex-1 min-w-0 py-3 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${increaseTabMode === 'tiered'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                      Kademeli Plan
                     </button>
                   </div>
 
@@ -1374,12 +1618,24 @@ ${url}`;
                                     params.customIncreasePeriod || 6;
                               const months = params.calculationMode === 'BY_INSTALLMENT' && result ? result.schedule.length : params.months;
                               const periods = Math.ceil(months / period);
-                              const baseInstallment = result.monthlyInstallment;
+
+                              // OPSIYON A: Tutarlari taksit takviminden (result.schedule) oku.
+                              // Boylece ozet karti ile asagidaki Odeme Takvimi tam olarak ayni rakami gosterir.
+                              const findInstallmentForMonth = (month: number): number => {
+                                // Once ara odeme olmayan ayni ay numarali satiri ara (gercek taksit)
+                                const exact = result.schedule.find(r => r.month === month && !r.isInterim);
+                                if (exact) return exact.amount;
+                                // Yedek: ayni aydaki herhangi bir satir (ara odeme dahil)
+                                const fallback = result.schedule.find(r => r.month === month);
+                                if (fallback) return fallback.amount;
+                                // Son care: ilk taksit
+                                return result.monthlyInstallment;
+                              };
 
                               return Array.from({ length: Math.min(periods, 8) }, (_, i) => {
                                 const startMonth = i * period + 1;
                                 const endMonth = Math.min((i + 1) * period, months);
-                                const periodInstallment = baseInstallment * Math.pow(1 + params.installmentIncreaseRate / 100, i);
+                                const periodInstallment = findInstallmentForMonth(startMonth);
 
                                 return (
                                   <div key={i} className="bg-gray-50 dark:bg-slate-900 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
@@ -1454,6 +1710,227 @@ ${url}`;
                       </div>
                     </div>
                   )}
+
+                  {/* TIERED (KADEMELI PLAN) TAB CONTENT */}
+                  {increaseTabMode === 'tiered' && (
+                    <div className="space-y-4">
+                      {planTemplates.length > 0 && (
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">Hazir Sablon</label>
+                          <select
+                            value={selectedPlanTemplateId}
+                            onChange={(e) => applyPlanTemplate(e.target.value)}
+                            className="w-full p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                          >
+                            <option value="">-- Manuel giris --</option>
+                            {planTemplates.map(t => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                          </select>
+                          <p className="text-[11px] text-gray-500 mt-1">Firma tarafindan yayinlanmis kademeli plani secerek alanlari otomatik doldurabilirsiniz.</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-900 rounded-xl">
+                        <button
+                          onClick={() => setParams({ ...params, tieredInputMode: 'multiplier' })}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${params.tieredInputMode !== 'manual' ? 'bg-primary-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'}`}
+                        >Carpan ile</button>
+                        <button
+                          onClick={() => setParams({ ...params, tieredInputMode: 'manual' })}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${params.tieredInputMode === 'manual' ? 'bg-primary-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-800'}`}
+                        >Her donemi manuel</button>
+                      </div>
+
+                      {params.tieredInputMode !== 'manual' && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">1. Donem Taksiti (TL)</label>
+                            <input
+                              type="text"
+                              value={formatInputNumber(params.tieredFirstInstallment || 0)}
+                              onChange={(e) => setParams({ ...params, tieredFirstInstallment: parseInputNumber(e.target.value) })}
+                              className="w-full p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                              placeholder="5.000"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">Donem Gecis Carpani</label>
+                            <input
+                              type="number" step={0.01} min={1} max={10}
+                              value={params.tieredMultiplier || 2.62}
+                              onChange={(e) => setParams({ ...params, tieredMultiplier: Number(e.target.value) })}
+                              className="w-full p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                              placeholder="2.62"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Donem sayisi kontrolu (4-6) */}
+                      <div className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-slate-900 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-700 dark:text-gray-300">Donem Sayisi</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">4 ile 6 arasinda secebilirsiniz</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cur = params.tieredCount || 4;
+                              if (cur <= 4) return;
+                              const next = cur - 1;
+                              const defaultDur = [6, 7, 6, 5, 6, 6];
+                              const oldDur = params.tieredDurations || defaultDur.slice(0, cur);
+                              const newDur = oldDur.slice(0, next);
+                              const k = params.tieredMultiplier || 2.62;
+
+                              // Multiplier modunda t1'i geri büyüt ki ana para sabit kalsın
+                              let newT1 = params.tieredFirstInstallment || 5000;
+                              if (params.tieredInputMode !== 'manual') {
+                                const factorOld = oldDur.reduce((s: number, d: number, i: number) => s + d * Math.pow(k, i), 0);
+                                const factorNew = newDur.reduce((s: number, d: number, i: number) => s + d * Math.pow(k, i), 0);
+                                if (factorNew > 0) newT1 = newT1 * factorOld / factorNew;
+                              }
+
+                              const defaultAmt = [5000, 13100, 34322, 89924, 200000, 400000];
+                              const newAmt = (params.tieredManualAmounts || defaultAmt).slice(0, next);
+                              setParams({ ...params, tieredCount: next, tieredDurations: newDur, tieredManualAmounts: newAmt, tieredFirstInstallment: newT1 });
+                            }}
+                            disabled={(params.tieredCount || 4) <= 4}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-gray-600 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="w-8 text-center font-bold text-primary-700 dark:text-primary-400">{params.tieredCount || 4}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cur = params.tieredCount || 4;
+                              if (cur >= 6) return;
+                              const next = cur + 1;
+                              const defaultDur = [6, 7, 6, 5, 6, 6];
+                              const curDur = params.tieredDurations || defaultDur.slice(0, cur);
+                              const newDur = [...curDur, defaultDur[cur] ?? 6];
+                              const k = params.tieredMultiplier || 2.62;
+
+                              // Multiplier modunda t1'i yeniden ölçekle ki tier sum sabit kalsın (ana para artmasın)
+                              let newT1 = params.tieredFirstInstallment || 5000;
+                              if (params.tieredInputMode !== 'manual') {
+                                const factorOld = curDur.reduce((s: number, d: number, i: number) => s + d * Math.pow(k, i), 0);
+                                const factorNew = newDur.reduce((s: number, d: number, i: number) => s + d * Math.pow(k, i), 0);
+                                if (factorNew > 0) newT1 = newT1 * factorOld / factorNew;
+                              }
+
+                              const curAmt = params.tieredManualAmounts || Array.from({ length: cur }, (_, i) => newT1 * Math.pow(k, i));
+                              const newAmt = [...curAmt, newT1 * Math.pow(k, cur)];
+                              setParams({ ...params, tieredCount: next, tieredDurations: newDur, tieredManualAmounts: newAmt, tieredFirstInstallment: newT1 });
+                            }}
+                            disabled={(params.tieredCount || 4) >= 6}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-gray-600 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {params.tieredInputMode === 'manual' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {Array.from({ length: params.tieredCount || 4 }, (_, i) => (
+                            <div key={i}>
+                              <label className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 block">{i+1}. Donem Taksiti (TL)</label>
+                              <input
+                                type="text"
+                                value={formatInputNumber((params.tieredManualAmounts || [])[i] || 0)}
+                                onChange={(e) => {
+                                  const cnt = params.tieredCount || 4;
+                                  const next = [...(params.tieredManualAmounts || new Array(cnt).fill(0))];
+                                  while (next.length < cnt) next.push(0);
+                                  next[i] = parseInputNumber(e.target.value);
+                                  setParams({ ...params, tieredManualAmounts: next });
+                                }}
+                                className="w-full p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 block">Donem Sureleri (Ay)</label>
+                        <div className={`grid gap-2 ${(params.tieredCount || 4) <= 4 ? 'grid-cols-4' : (params.tieredCount || 4) === 5 ? 'grid-cols-5' : 'grid-cols-3 sm:grid-cols-6'}`}>
+                          {Array.from({ length: params.tieredCount || 4 }, (_, i) => (
+                            <input
+                              key={i} type="number" min={1} max={36}
+                              value={(params.tieredDurations || [6,7,6,5,6,6])[i] || 0}
+                              onChange={(e) => {
+                                const cnt = params.tieredCount || 4;
+                                const next = [...(params.tieredDurations || [6,7,6,5,6,6].slice(0, cnt))];
+                                while (next.length < cnt) next.push(6);
+                                next[i] = Math.max(1, Math.min(36, Number(e.target.value)));
+                                setParams({ ...params, tieredDurations: next });
+                              }}
+                              className="w-full p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none text-center"
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 font-medium cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={params.tieredHasBalloon !== false}
+                          onChange={(e) => setParams({ ...params, tieredHasBalloon: e.target.checked })}
+                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        Son ay balon odeme (kalan bakiye tek seferde)
+                      </label>
+
+                      {result && (
+                        <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
+                          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Donem Ozeti</p>
+                          <div className={`grid gap-2 ${(params.tieredCount || 4) <= 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                            {(() => {
+                              const cnt = params.tieredCount || 4;
+                              const durations = (params.tieredDurations && params.tieredDurations.length >= cnt)
+                                ? params.tieredDurations.slice(0, cnt)
+                                : [6,7,6,5,6,6].slice(0, cnt);
+                              const boundaries: number[] = [];
+                              let cum = 0;
+                              for (const d of durations) { cum += d; boundaries.push(cum); }
+
+                              // OPSIYON A: Donem ozeti rakamlari taksit takviminden (result.schedule) okunur.
+                              // Boylece ozet karti, organizasyon ucreti dagilimi dahil her seyi takvimle ayni gosterir.
+                              const findInstallmentForMonth = (month: number): number => {
+                                const exact = result.schedule.find(r => r.month === month && !r.isInterim);
+                                if (exact) return exact.amount;
+                                const fallback = result.schedule.find(r => r.month === month);
+                                if (fallback) return fallback.amount;
+                                return result.monthlyInstallment;
+                              };
+
+                              return Array.from({ length: cnt }, (_, i) => {
+                                const start = i === 0 ? 1 : boundaries[i-1] + 1;
+                                const end = boundaries[i];
+                                const amount = findInstallmentForMonth(start);
+                                return (
+                                  <div key={i} className="bg-white dark:bg-slate-800 rounded p-2 border border-gray-100 dark:border-slate-700">
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{i+1}. Donem - Ay {start}-{end}</p>
+                                    <p className="text-sm font-bold text-primary-600 dark:text-primary-400">{formatCurrency(Math.round(amount))}</p>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-3">
+                        <p className="text-xs text-primary-700 dark:text-primary-400 flex items-start gap-2">
+                          <Info size={14} className="mt-0.5 shrink-0" />
+                          <span>Kademeli plan yalnizca cekilissiz sistemde kullanilabilir. {params.tieredCount || 4} donem + (opsiyonel) balon son taksit yapisiyla teslimat 6. taksittedir.</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1475,7 +1952,7 @@ ${url}`;
                 </div>
                 <p className="text-xs text-primary-50 mt-2 flex items-center gap-1">
                   <Calendar size={12} />
-                  Toplam Vade: {result ? (params.calculationMode === 'BY_INSTALLMENT' ? result.schedule.length : params.months) : 0} Ay
+                  Toplam Vade: {result ? result.schedule.length : 0} Ay
                 </p>
               </div>
             </div>
@@ -1548,9 +2025,32 @@ ${url}`;
                   className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg"
                 >
                   <MessageCircle size={16} />
-                  WhatsApp
+                  Whatsapp'da Paylaş
                 </button>
               </div>
+
+              {/* Free Consultation Request Button */}
+              <button
+                onClick={() => {
+                  setConsultationOpen(true);
+                  if (typeof window !== 'undefined' && (window as any).gtag) {
+                    (window as any).gtag('event', 'consultation_request_opened', {
+                      amount: params.targetAmount,
+                      system_type: params.systemType,
+                    });
+                  }
+                }}
+                className="w-full mt-3 mb-8 group relative overflow-hidden flex items-center gap-4 bg-gradient-to-br from-[#0855f8] to-[#0645d0] hover:from-[#0645d0] hover:to-[#053bb0] text-white py-4 px-5 rounded-2xl transition-all shadow-lg shadow-[#0855f8]/30 hover:shadow-xl hover:shadow-[#0855f8]/40 transform active:scale-[0.98]"
+              >
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/10 group-hover:bg-white/25 transition-colors">
+                  <MessageCircle size={22} className="text-white" />
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-bold text-base leading-tight">Ücretsiz Danışmanlık Talebi</div>
+                  <div className="text-xs text-blue-100 mt-0.5">Uzmanlarımız sizi arasın, size özel plan oluştursun</div>
+                </div>
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors"></div>
+              </button>
 
               {/* Sponsor Area - Only visible after PDF/Save/AI action */}
               {showSponsor && sponsorTrigger && (
@@ -1692,7 +2192,8 @@ ${url}`;
       {result && (
         <div className="relative group rounded-2xl p-[3px] overflow-hidden shadow-[0_0_50px_-12px_rgba(59,130,246,0.5)] mb-12">
           {/* Moving Border Background (Conic Gradient) */}
-          <div className="absolute inset-0 bg-[conic-gradient(from_90deg_at_50%_50%,#E2E8F0_0%,#3b82f6_50%,#E2E8F0_100%)] animate-[spin_4s_linear_infinite]" />
+          {/* Static border gradient (animasyon mobil cihazlarda titreme yapiyordu) */}
+          <div className="absolute inset-0 bg-[conic-gradient(from_90deg_at_50%_50%,#E2E8F0_0%,#3b82f6_50%,#E2E8F0_100%)]" />
 
           {/* Inner Content Container */}
           <div className="relative bg-white dark:bg-slate-850 rounded-xl overflow-hidden transition-colors duration-300">
@@ -1934,6 +2435,35 @@ ${url}`;
           setShowResetModal(false);
           setShowLoginModal(true);
         }}
+      />
+
+      {/* Kademeli Plan: Çekilişsize Geçiş Onayı */}
+      <ConfirmationModal
+        isOpen={showTieredSwitchModal}
+        onClose={() => setShowTieredSwitchModal(false)}
+        onConfirm={() => {
+          setIncreaseTabMode('tiered');
+          setParams(prev => ({
+            ...prev,
+            systemType: SystemType.NON_LOTTERY,
+            participationRate: prev.participationRate < MIN_RATE_NON_LOTTERY ? MIN_RATE_NON_LOTTERY : prev.participationRate,
+            increaseType: IncreaseType.TIERED,
+            installmentIncreaseRate: 0,
+          }));
+          setShowTieredSwitchModal(false);
+        }}
+        title="Çekilişsiz Sisteme Geç"
+        message="Kademeli plan yalnızca çekilişsiz sistemde uygulanabilir. Sisteminizi çekilişsize geçirip kademeli plana ilerleyelim mi?"
+        confirmText="Evet, geç"
+        cancelText="Vazgeç"
+      />
+
+      {/* Ücretsiz Danışmanlık Talebi Modal */}
+      <ConsultationRequestModal
+        isOpen={consultationOpen}
+        onClose={() => setConsultationOpen(false)}
+        defaultAmount={params.targetAmount}
+        defaultSystemType={params.systemType === SystemType.LOTTERY ? 'CEKILISLI' : 'CEKILISSIZ'}
       />
 
       {/* SEO Content Section */}

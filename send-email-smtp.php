@@ -25,7 +25,7 @@ $smtp = [
     'host' => 'mail.katilimuzmani.com',
     'port' => 587,
     'user' => 'bildirim@katilimuzmani.com',
-    'pass' => 'MD-3rHdk:.n746P-',
+    'pass' => getenv('SMTP_PASS') ?: '',
     'from' => 'bildirim@katilimuzmani.com',
     'name' => 'Katılım Uzmanı'
 ];

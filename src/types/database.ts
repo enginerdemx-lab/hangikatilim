@@ -30,6 +30,10 @@ export interface SiteSettings {
   terms_content?: string;
   cookie_content?: string;
   consent_content?: string;
+  // Data Sharing Consent (Veri Paylaşım Sözleşmesi)
+  data_sharing_text?: string;
+  data_sharing_content?: string;
+  data_sharing_url?: string;
   // App Store Badges
   app_store_badge_url?: string;
   google_play_badge_url?: string;
@@ -57,6 +61,11 @@ export interface SiteSettings {
   ticker_active?: boolean;
   gold_ons_price?: number;
   market_gold_change_rate?: number | null;
+  // Testimonials & Social Proof
+  testimonials_enabled?: boolean;
+  social_proof_enabled?: boolean;
+  // Social media follow promo (sticky button + periodic toast)
+  social_follow_promo_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -136,7 +145,7 @@ export interface Company {
   updated_at: string;
 }
 
-export type BadgeType = 'faizsiz_firsat' | 'ozel_kampanya' | 'sponsorlu';
+export type BadgeType = 'faizsiz_firsat' | 'ozel_kampanya' | 'sponsorlu' | 'hemen_teslim';
 
 export interface Campaign {
   id: string;
@@ -152,7 +161,10 @@ export interface Campaign {
   terms_button_text?: string;
   image_url?: string; // Kampanya özel görseli (desktop)
   mobile_image_url?: string; // Mobil cihazlar için dikey görsel
+  slug?: string; // SEO dostu URL
+  content?: string; // Rich HTML detay içeriği
   is_active: boolean;
+  order_index: number;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -280,6 +292,8 @@ export interface CampaignFormData {
   terms_button_text?: string;
   image_url?: string;
   mobile_image_url?: string;
+  slug?: string;
+  content?: string;
   is_active: boolean;
 }
 
@@ -366,6 +380,7 @@ export interface UserProfile {
   rent_amount?: number;
   preferred_finance_company?: string;
   gender?: string;
+  birth_date?: string | null;
 }
 
 export interface ProfileUpdate {
@@ -381,6 +396,7 @@ export interface ProfileUpdate {
   rent_amount?: number | null;
   preferred_finance_company?: string | null;
   gender?: string | null;
+  birth_date?: string | null;
 }
 
 export interface NotificationPreferences {
@@ -388,5 +404,52 @@ export interface NotificationPreferences {
   email_enabled: boolean;
   sms_enabled: boolean;
   marketing_allowed: boolean;
+  updated_at: string;
+}
+
+// Company Reviews
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CompanyReview {
+  id: string;
+  company_id: string;
+  user_id: string;
+  rating: number;
+  title?: string;
+  comment: string;
+  pros?: string;
+  cons?: string;
+  status: ReviewStatus;
+  admin_note?: string;
+  is_anonymous: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  user_name?: string;
+  company_name?: string;
+  company_logo_url?: string;
+}
+
+export interface CompanyRatingStats {
+  avg_rating: number;
+  total_reviews: number;
+  rating_1: number;
+  rating_2: number;
+  rating_3: number;
+  rating_4: number;
+  rating_5: number;
+}
+
+export type TestimonialStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Testimonial {
+  id: string;
+  user_id?: string;
+  user_name: string;
+  user_city?: string;
+  rating: number;
+  comment: string;
+  status: TestimonialStatus;
+  created_at: string;
   updated_at: string;
 }

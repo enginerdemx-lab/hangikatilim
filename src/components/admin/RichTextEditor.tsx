@@ -13,7 +13,7 @@ import {
     Heading2, Heading3, List, ListOrdered, Quote,
     AlignLeft, AlignCenter, AlignRight, Link as LinkIcon,
     Image as ImageIcon, Undo, Redo, Palette, Highlighter,
-    Pilcrow, Maximize2, Minimize2, Trash2
+    Pilcrow, Maximize2, Minimize2, Trash2, Code
 } from 'lucide-react';
 import { mediaApi } from '../../services/api/media';
 
@@ -70,6 +70,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showImageSizeModal, setShowImageSizeModal] = useState(false);
     const [imageWidth, setImageWidth] = useState('100');
+    const [showHtmlModal, setShowHtmlModal] = useState(false);
+    const [htmlInput, setHtmlInput] = useState('');
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [linkUrl, setLinkUrl] = useState('');
+    const [linkText, setLinkText] = useState('');
+    const [showImageUrlModal, setShowImageUrlModal] = useState(false);
+    const [imageUrlInput, setImageUrlInput] = useState('');
 
     const editor = useEditor({
         extensions: [
@@ -181,13 +188,53 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         }
     }, [editor]);
 
-    const addLink = useCallback(() => {
+    const openLinkModal = useCallback(() => {
         if (!editor) return;
-        const url = prompt('Link URL\'si:');
-        if (url) {
+        const { from, to } = editor.state.selection;
+        const selectedText = editor.state.doc.textBetween(from, to, '');
+
+        // Check if cursor is on existing link
+        const existingLink = editor.getAttributes('link').href || '';
+
+        setLinkText(selectedText || '');
+        setLinkUrl(existingLink);
+        setShowLinkModal(true);
+    }, [editor]);
+
+    const applyLink = useCallback(() => {
+        if (!editor || !linkUrl.trim()) return;
+
+        const url = linkUrl.trim().startsWith('http') ? linkUrl.trim() : `https://${linkUrl.trim()}`;
+
+        if (linkText.trim() && editor.state.selection.empty) {
+            // No selection — insert new text with link
+            editor.chain().focus()
+                .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText.trim()}</a>`)
+                .run();
+        } else {
+            // Has selection — apply link to selected text
             editor.chain().focus().setLink({ href: url }).run();
         }
+
+        setShowLinkModal(false);
+        setLinkUrl('');
+        setLinkText('');
+    }, [editor, linkUrl, linkText]);
+
+    const removeLink = useCallback(() => {
+        if (!editor) return;
+        editor.chain().focus().unsetLink().run();
+        setShowLinkModal(false);
+        setLinkUrl('');
+        setLinkText('');
     }, [editor]);
+
+    const applyImageUrl = useCallback(() => {
+        if (!editor || !imageUrlInput.trim()) return;
+        editor.chain().focus().setImage({ src: imageUrlInput.trim() }).run();
+        setShowImageUrlModal(false);
+        setImageUrlInput('');
+    }, [editor, imageUrlInput]);
 
     const setColor = useCallback((color: string) => {
         if (!editor) return;
@@ -374,18 +421,38 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
                 {/* Link & Image */}
                 <ToolbarButton
-                    onClick={addLink}
+                    onClick={openLinkModal}
                     isActive={editor.isActive('link')}
-                    title="Link ekle"
+                    title="Link ekle / düzenle"
                 >
                     <LinkIcon size={18} />
                 </ToolbarButton>
-                <ToolbarButton
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Görsel ekle"
-                >
-                    <ImageIcon size={18} />
-                </ToolbarButton>
+                <div className="relative group">
+                    <ToolbarButton
+                        onClick={() => { }}
+                        title="Görsel ekle"
+                    >
+                        <ImageIcon size={18} />
+                    </ToolbarButton>
+                    <div className="absolute top-full left-0 hidden group-hover:flex flex-col bg-white shadow-lg rounded-lg border border-gray-200 py-1 z-10 min-w-[160px]">
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                            <ImageIcon size={14} />
+                            Dosyadan Yükle
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowImageUrlModal(true)}
+                            className="px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                            <LinkIcon size={14} />
+                            URL ile Ekle
+                        </button>
+                    </div>
+                </div>
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -501,9 +568,203 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 >
                     <Redo size={18} />
                 </ToolbarButton>
+
+                <ToolbarDivider />
+
+                {/* HTML Yapıştır */}
+                <ToolbarButton
+                    onClick={() => setShowHtmlModal(true)}
+                    title="HTML olarak yapıştır"
+                >
+                    <Code size={18} />
+                </ToolbarButton>
             </div>
 
-            {/* Editor Content */}
+            {/* HTML Paste Modal */}
+            {showHtmlModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-900">HTML İçerik Yapıştır</h3>
+                            <button
+                                type="button"
+                                onClick={() => { setShowHtmlModal(false); setHtmlInput(''); }}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <textarea
+                                value={htmlInput}
+                                onChange={(e) => setHtmlInput(e.target.value)}
+                                rows={12}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder={'HTML kodunu buraya yapıştırın...\n\nÖrnek:\n<h2>Başlık</h2>\n<p>Paragraf metni...</p>'}
+                            />
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowHtmlModal(false); setHtmlInput(''); }}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (editor && htmlInput.trim()) {
+                                            editor.commands.setContent(htmlInput, { emitUpdate: true });
+                                            onChange(editor.getHTML());
+                                        }
+                                        setShowHtmlModal(false);
+                                        setHtmlInput('');
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                >
+                                    İçeriği Uygula
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Link Modal */}
+            {showLinkModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-900">Link Ekle / Düzenle</h3>
+                            <button
+                                type="button"
+                                onClick={() => { setShowLinkModal(false); setLinkUrl(''); setLinkText(''); }}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">URL *</label>
+                                <input
+                                    type="text"
+                                    value={linkUrl}
+                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                    placeholder="https://ornek.com"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    autoFocus
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyLink(); } }}
+                                />
+                            </div>
+                            {editor?.state.selection.empty && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Görünecek Metin</label>
+                                    <input
+                                        type="text"
+                                        value={linkText}
+                                        onChange={(e) => setLinkText(e.target.value)}
+                                        placeholder="Tıklanacak metin"
+                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyLink(); } }}
+                                    />
+                                </div>
+                            )}
+                            <div className="flex justify-between pt-2">
+                                <div>
+                                    {linkUrl && editor?.isActive('link') && (
+                                        <button
+                                            type="button"
+                                            onClick={removeLink}
+                                            className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                                        >
+                                            Linki Kaldır
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowLinkModal(false); setLinkUrl(''); setLinkText(''); }}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                    >
+                                        İptal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={applyLink}
+                                        disabled={!linkUrl.trim()}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Uygula
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Image URL Modal */}
+            {showImageUrlModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-900">URL ile Görsel Ekle</h3>
+                            <button
+                                type="button"
+                                onClick={() => { setShowImageUrlModal(false); setImageUrlInput(''); }}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Görsel URL</label>
+                                <input
+                                    type="text"
+                                    value={imageUrlInput}
+                                    onChange={(e) => setImageUrlInput(e.target.value)}
+                                    placeholder="https://ornek.com/gorsel.jpg"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    autoFocus
+                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyImageUrl(); } }}
+                                />
+                            </div>
+                            {imageUrlInput.trim() && (
+                                <div className="border border-gray-200 rounded-lg p-3">
+                                    <p className="text-xs text-gray-500 mb-2">Önizleme:</p>
+                                    <img
+                                        src={imageUrlInput.trim()}
+                                        alt="Önizleme"
+                                        className="max-h-40 rounded object-contain mx-auto"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                                    />
+                                </div>
+                            )}
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowImageUrlModal(false); setImageUrlInput(''); }}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={applyImageUrl}
+                                    disabled={!imageUrlInput.trim()}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Ekle
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <EditorContent editor={editor} />
 
             {/* Placeholder styling */}

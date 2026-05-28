@@ -6,7 +6,7 @@ export const RouteDebugger: React.FC = () => {
     const matches = useMatches();
 
     useEffect(() => {
-        console.log('🔍 ROUTE DEBUG:', {
+        console.log('ğŸ” ROUTE DEBUG:', {
             currentPath: location.pathname,
             matchedRoutes: matches.map(m => ({
                 path: m.pathname,
