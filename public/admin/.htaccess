@@ -8,5 +8,5 @@
   RewriteRule ^ - [L]
 
   # 2. Tüm diğer istekleri (sanal yolları) ana dizindeki React SPA'ya yönlendir
-  RewriteRule ^(.*)$ ../index.html [L]
+  RewriteRule ^(.*)$ /index.html [L]
 </IfModule>
