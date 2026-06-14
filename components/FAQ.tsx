@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, ArrowRight } from 'lucide-react';
 import { homeContentApi } from '../src/services/api/homeContent';
 
 interface FAQItem {
@@ -125,7 +125,7 @@ export const FAQ: React.FC = () => {
             </button>
 
             <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${openIndex === index ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}
+              className={`transition-all duration-300 ease-in-out overflow-hidden ${openIndex === index ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
             >
               <div className="p-5 pt-0 text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-slate-700 mt-2">
                 {faq.answer}
@@ -133,6 +133,13 @@ export const FAQ: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="text-center mt-10">
+        <a href="/iletisim" className="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 font-semibold hover:gap-3 transition-all">
+          Başka sorunuz mu var? Bize ulaşın
+          <ArrowRight size={18} />
+        </a>
       </div>
     </div>
   );

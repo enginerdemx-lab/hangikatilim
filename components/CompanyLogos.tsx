@@ -74,6 +74,9 @@ export const CompanyLogos: React.FC = () => {
                   <img
                     src={company.logo_url}
                     alt={company.company_name}
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
                     className="max-h-12 max-w-full object-contain grayscale group-hover:grayscale-0 transition-all duration-300 dark:brightness-0 dark:invert dark:opacity-70 dark:group-hover:opacity-100"
                   />
                 ) : (

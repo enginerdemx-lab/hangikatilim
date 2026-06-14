@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ArrowRight, Home, Car, Wallet, Info, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Calculator } from '../../components/Calculator';
 import { FAQ } from '../../../components/FAQ';
 import { CompanyLogos } from '../../../components/CompanyLogos';
 import { QuickLinksGrid } from '../../../components/QuickLinksGrid';
@@ -13,6 +12,10 @@ import type { HomeHero } from '../../types/database';
 interface OutletContextType {
     theme: 'light' | 'dark';
 }
+
+const Calculator = React.lazy(() =>
+    import('../../components/Calculator').then(module => ({ default: module.Calculator }))
+);
 
 // Cache constants
 const HERO_CACHE_KEY = 'hero_slides_cache';
@@ -48,6 +51,25 @@ const setCachedSlides = (slides: HomeHero[]) => {
     }
 };
 
+const optimizeImageUrl = (url: string, width: number): string => {
+    if (!url) return url;
+
+    try {
+        const parsed = new URL(url);
+        if (parsed.pathname.includes('/storage/v1/object/public/')) {
+            parsed.pathname = parsed.pathname.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+            parsed.searchParams.set('width', String(width));
+            parsed.searchParams.set('quality', '74');
+            parsed.searchParams.set('resize', 'cover');
+            return parsed.toString();
+        }
+    } catch {
+        // Keep non-URL or provider URLs untouched.
+    }
+
+    return url;
+};
+
 // Skeleton Loader Component - Same height as actual hero
 const HeroSkeleton: React.FC = () => (
     <div className="relative overflow-hidden rounded-3xl min-h-[320px] sm:min-h-[360px] md:min-h-[400px] lg:min-h-[440px] bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700">
@@ -79,10 +101,11 @@ const HomePage: React.FC = () => {
     const { theme } = useOutletContext<OutletContextType>();
     usePageSeo();
 
-    // Initialize with cached data or null (NEVER empty array with fallbacks!)
-    const [heroSlides, setHeroSlides] = useState<HomeHero[] | null>(() => getCachedSlides());
+    // Her zaman taze veriyle başla: admin'de yapılan güncelleme anında görünür,
+    // eski (önbellekteki) içerik kısa süre görünüp "yanıp sönme" yaşanmaz.
+    const [heroSlides, setHeroSlides] = useState<HomeHero[] | null>(null);
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [isLoading, setIsLoading] = useState(heroSlides === null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         loadHeroSlides();
@@ -92,12 +115,11 @@ const HomePage: React.FC = () => {
         try {
             const slides = await homeHeroApi.getAllSlides();
             setHeroSlides(slides);
-            setCachedSlides(slides); // Update cache
 
             // Preload first slide image for instant display
-            if (slides[0]?.background_image_url) {
+            if (slides[0]?.background_image_url || slides[0]?.mobile_image_url) {
                 const img = new Image();
-                img.src = slides[0].background_image_url;
+                img.src = optimizeImageUrl(slides[0].mobile_image_url || slides[0].background_image_url || '', 768);
             }
         } catch (error) {
             console.error('Failed to load hero slides:', error);
@@ -129,6 +151,10 @@ const HomePage: React.FC = () => {
 
     return (
         <>
+            {/* Tek H1 — ana anahtar kelime. Görsel tasarımı bozmamak için ekran
+                okuyucuya özel (sr-only); sayfadaki ilk ve tek H1 budur. */}
+            <h1 className="sr-only">Tasarruf Finansmanı Hesaplama Aracı</h1>
+
             {/* Quick Links Section */}
             <section className="bg-gray-50 dark:bg-slate-900 pt-4 md:pt-5">
                 <div className="container mx-auto px-3 md:px-4 max-w-7xl">
@@ -161,19 +187,23 @@ const HomePage: React.FC = () => {
                                             {currentSlide.image_fit_mode === 'contain' ? (
                                                 <div className="absolute inset-0 flex items-center justify-center rounded-3xl overflow-hidden">
                                                     <img
-                                                        src={currentSlide.background_image_url}
+                                                        src={optimizeImageUrl(currentSlide.background_image_url, 1200)}
                                                         alt="Banner"
                                                         className="max-w-full max-h-full object-contain transition-opacity duration-500"
+                                                        loading="eager"
+                                                        fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
+                                                        decoding="async"
                                                     />
                                                 </div>
                                             ) : (
-                                                <div
-                                                    className="absolute inset-0 transition-opacity duration-500 rounded-3xl"
-                                                    style={{
-                                                        backgroundImage: `url(${currentSlide.background_image_url})`,
-                                                        backgroundSize: 'cover',
-                                                        backgroundPosition: `${currentSlide.object_position_x ?? 50}% ${currentSlide.object_position_y ?? 50}%`
-                                                    }}
+                                                <img
+                                                    src={optimizeImageUrl(currentSlide.background_image_url, 1200)}
+                                                    alt=""
+                                                    className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 rounded-3xl"
+                                                    style={{ objectPosition: `${currentSlide.object_position_x ?? 50}% ${currentSlide.object_position_y ?? 50}%` }}
+                                                    loading="eager"
+                                                    fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
+                                                    decoding="async"
                                                 />
                                             )}
                                         </>
@@ -183,15 +213,15 @@ const HomePage: React.FC = () => {
                                     {/* Desktop Content */}
                                     <div className="relative z-10 w-full h-full px-6 md:px-8 py-8 md:py-10 flex flex-col justify-center">
                                         <div className="max-w-xl space-y-3">
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-medium text-white mb-3 animate-fade-in-up backdrop-blur-sm">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-medium mb-3 animate-fade-in-up backdrop-blur-sm" style={{ color: currentSlide.badge_text_color || currentSlide.text_color || '#FFFFFF' }}>
+                                                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: currentSlide.badge_text_color || currentSlide.text_color || '#FFFFFF' }}></span>
                                                 Katılım Uzmanı ile Geleceği Planla
                                             </div>
-                                            <h1 className="text-xl md:text-2xl font-semibold leading-snug tracking-tight line-clamp-2">
+                                            <p className="text-xl md:text-2xl font-semibold leading-snug tracking-tight line-clamp-2" style={{ color: currentSlide.text_color || undefined }}>
                                                 {currentSlide.title}
-                                            </h1>
+                                            </p>
                                             {currentSlide.subtitle && (
-                                                <p className="text-sm md:text-base text-gray-100 max-w-lg leading-relaxed opacity-90 line-clamp-2">
+                                                <p className="text-sm md:text-base text-gray-100 max-w-lg leading-relaxed opacity-90 line-clamp-2" style={{ color: currentSlide.text_color || undefined }}>
                                                     {currentSlide.subtitle}
                                                 </p>
                                             )}
@@ -206,6 +236,7 @@ const HomePage: React.FC = () => {
                                                             }
                                                         }}
                                                         className="bg-white text-[#210CAE] font-semibold px-5 py-2.5 rounded-lg shadow-md flex items-center gap-2 transition-all hover:shadow-lg text-sm"
+                                                        style={{ backgroundColor: currentSlide.button_color || undefined, color: currentSlide.button_text_color || undefined }}
                                                     >
                                                         {currentSlide.cta1_label}
                                                         <ArrowRight size={16} />
@@ -233,13 +264,13 @@ const HomePage: React.FC = () => {
                                 >
                                     {/* Mobile Background Image */}
                                     {(currentSlide.mobile_image_url || currentSlide.background_image_url) && (
-                                        <div
-                                            className="absolute inset-0 transition-opacity duration-500 rounded-3xl"
-                                            style={{
-                                                backgroundImage: `url(${currentSlide.mobile_image_url || currentSlide.background_image_url})`,
-                                                backgroundSize: 'cover',
-                                                backgroundPosition: 'center center'
-                                            }}
+                                        <img
+                                            src={optimizeImageUrl(currentSlide.mobile_image_url || currentSlide.background_image_url || '', 768)}
+                                            alt=""
+                                            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 rounded-3xl"
+                                            loading="eager"
+                                            fetchPriority={currentSlideIndex === 0 ? 'high' : 'auto'}
+                                            decoding="async"
                                         />
                                     )}
                                     <div className="absolute inset-0 bg-black/10 rounded-3xl pointer-events-none"></div>
@@ -247,15 +278,15 @@ const HomePage: React.FC = () => {
                                     {/* Mobile Content */}
                                     <div className="relative z-10 w-full h-full px-4 py-4 flex flex-col justify-end">
                                         <div className="space-y-2">
-                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[9px] font-medium text-white mb-2 animate-fade-in-up backdrop-blur-sm">
-                                                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-[9px] font-medium mb-2 animate-fade-in-up backdrop-blur-sm" style={{ color: currentSlide.badge_text_color || currentSlide.text_color || '#FFFFFF' }}>
+                                                <span className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: currentSlide.badge_text_color || currentSlide.text_color || '#FFFFFF' }}></span>
                                                 Katılım Uzmanı ile Geleceği Planla
                                             </div>
-                                            <h2 className="text-lg font-semibold leading-snug tracking-tight line-clamp-2">
+                                            <p className="text-lg font-semibold leading-snug tracking-tight line-clamp-2" style={{ color: currentSlide.text_color || undefined }}>
                                                 {currentSlide.title}
-                                            </h2>
+                                            </p>
                                             {currentSlide.subtitle && (
-                                                <p className="text-xs text-gray-100 leading-relaxed opacity-90 line-clamp-2">
+                                                <p className="text-xs text-gray-100 leading-relaxed opacity-90 line-clamp-2" style={{ color: currentSlide.text_color || undefined }}>
                                                     {currentSlide.subtitle}
                                                 </p>
                                             )}
@@ -270,6 +301,7 @@ const HomePage: React.FC = () => {
                                                             }
                                                         }}
                                                         className="bg-white text-[#210CAE] font-semibold px-4 py-2 rounded-lg shadow-md flex items-center gap-2 transition-all hover:shadow-lg text-xs"
+                                                        style={{ backgroundColor: currentSlide.button_color || undefined, color: currentSlide.button_text_color || undefined }}
                                                     >
                                                         {currentSlide.cta1_label}
                                                         <ArrowRight size={14} />
@@ -319,7 +351,9 @@ const HomePage: React.FC = () => {
                 </div>
             </section>
 
-            <Calculator theme={theme} />
+            <React.Suspense fallback={<div className="bg-white dark:bg-slate-900 min-h-[680px]" aria-hidden="true" />}>
+                <Calculator theme={theme} />
+            </React.Suspense>
 
             {/* Info Section */}
             <section id="info" className="bg-white dark:bg-slate-850 py-8 md:py-10 border-t border-gray-100 dark:border-slate-800 transition-colors duration-300">

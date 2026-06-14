@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { HelpCircle, Search, ChevronDown, ChevronUp, Tag, MessageCircle, BookOpen } from 'lucide-react';
 import { homeContentApi } from '../../services/api/homeContent';
 import type { FAQItem } from '../../types/database';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 // Kategori tanımları
 const CATEGORY_MAP: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
@@ -13,6 +14,7 @@ const CATEGORY_MAP: Record<string, { label: string; color: string; bgColor: stri
 };
 
 const FAQPage: React.FC = () => {
+  usePageSeo();
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

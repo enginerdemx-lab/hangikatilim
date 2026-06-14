@@ -723,7 +723,7 @@ export const Users: React.FC = () => {
                                                     <option value="superadmin">Süper Admin</option>
                                                     <option value="content_manager">İçerik Yöneticisi</option>
                                                     <option value="news_editor">Haber Editörü</option>
-                                                    <option value="social_media">Sosyal Medya</option>
+                                                    <option value="social_media">Satış Danışmanı</option>
                                                 </select>
                                             </td>
                                             <td className="p-4">

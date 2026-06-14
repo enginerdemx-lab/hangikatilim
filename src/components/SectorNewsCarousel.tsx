@@ -273,6 +273,9 @@ export const SectorNewsCarousel: React.FC<SectorNewsCarouselProps> = ({ maxItems
                                         <img
                                             src={item.cover_image_url}
                                             alt={item.title}
+                                            loading="lazy"
+                                            decoding="async"
+                                            fetchPriority="low"
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
                                     ) : (

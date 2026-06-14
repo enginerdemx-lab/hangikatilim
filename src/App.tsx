@@ -1,40 +1,47 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 
-// Admin imports
-import { AdminLayout } from './components/admin/AdminLayout';
-
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { AdminLogin } from './pages/admin/AdminLogin';
-import { HomeContent } from './pages/admin/HomeContent';
-import { SiteSettings } from './pages/admin/SiteSettings';
-import { Ticker } from './pages/admin/Ticker';
-import { HomeHeroSettings } from './pages/admin/HomeHeroSettings';
-import { Calculator as AdminCalculator } from './pages/admin/Calculator';
-import { PaymentPlanTemplates as AdminPaymentPlanTemplates } from './pages/admin/PaymentPlanTemplates';
-import { News as AdminNews } from './pages/admin/News';
-import { Blog as AdminBlog } from './pages/admin/Blog';
-import { Contact as AdminContact } from './pages/admin/Contact';
-import { Media } from './pages/admin/Media';
-import { Campaigns as AdminCampaigns } from './pages/admin/Campaigns';
-import { Companies as AdminCompanies } from './pages/admin/Companies';
-import { QuickLinks } from './pages/admin/QuickLinks';
-import { Sponsors as AdminSponsors } from './pages/admin/Sponsors';
-import { Feedback as AdminFeedback } from './pages/admin/Feedback';
-import { PushNotifications } from './pages/admin/PushNotifications';
-import { Users } from './pages/admin/Members';
-import EmailNotifications from './pages/admin/EmailNotifications';
-import { SocialMediaGenerator } from './pages/admin/SocialMediaGenerator';
-import { AboutSettings } from './pages/admin/AboutSettings';
-import { CampaignBanners } from './pages/admin/CampaignBanners';
-import { PdfDownloadLogs } from './pages/admin/PdfDownloadLogs';
-import { Reviews as AdminReviews } from './pages/admin/Reviews';
-import { ConsultationRequests as AdminConsultationRequests } from './pages/admin/ConsultationRequests';
+// Admin imports — LAZY: admin paneli (tiptap editör dahil) artık ana bundle'a
+// girmiyor; sadece /admin'e girilince yükleniyor. Public ziyaretçi indirmez.
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
+const HomeContent = lazy(() => import('./pages/admin/HomeContent').then(m => ({ default: m.HomeContent })));
+const SiteSettings = lazy(() => import('./pages/admin/SiteSettings').then(m => ({ default: m.SiteSettings })));
+const Ticker = lazy(() => import('./pages/admin/Ticker').then(m => ({ default: m.Ticker })));
+const HomeHeroSettings = lazy(() => import('./pages/admin/HomeHeroSettings').then(m => ({ default: m.HomeHeroSettings })));
+const AdminCalculator = lazy(() => import('./pages/admin/Calculator').then(m => ({ default: m.Calculator })));
+const AdminPaymentPlanTemplates = lazy(() => import('./pages/admin/PaymentPlanTemplates').then(m => ({ default: m.PaymentPlanTemplates })));
+const AdminNews = lazy(() => import('./pages/admin/News').then(m => ({ default: m.News })));
+const AdminBlog = lazy(() => import('./pages/admin/Blog').then(m => ({ default: m.Blog })));
+const AdminBlogCategories = lazy(() => import('./pages/admin/BlogCategories').then(m => ({ default: m.BlogCategories })));
+const AdminContact = lazy(() => import('./pages/admin/Contact').then(m => ({ default: m.Contact })));
+const Media = lazy(() => import('./pages/admin/Media').then(m => ({ default: m.Media })));
+const AdminCampaigns = lazy(() => import('./pages/admin/Campaigns').then(m => ({ default: m.Campaigns })));
+const AdminCompanies = lazy(() => import('./pages/admin/Companies').then(m => ({ default: m.Companies })));
+const QuickLinks = lazy(() => import('./pages/admin/QuickLinks').then(m => ({ default: m.QuickLinks })));
+const AdminSponsors = lazy(() => import('./pages/admin/Sponsors').then(m => ({ default: m.Sponsors })));
+const AdminFeedback = lazy(() => import('./pages/admin/Feedback').then(m => ({ default: m.Feedback })));
+const PushNotifications = lazy(() => import('./pages/admin/PushNotifications').then(m => ({ default: m.PushNotifications })));
+const Users = lazy(() => import('./pages/admin/Members').then(m => ({ default: m.Users })));
+const EmailNotifications = lazy(() => import('./pages/admin/EmailNotifications'));
+const SocialMediaGenerator = lazy(() => import('./pages/admin/SocialMediaGenerator').then(m => ({ default: m.SocialMediaGenerator })));
+const AboutSettings = lazy(() => import('./pages/admin/AboutSettings').then(m => ({ default: m.AboutSettings })));
+const CampaignBanners = lazy(() => import('./pages/admin/CampaignBanners').then(m => ({ default: m.CampaignBanners })));
+const PdfDownloadLogs = lazy(() => import('./pages/admin/PdfDownloadLogs').then(m => ({ default: m.PdfDownloadLogs })));
+const AdminReviews = lazy(() => import('./pages/admin/Reviews').then(m => ({ default: m.Reviews })));
+const AdminConsultationRequests = lazy(() => import('./pages/admin/ConsultationRequests').then(m => ({ default: m.ConsultationRequests })));
 
 // Lazy loaded popup pages
 const PopupManager = lazy(() => import('./pages/admin/PopupManager'));
 const PopupEditor = lazy(() => import('./pages/admin/PopupEditor'));
+const DeferredPushPermissionModal = lazy(() =>
+  import('./components/PushPermissionModal').then(m => ({ default: m.PushPermissionModal }))
+);
+const DeferredPopupProvider = lazy(() =>
+  import('./components/PopupProvider').then(m => ({ default: m.PopupProvider }))
+);
 
 
 // Public Layout
@@ -61,7 +68,6 @@ const UnsubscribePage = lazy(() => import('./pages/public/UnsubscribePage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const FavoritesPage = lazy(() => import('./pages/public/FavoritesPage'));
 const AuthCallback = lazy(() => import('./pages/public/AuthCallback'));
-const FAQPage = lazy(() => import('./pages/public/FAQPage'));
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -73,20 +79,42 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
-import { PushPermissionModal } from './components/PushPermissionModal';
-import { PopupProvider } from './components/PopupProvider';
+const DeferredAppOverlays: React.FC = () => {
+  const [enabled, setEnabled] = React.useState(false);
+  const location = useLocation();
+
+  React.useEffect(() => {
+    if ('requestIdleCallback' in window) {
+      const id = (window as any).requestIdleCallback(() => setEnabled(true), { timeout: 4000 });
+      return () => (window as any).cancelIdleCallback?.(id);
+    }
+
+    const id = window.setTimeout(() => setEnabled(true), 2500);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  if (!enabled || location.pathname.startsWith('/admin')) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <DeferredPopupProvider>{null}</DeferredPopupProvider>
+      <DeferredPushPermissionModal />
+    </Suspense>
+  );
+};
 
 const App: React.FC = () => {
   React.useEffect(() => {
-    // DEBUG: Check permission on load
-    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-      // console.log('Bildirim izni yok:', Notification.permission);
-    }
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
+    let cancelled = false;
+    let cleanupIdle = () => { };
+    let unsubscribe: (() => void) | null = null;
     const initNotification = async () => {
       try {
         const { onForegroundMessage } = await import('./lib/firebase');
-        onForegroundMessage(async (payload) => {
+        if (cancelled) return;
+        unsubscribe = onForegroundMessage(async (payload) => {
           // console.log('[App] Foreground message:', payload);
 
           // Native Notification for Foreground
@@ -119,7 +147,20 @@ const App: React.FC = () => {
         console.error('Notification init error:', error);
       }
     };
-    initNotification();
+
+    if ('requestIdleCallback' in window) {
+      const id = (window as any).requestIdleCallback(initNotification, { timeout: 5000 });
+      cleanupIdle = () => (window as any).cancelIdleCallback?.(id);
+    } else {
+      const id = window.setTimeout(initNotification, 3000);
+      cleanupIdle = () => window.clearTimeout(id);
+    }
+
+    return () => {
+      cancelled = true;
+      cleanupIdle();
+      unsubscribe?.();
+    };
   }, []);
 
   return (
@@ -127,34 +168,35 @@ const App: React.FC = () => {
       <BrowserRouter>
         <ScrollToHash />
         <Routes>
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="members" element={<Users />} />
-            <Route path="home-content" element={<HomeContent />} />
-            <Route path="site-settings" element={<SiteSettings />} />
-            <Route path="ticker" element={<Ticker />} />
-            <Route path="home-hero" element={<HomeHeroSettings />} />
-            <Route path="calculator" element={<AdminCalculator />} />
-            <Route path="payment-plan-templates" element={<AdminPaymentPlanTemplates />} />
-            <Route path="news" element={<AdminNews />} />
-            <Route path="blog" element={<AdminBlog />} />
-            <Route path="contact" element={<AdminContact />} />
-            <Route path="media" element={<Media />} />
-            <Route path="campaigns" element={<AdminCampaigns />} />
-            <Route path="companies" element={<AdminCompanies />} />
-            <Route path="quick-links" element={<QuickLinks />} />
-            <Route path="sponsors" element={<AdminSponsors />} />
-            <Route path="email-notifications" element={<EmailNotifications />} />
-            <Route path="feedback" element={<AdminFeedback />} />
-            <Route path="push-notifications" element={<PushNotifications />} />
-            <Route path="social-media-generator" element={<SocialMediaGenerator />} />
-            <Route path="about-settings" element={<AboutSettings />} />
-            <Route path="campaign-banners" element={<CampaignBanners />} />
-            <Route path="pdf-logs" element={<PdfDownloadLogs />} />
-            <Route path="reviews" element={<AdminReviews />} />
-            <Route path="consultation-requests" element={<AdminConsultationRequests />} />
+          {/* Admin Routes — hepsi lazy + Suspense (ana bundle'dan çıkarıldı) */}
+          <Route path="/admin/login" element={<Suspense fallback={<PageLoader />}><AdminLogin /></Suspense>} />
+          <Route path="/admin" element={<Suspense fallback={<PageLoader />}><AdminLayout /></Suspense>}>
+            <Route index element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
+            <Route path="members" element={<Suspense fallback={<PageLoader />}><Users /></Suspense>} />
+            <Route path="home-content" element={<Suspense fallback={<PageLoader />}><HomeContent /></Suspense>} />
+            <Route path="site-settings" element={<Suspense fallback={<PageLoader />}><SiteSettings /></Suspense>} />
+            <Route path="ticker" element={<Suspense fallback={<PageLoader />}><Ticker /></Suspense>} />
+            <Route path="home-hero" element={<Suspense fallback={<PageLoader />}><HomeHeroSettings /></Suspense>} />
+            <Route path="calculator" element={<Suspense fallback={<PageLoader />}><AdminCalculator /></Suspense>} />
+            <Route path="payment-plan-templates" element={<Suspense fallback={<PageLoader />}><AdminPaymentPlanTemplates /></Suspense>} />
+            <Route path="news" element={<Suspense fallback={<PageLoader />}><AdminNews /></Suspense>} />
+            <Route path="blog" element={<Suspense fallback={<PageLoader />}><AdminBlog /></Suspense>} />
+            <Route path="blog-categories" element={<Suspense fallback={<PageLoader />}><AdminBlogCategories /></Suspense>} />
+            <Route path="contact" element={<Suspense fallback={<PageLoader />}><AdminContact /></Suspense>} />
+            <Route path="media" element={<Suspense fallback={<PageLoader />}><Media /></Suspense>} />
+            <Route path="campaigns" element={<Suspense fallback={<PageLoader />}><AdminCampaigns /></Suspense>} />
+            <Route path="companies" element={<Suspense fallback={<PageLoader />}><AdminCompanies /></Suspense>} />
+            <Route path="quick-links" element={<Suspense fallback={<PageLoader />}><QuickLinks /></Suspense>} />
+            <Route path="sponsors" element={<Suspense fallback={<PageLoader />}><AdminSponsors /></Suspense>} />
+            <Route path="email-notifications" element={<Suspense fallback={<PageLoader />}><EmailNotifications /></Suspense>} />
+            <Route path="feedback" element={<Suspense fallback={<PageLoader />}><AdminFeedback /></Suspense>} />
+            <Route path="push-notifications" element={<Suspense fallback={<PageLoader />}><PushNotifications /></Suspense>} />
+            <Route path="social-media-generator" element={<Suspense fallback={<PageLoader />}><SocialMediaGenerator /></Suspense>} />
+            <Route path="about-settings" element={<Suspense fallback={<PageLoader />}><AboutSettings /></Suspense>} />
+            <Route path="campaign-banners" element={<Suspense fallback={<PageLoader />}><CampaignBanners /></Suspense>} />
+            <Route path="pdf-logs" element={<Suspense fallback={<PageLoader />}><PdfDownloadLogs /></Suspense>} />
+            <Route path="reviews" element={<Suspense fallback={<PageLoader />}><AdminReviews /></Suspense>} />
+            <Route path="consultation-requests" element={<Suspense fallback={<PageLoader />}><AdminConsultationRequests /></Suspense>} />
             <Route path="popups" element={<Suspense fallback={<PageLoader />}><PopupManager /></Suspense>} />
             <Route path="popups/new" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
             <Route path="popups/edit/:id" element={<Suspense fallback={<PageLoader />}><PopupEditor /></Suspense>} />
@@ -162,7 +204,7 @@ const App: React.FC = () => {
           </Route>
 
           {/* Public Routes */}
-          <Route path="/" element={<PopupProvider><PublicLayout /></PopupProvider>}>
+          <Route path="/" element={<PublicLayout />}>
             <Route index element={<Suspense fallback={<PageLoader />}><HomePage /></Suspense>} />
             <Route path="kampanyalar" element={<Suspense fallback={<PageLoader />}><CampaignsPage /></Suspense>} />
             <Route path="kampanyalar/:slug" element={<Suspense fallback={<PageLoader />}><CampaignDetailPage /></Suspense>} />
@@ -180,7 +222,6 @@ const App: React.FC = () => {
             <Route path="profil/hesaplamalar" element={<Suspense fallback={<PageLoader />}><SavedCalculationsPage /></Suspense>} />
             <Route path="profil/favoriler" element={<Suspense fallback={<PageLoader />}><FavoritesPage /></Suspense>} />
             <Route path="hakkimizda" element={<Suspense fallback={<PageLoader />}><AboutPage /></Suspense>} />
-            <Route path="sss" element={<Suspense fallback={<PageLoader />}><FAQPage /></Suspense>} />
           </Route>
 
           {/* Unsubscribe */}
@@ -190,9 +231,9 @@ const App: React.FC = () => {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
 
+        <DeferredAppOverlays />
 
       </BrowserRouter>
-      <PushPermissionModal />
     </AuthProvider>
   );
 };

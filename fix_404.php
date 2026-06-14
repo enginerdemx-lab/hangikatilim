@@ -1,42 +1,36 @@
 <?php
 $htaccessContent = <<<EOD
 <IfModule mod_rewrite.c>
-  Options -MultiViews
   RewriteEngine On
   RewriteBase /
+  Options -MultiViews
 
-  # 1. Zorunlu HTTPS Yönlendirmesi
+  # 1. Force HTTPS
   RewriteCond %{HTTPS} off
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # 2. www'dan www'suz (katilimuzmani.com) yönlendirme
+  # 2. www -> non-www
   RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
   RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
 
-  # 3. Admin panel (React SPA) için özel kurallar (fiziksel klasör çakışmalarını önler)
-  RewriteRule ^admin/login/?$ /index.html [L]
-  RewriteRule ^admin(/.*)?$ /index.html [L]
+  # 3. Sitemap
+  RewriteRule ^sitemap\.xml$ api/sitemap.php [L]
 
-  # 4. Sitemap için yönlendirme
-  RewriteRule ^sitemap\.xml$ /api/sitemap.php [L]
-
-  # 5. React SPA Fallback (LiteSpeed Uyumlu)
-  RewriteRule ^index\.html$ - [L]
+  # 4. React SPA fallback. Prerendered pages are physical folders
+  #    (e.g. /blog/index.html) and are served directly by the -d check below;
+  #    every other path falls back to index.html (RELATIVE path = LiteSpeed-safe).
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . /index.html [L]
+  RewriteRule ^(.*)$ index.html [QSA,L]
 </IfModule>
 
 <IfModule mod_headers.c>
-  # index.html için cache'i kapat
   <FilesMatch "\.(html|htm)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires 0
   </FilesMatch>
-  
-  # Statik dosyalar için cache'i aç
   <FilesMatch "\.(js|css|webp|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>

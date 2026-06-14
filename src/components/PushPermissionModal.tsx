@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Bell, X, CalendarClock, Ban } from 'lucide-react';
-import { requestNotificationPermission, getNotificationStatus } from '../lib/firebase';
 import { supabase } from '../services/supabaseClient';
 
 export const PushPermissionModal: React.FC = () => {
@@ -14,6 +13,7 @@ export const PushPermissionModal: React.FC = () => {
 
     const syncToken = async () => {
         try {
+            const { requestNotificationPermission } = await import('../lib/firebase');
             const token = await requestNotificationPermission();
             if (token) {
                 await supabase.functions.invoke('register-push-token', {
@@ -68,6 +68,7 @@ export const PushPermissionModal: React.FC = () => {
     const handleRegister = async () => {
         setLoading(true);
         try {
+            const { requestNotificationPermission } = await import('../lib/firebase');
             const token = await requestNotificationPermission();
 
             if (token) {

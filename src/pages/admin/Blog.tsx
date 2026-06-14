@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { blogApi } from '../../services/api/blog';
+import { blogApi, blogCategoryApi } from '../../services/api/blog';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { RichTextEditor } from '../../components/admin/RichTextEditor';
 import { BlogContent } from '../../components/BlogContent';
@@ -22,6 +22,7 @@ const validationRules: ValidationRules<BlogPostFormData> = {
 
 export const Blog: React.FC = () => {
     const [posts, setPosts] = useState<BlogPost[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
@@ -39,6 +40,7 @@ export const Blog: React.FC = () => {
         content: '',
         cover_image_url: '',
         author: '',
+        category: '',
         published_at: new Date().toISOString().split('T')[0],
         is_active: true,
     });
@@ -49,8 +51,12 @@ export const Blog: React.FC = () => {
 
     const loadData = async () => {
         try {
-            const data = await blogApi.getAllPosts();
+            const [data, cats] = await Promise.all([
+                blogApi.getAllPosts(),
+                blogCategoryApi.getNames(),
+            ]);
             setPosts(data);
+            setCategories(cats);
         } catch {
             showError('Blog yazıları yüklenemedi');
         } finally {
@@ -116,6 +122,7 @@ export const Blog: React.FC = () => {
             content: post.content,
             cover_image_url: post.cover_image_url || '',
             author: post.author,
+            category: post.category || '',
             published_at: post.published_at.split('T')[0],
             is_active: post.is_active,
         });
@@ -153,6 +160,7 @@ export const Blog: React.FC = () => {
             content: '',
             cover_image_url: '',
             author: '',
+            category: '',
             published_at: new Date().toISOString().split('T')[0],
             is_active: true,
         });
@@ -232,6 +240,9 @@ export const Blog: React.FC = () => {
                                 className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
                                 placeholder="Blog yazısı başlığı"
                             />
+                            <p className={`mt-1 text-xs ${(formData.title?.length || 0) > 60 ? 'text-orange-500' : 'text-slate-400'}`}>
+                                {formData.title?.length || 0}/60 karakter {(formData.title?.length || 0) > 60 ? '— SEO başlığı (title) otomatik ≤60 karaktere kısaltılır' : ''}
+                            </p>
                         </div>
 
                         {/* Slug */}
@@ -250,8 +261,8 @@ export const Blog: React.FC = () => {
                             />
                         </div>
 
-                        {/* Row: Author, Date */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Row: Author, Date, Category */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Yazar *</label>
                                 <input
@@ -272,6 +283,23 @@ export const Blog: React.FC = () => {
                                     required
                                     className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Kategori</label>
+                                <select
+                                    value={formData.category || ''}
+                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
+                                >
+                                    <option value="">Kategori seçin</option>
+                                    {categories.map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                    {/* Yazının mevcut kategorisi listede yoksa (sonradan silinmiş/değişmiş) yine göster */}
+                                    {formData.category && !categories.includes(formData.category) && (
+                                        <option value={formData.category}>{formData.category} (listede yok)</option>
+                                    )}
+                                </select>
                             </div>
                         </div>
 

@@ -5,10 +5,10 @@ import { pageSeoApi, PageSeoData, DEFAULT_PAGE_SEO } from '../../services/api/pa
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { useToast } from '../../hooks/useToast';
 import type { SiteSettings } from '../../types/database';
-import { Save, RefreshCw, Search, Settings, Globe, Mail, Share2, Smartphone, FileText, Copy, Check, Snowflake, Eye, X, Plus, TrendingUp } from 'lucide-react';
+import { Save, RefreshCw, Search, Settings, Globe, Mail, Share2, FileText, Copy, Check, Snowflake, Eye, X, Plus, TrendingUp } from 'lucide-react';
 import { startSnow, stopSnow, updateSnow, isSnowRunning } from '../../utils/snowEffect';
 
-type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'uygulama' | 'hukuki' | 'efektler' | 'piyasa';
+type TabType = 'genel' | 'seo' | 'footer' | 'sosyal' | 'hukuki' | 'efektler' | 'piyasa';
 
 // Reusable Card Component
 const Card: React.FC<{ children: React.ReactNode; className?: string; title?: string }> = ({ children, className = '', title }) => (
@@ -32,7 +32,8 @@ const InputField: React.FC<{
     helper?: string;
     rows?: number;
     showCopy?: boolean;
-}> = ({ label, value, onChange, type = 'text', placeholder, helper, rows, showCopy }) => {
+    maxLength?: number;
+}> = ({ label, value, onChange, type = 'text', placeholder, helper, rows, showCopy, maxLength }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -53,6 +54,7 @@ const InputField: React.FC<{
                         onChange={(e) => onChange(e.target.value)}
                         rows={rows}
                         placeholder={placeholder}
+                        maxLength={maxLength}
                         className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent resize-none"
                     />
                 ) : (
@@ -61,6 +63,7 @@ const InputField: React.FC<{
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder={placeholder}
+                        maxLength={maxLength}
                         className={`w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent ${showCopy ? 'pr-10' : ''}`}
                     />
                 )}
@@ -74,6 +77,11 @@ const InputField: React.FC<{
                     </button>
                 )}
             </div>
+            {maxLength !== undefined && (
+                <p className={`mt-1 text-xs ${value.length > maxLength ? 'text-orange-500' : 'text-slate-400'}`}>
+                    {value.length}/{maxLength} karakter {value.length > maxLength ? '(çok uzun)' : ''}
+                </p>
+            )}
             {helper && <p className="mt-1 text-xs text-slate-500">{helper}</p>}
         </div>
     );
@@ -190,6 +198,10 @@ export const SiteSettings: React.FC = () => {
         gold_ons_price: '2060',
         market_gold_change_rate: '',
         social_follow_promo_enabled: true,
+        social_follow_promo_initial_delay: 15,
+        social_follow_promo_interval: 180,
+        social_follow_promo_duration: 7,
+        social_follow_promo_max_count: 0,
     });
 
     const [originalData, setOriginalData] = useState<typeof formData | null>(null);
@@ -242,6 +254,10 @@ export const SiteSettings: React.FC = () => {
                     gold_ons_price: data.gold_ons_price?.toString() || '2060',
                     market_gold_change_rate: data.market_gold_change_rate?.toString() || '',
                     social_follow_promo_enabled: data.social_follow_promo_enabled !== false,
+                    social_follow_promo_initial_delay: data.social_follow_promo_initial_delay ?? 15,
+                    social_follow_promo_interval: data.social_follow_promo_interval ?? 180,
+                    social_follow_promo_duration: data.social_follow_promo_duration ?? 7,
+                    social_follow_promo_max_count: data.social_follow_promo_max_count ?? 0,
                 };
                 setFormData(newFormData);
                 setOriginalData(newFormData);
@@ -312,6 +328,7 @@ export const SiteSettings: React.FC = () => {
             );
             success('Sayfa SEO ayarları kaydedildi');
         } catch (err) {
+            console.error('[SiteSettings] Page SEO save failed:', err);
             showError('Kaydetme başarısız');
         } finally {
             setPageSeoSaving(false);
@@ -387,16 +404,82 @@ export const SiteSettings: React.FC = () => {
         setFormData(prev => ({ ...prev, ...updates }));
     };
 
+    const parseLocalizedNumber = (value: string, fallback: number | null = null): number | null => {
+        const compact = value.trim().replace(/\s/g, '');
+        if (!compact) return fallback;
+
+        const lastComma = compact.lastIndexOf(',');
+        const lastDot = compact.lastIndexOf('.');
+        let normalized = compact;
+
+        if (lastComma > -1 && lastDot > -1) {
+            normalized = lastComma > lastDot
+                ? compact.replace(/\./g, '').replace(',', '.')
+                : compact.replace(/,/g, '');
+        } else if (lastComma > -1) {
+            normalized = compact.replace(',', '.');
+        }
+
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
+    const buildChangedSettingsPayload = (): Partial<SiteSettings> => {
+        if (!originalData) {
+            return {
+                ...formData,
+                gold_ons_price: parseLocalizedNumber(formData.gold_ons_price, 2060) ?? 2060,
+                market_gold_change_rate: parseLocalizedNumber(formData.market_gold_change_rate, null),
+            };
+        }
+
+        const changedData: Record<string, unknown> = {};
+        const current = formData as Record<string, unknown>;
+        const original = originalData as Record<string, unknown>;
+
+        Object.keys(current).forEach((key) => {
+            if (current[key] !== original[key]) {
+                changedData[key] = current[key];
+            }
+        });
+
+        if ('gold_ons_price' in changedData) {
+            changedData.gold_ons_price = parseLocalizedNumber(formData.gold_ons_price, 2060) ?? 2060;
+        }
+
+        if ('market_gold_change_rate' in changedData) {
+            changedData.market_gold_change_rate = parseLocalizedNumber(formData.market_gold_change_rate, null);
+        }
+
+        return changedData as Partial<SiteSettings>;
+    };
+
+    const getSaveErrorMessage = (err: unknown): string => {
+        const message = err instanceof Error
+            ? err.message
+            : typeof err === 'object' && err && 'message' in err
+                ? String((err as { message?: unknown }).message)
+                : 'Bilinmeyen hata';
+
+        if (message.includes('schema cache') || message.includes('Could not find')) {
+            return 'Kaydetme basarisiz: site_settings tablosunda eksik kolon var. fix-site-settings-admin-save-columns.sql dosyasini Supabase SQL Editor icinde calistirin.';
+        }
+
+        return `Kaydetme basarisiz: ${message}`;
+    };
+
     const handleSave = async () => {
         try {
             setSaving(true);
-            // Renk alanları hariç tüm formData'yı gönder
-            const updateData: Partial<SiteSettings> = {
-                ...formData,
-                gold_ons_price: parseFloat(formData.gold_ons_price) || 2060,
-                market_gold_change_rate: formData.market_gold_change_rate ? parseFloat(formData.market_gold_change_rate) : null
-            };
+            // Sadece degisen alanlari gonderiyoruz. Eski veritabaninda olmayan
+            // admin kolonlari ilgisiz ayar kayitlarini bozmasin.
+            const updateData = buildChangedSettingsPayload();
             if (settings?.id) {
+                if (Object.keys(updateData).length === 0) {
+                    success('Kaydedilecek degisiklik yok');
+                    return;
+                }
+
                 await siteSettingsApi.updateSettings(settings.id, updateData);
                 success('Ayarlar kaydedildi');
                 setOriginalData(formData);
@@ -406,7 +489,8 @@ export const SiteSettings: React.FC = () => {
             }
             await loadSettings();
         } catch (err) {
-            showError('Kaydetme başarısız');
+            console.error('[SiteSettings] Save failed:', err);
+            showError(getSaveErrorMessage(err));
         } finally {
             setSaving(false);
         }
@@ -417,7 +501,6 @@ export const SiteSettings: React.FC = () => {
         { id: 'seo', label: 'SEO', icon: <Globe size={16} />, keywords: ['seo', 'başlık', 'açıklama', 'og', 'meta'] },
         { id: 'footer', label: 'Footer', icon: <Mail size={16} />, keywords: ['footer', 'iletişim', 'email', 'telefon', 'adres', 'copyright'] },
         { id: 'sosyal', label: 'Sosyal Medya', icon: <Share2 size={16} />, keywords: ['facebook', 'twitter', 'instagram', 'linkedin', 'sosyal'] },
-        { id: 'uygulama', label: 'Uygulama', icon: <Smartphone size={16} />, keywords: ['app store', 'google play', 'app gallery', 'uygulama', 'mobil'] },
         { id: 'hukuki', label: 'Hukuki', icon: <FileText size={16} />, keywords: ['kvkk', 'gizlilik', 'kullanım', 'çerez', 'politika', 'hukuki'] },
         { id: 'efektler', label: 'Efektler', icon: <Snowflake size={16} />, keywords: ['kar', 'snow', 'efekt', 'animasyon', 'kış'] },
         { id: 'piyasa', label: 'Piyasa Şeridi', icon: <TrendingUp size={16} />, keywords: ['ticker', 'kur', 'döviz', 'altın', 'piyasa', 'market', 'finance'] },
@@ -549,6 +632,7 @@ export const SiteSettings: React.FC = () => {
                                     value={formData.default_seo_title}
                                     onChange={(v) => handleFormChange({ default_seo_title: v })}
                                     placeholder="Katılım Uzmanı - Katılım Bankacılığı Karşılaştırma"
+                                    maxLength={60}
                                 />
                                 <InputField
                                     label="Varsayılan SEO Açıklaması"
@@ -610,6 +694,7 @@ export const SiteSettings: React.FC = () => {
                                                     value={page.seo_title}
                                                     onChange={(e) => handlePageSeoChange(page.page_path, 'seo_title', e.target.value)}
                                                     placeholder="Sayfa başlığı..."
+                                                    maxLength={60}
                                                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
                                                 />
                                                 <p className={`mt-0.5 text-xs ${(page.seo_title?.length || 0) > 60 ? 'text-orange-500' : 'text-slate-400'}`}>
@@ -746,11 +831,34 @@ export const SiteSettings: React.FC = () => {
                                     label={formData.social_follow_promo_enabled ? 'Aktif' : 'Pasif'}
                                 />
                             </div>
+
+                            {formData.social_follow_promo_enabled && (
+                                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {[
+                                        { key: 'social_follow_promo_initial_delay', label: 'İlk gösterim gecikmesi (sn)', hint: 'Sayfa açıldıktan kaç saniye sonra ilk kez görünsün', min: 0 },
+                                        { key: 'social_follow_promo_interval', label: 'Tekrar aralığı (sn)', hint: 'Her gösterim arasında kaç saniye beklensin', min: 5 },
+                                        { key: 'social_follow_promo_duration', label: 'Görünme süresi (sn)', hint: 'Bildirim ekranda kaç saniye kalsın', min: 2 },
+                                        { key: 'social_follow_promo_max_count', label: 'Oturum başına maks. gösterim', hint: '0 = sınırsız. Örn. 3 = ziyaretçiye en fazla 3 kez', min: 0 },
+                                    ].map((f) => (
+                                        <div key={f.key}>
+                                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{f.label}</label>
+                                            <input
+                                                type="number"
+                                                min={f.min}
+                                                value={(formData as any)[f.key]}
+                                                onChange={(e) => handleFormChange({ [f.key]: Math.max(f.min, parseInt(e.target.value || '0', 10) || 0) } as any)}
+                                                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <p className="mt-1 text-[11px] text-slate-400">{f.hint}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </Card>
                 )}
 
-                {activeTab === 'uygulama' && (
+                {false && (
                     <div className="space-y-4">
                         {/* App Store */}
                         <Card>

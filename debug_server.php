@@ -40,10 +40,10 @@ if (file_exists('.htaccess')) {
     echo "</pre>";
     
     // Doğru sürüm mü kontrol et
-    if (strpos($content, '^admin(/.*)?$ /index.html') !== false) {
-        echo "<p style='color:green; font-weight:bold;'>Harika: En son gönderdiğim (V3) düzeltme dosyası AKTİF.</p>";
+    if (strpos($content, 'RewriteRule ^(.*)$ index.html [QSA,L]') !== false) {
+        echo "<p style='color:green; font-weight:bold;'>Harika: En son gönderdiğim ve LiteSpeed uyumlu (relative-path) düzeltme dosyası AKTİF.</p>";
     } else {
-        echo "<p style='color:red; font-weight:bold;'>HATA: Bu .htaccess dosyası benim verdiğim V3 dosyası DEĞİL! Üzerine yazılmış veya eski dosya kalmış.</p>";
+        echo "<p style='color:red; font-weight:bold;'>HATA: Bu .htaccess dosyası en son LiteSpeed uyumlu dosya DEĞİL! Üzerine yazılmış veya eski dosya kalmış.</p>";
     }
 } else {
     echo "<p style='color:red; font-weight:bold;'>HATA: .htaccess dosyası BULUNAMADI! (Muhtemelen yüklemediniz veya silindi)</p>";

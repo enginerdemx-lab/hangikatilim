@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, Clock, Share2, Building2, Truck, Check, Wallet, Ex
 import { campaignsApi } from '../../services/api/campaigns';
 import { BlogContent } from '../../components/BlogContent';
 import type { Campaign } from '../../types/database';
+import { buildSeoTitle } from '../../data/pageSeo';
 
 const CampaignDetailPage: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -20,9 +21,9 @@ const CampaignDetailPage: React.FC = () => {
     // SEO meta tags
     useEffect(() => {
         if (campaign) {
-            const pageTitle = `${campaign.title} | Katılım Uzmanı Kampanyalar`;
+            const pageTitle = buildSeoTitle(campaign.title, 'Katılım Uzmanı Kampanyalar');
             const pageDesc = campaign.bullet_points?.join('. ') || campaign.title;
-            const pageUrl = `https://katilimuzmani.com/kampanyalar/${campaign.slug || campaign.id}`;
+            const pageUrl = `https://katilimuzmani.com/kampanyalar/${campaign.slug || campaign.id}/`;
 
             document.title = pageTitle;
 
@@ -75,6 +76,10 @@ const CampaignDetailPage: React.FC = () => {
                 setError('Kampanya bulunamadı');
             } else {
                 setCampaign(data);
+                // Görüntülenme sayacını artır (haber/blog ile aynı mantık; hatayı yut)
+                campaignsApi.incrementViewCount(data.id).catch(err => {
+                    console.error('Failed to increment campaign view count:', err);
+                });
             }
         } catch (err: any) {
             console.error('Error loading campaign:', err);
@@ -227,7 +232,14 @@ const CampaignDetailPage: React.FC = () => {
                             {(campaign.amount_tl || 0) > 0 && (
                                 <span className="flex items-center gap-1"><Wallet size={14} className="text-green-500" />{formatMoney(campaign.amount_tl || 0)} TL</span>
                             )}
-                            <span className="flex items-center gap-1"><Calendar size={14} />{formatDate(campaign.updated_at || campaign.created_at)}</span>
+                            <span className="flex items-center gap-1" title="Oluşturma tarihi">
+                                <Calendar size={14} />
+                                Oluşturma: {formatDate(campaign.created_at)}
+                            </span>
+                            <span className="flex items-center gap-1" title="Güncelleme tarihi">
+                                <Calendar size={14} />
+                                Güncelleme: {formatDate(campaign.updated_at || campaign.created_at)}
+                            </span>
                             {campaign.content && (
                                 <span className="flex items-center gap-1"><Clock size={14} />{getReadingTime(campaign.content)}</span>
                             )}
@@ -286,7 +298,7 @@ const CampaignDetailPage: React.FC = () => {
                     {/* Footer Nav */}
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-6">
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Son güncelleme: {formatDate(campaign.updated_at || campaign.created_at)}
+                            Oluşturma: {formatDate(campaign.created_at)} · Güncelleme: {formatDate(campaign.updated_at || campaign.created_at)}
                         </div>
                         <Link
                             to="/kampanyalar"

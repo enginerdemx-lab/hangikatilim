@@ -16,6 +16,10 @@ const VALID_DB_COLUMNS = [
     'cta1_link',
     'cta2_label',
     'cta2_link',
+    'text_color',
+    'button_color',
+    'button_text_color',
+    'badge_text_color',
     'sort_order',
 ];
 

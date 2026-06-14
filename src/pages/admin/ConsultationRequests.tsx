@@ -22,7 +22,10 @@ import {
     Copy,
     Calendar,
     MapPin,
+    Save,
+    StickyNote,
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 type StatusFilter = 'all' | ConsultationStatus;
 
@@ -41,6 +44,9 @@ export const ConsultationRequests: React.FC = () => {
     const [search, setSearch] = useState('');
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+    const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
+    const { isSuperAdmin } = useAuth(); // Yalnızca superadmin talep silebilir
 
     useEffect(() => {
         loadData();
@@ -91,6 +97,22 @@ export const ConsultationRequests: React.FC = () => {
             setStats(s);
         }
         setDeletingId(null);
+    };
+
+    const handleNoteChange = (id: string, value: string) => {
+        setRequests(prev => prev.map(r => (r.id === id ? { ...r, admin_note: value } : r)));
+    };
+
+    const handleSaveNote = async (id: string) => {
+        const target = requests.find(r => r.id === id);
+        if (!target) return;
+        setSavingNoteId(id);
+        const ok = await consultationRequestService.updateNote(id, target.admin_note ?? '');
+        if (ok) {
+            setSavedNoteId(id);
+            setTimeout(() => setSavedNoteId(prev => (prev === id ? null : prev)), 1500);
+        }
+        setSavingNoteId(null);
     };
 
     const formatDate = (s: string) =>
@@ -251,7 +273,7 @@ export const ConsultationRequests: React.FC = () => {
 
                             {/* Actions */}
                             <div className="flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
-                                <div className="flex items-center gap-2 flex-wrap">
+                                <div className="flex items-center gap-2 flex-wrap flex-1">
                                     <a
                                         href={`tel:${r.phone}`}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-semibold transition-colors"
@@ -272,6 +294,33 @@ export const ConsultationRequests: React.FC = () => {
                                     >
                                         WhatsApp
                                     </a>
+
+                                    {/* Not — Ara/Mail/WhatsApp'ın yanında, her talep için */}
+                                    <div className="flex items-center gap-1.5 flex-1 min-w-[180px]">
+                                        <StickyNote size={13} className="text-gray-400 flex-shrink-0" />
+                                        <input
+                                            type="text"
+                                            value={r.admin_note ?? ''}
+                                            onChange={e => handleNoteChange(r.id, e.target.value)}
+                                            placeholder="Not ekle..."
+                                            className="flex-1 min-w-0 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0855f8]/30"
+                                        />
+                                        <button
+                                            onClick={() => handleSaveNote(r.id)}
+                                            disabled={savingNoteId === r.id}
+                                            title="Notu kaydet"
+                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#0855f8] hover:bg-[#0645d0] text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 flex-shrink-0"
+                                        >
+                                            {savingNoteId === r.id ? (
+                                                <RefreshCw size={12} className="animate-spin" />
+                                            ) : savedNoteId === r.id ? (
+                                                <CheckCircle size={12} />
+                                            ) : (
+                                                <Save size={12} />
+                                            )}
+                                            {savedNoteId === r.id ? 'Kaydedildi' : 'Kaydet'}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -291,14 +340,17 @@ export const ConsultationRequests: React.FC = () => {
                                         <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                     </div>
 
-                                    <button
-                                        onClick={() => handleDelete(r.id)}
-                                        disabled={deletingId === r.id}
-                                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                        title="Sil"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    {/* Silme yalnızca superadmin'e açık (Satış Danışmanı silemez) */}
+                                    {isSuperAdmin && (
+                                        <button
+                                            onClick={() => handleDelete(r.id)}
+                                            disabled={deletingId === r.id}
+                                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                            title="Sil"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

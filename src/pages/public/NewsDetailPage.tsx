@@ -6,6 +6,7 @@ import { newsApi } from '../../services/api/news';
 import { BlogContent } from '../../components/BlogContent';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import type { NewsPost } from '../../types/database';
+import { buildSeoTitle } from '../../data/pageSeo';
 
 const NewsDetailPage: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -22,9 +23,9 @@ const NewsDetailPage: React.FC = () => {
     // Update page title, meta, OG tags, canonical, and JSON-LD for SEO
     useEffect(() => {
         if (news) {
-            const pageTitle = `${news.title} | Katılım Uzmanı Haberler`;
+            const pageTitle = buildSeoTitle(news.title, 'Katılım Uzmanı Haberler');
             const pageDesc = news.summary || news.title;
-            const pageUrl = `https://katilimuzmani.com/sektor-haberleri/${news.slug || news.id}`;
+            const pageUrl = `https://katilimuzmani.com/sektor-haberleri/${news.slug || news.id}/`;
             const publishDate = news.published_at || news.created_at;
 
             // Title

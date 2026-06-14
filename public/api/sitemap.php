@@ -77,14 +77,18 @@ $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
 // --- Sabit Sayfalar ---
+// NOTE: All URLs use the trailing-slash form. The server 301-redirects the
+// slash-less variants to these (LiteSpeed/Apache DirectorySlash on the
+// prerendered folders), so listing the slash-ful form keeps every sitemap
+// entry a direct 200 (no redirect) and matches each page's self-canonical.
 $staticPages = [
-    ['loc' => '/',                   'changefreq' => 'daily',   'priority' => '1.0'],
-    ['loc' => '/kampanyalar',        'changefreq' => 'daily',   'priority' => '0.9'],
-    ['loc' => '/katilim-firmalari',  'changefreq' => 'weekly',  'priority' => '0.9'],
-    ['loc' => '/sektor-haberleri',   'changefreq' => 'daily',   'priority' => '0.8'],
-    ['loc' => '/blog',               'changefreq' => 'daily',   'priority' => '0.8'],
-    ['loc' => '/iletisim',           'changefreq' => 'monthly', 'priority' => '0.5'],
-    ['loc' => '/hakkimizda',         'changefreq' => 'monthly', 'priority' => '0.5'],
+    ['loc' => '/',                    'changefreq' => 'daily',   'priority' => '1.0'],
+    ['loc' => '/kampanyalar/',        'changefreq' => 'daily',   'priority' => '0.9'],
+    ['loc' => '/katilim-firmalari/',  'changefreq' => 'weekly',  'priority' => '0.9'],
+    ['loc' => '/sektor-haberleri/',   'changefreq' => 'daily',   'priority' => '0.8'],
+    ['loc' => '/blog/',               'changefreq' => 'daily',   'priority' => '0.8'],
+    ['loc' => '/iletisim/',           'changefreq' => 'monthly', 'priority' => '0.5'],
+    ['loc' => '/hakkimizda/',         'changefreq' => 'monthly', 'priority' => '0.5'],
 ];
 
 foreach ($staticPages as $page) {
@@ -105,7 +109,7 @@ foreach ($newsPosts as $post) {
         : (!empty($post['published_at']) ? date('Y-m-d', strtotime($post['published_at'])) : $today);
 
     $xml .= "  <url>\n";
-    $xml .= "    <loc>{$siteUrl}/sektor-haberleri/" . htmlspecialchars($post['slug']) . "</loc>\n";
+    $xml .= "    <loc>{$siteUrl}/sektor-haberleri/" . htmlspecialchars($post['slug']) . "/</loc>\n";
     $xml .= "    <lastmod>{$lastmod}</lastmod>\n";
     $xml .= "    <changefreq>weekly</changefreq>\n";
     $xml .= "    <priority>0.7</priority>\n";
@@ -121,7 +125,7 @@ foreach ($blogPosts as $post) {
         : (!empty($post['published_at']) ? date('Y-m-d', strtotime($post['published_at'])) : $today);
 
     $xml .= "  <url>\n";
-    $xml .= "    <loc>{$siteUrl}/blog/" . htmlspecialchars($post['slug']) . "</loc>\n";
+    $xml .= "    <loc>{$siteUrl}/blog/" . htmlspecialchars($post['slug']) . "/</loc>\n";
     $xml .= "    <lastmod>{$lastmod}</lastmod>\n";
     $xml .= "    <changefreq>weekly</changefreq>\n";
     $xml .= "    <priority>0.7</priority>\n";

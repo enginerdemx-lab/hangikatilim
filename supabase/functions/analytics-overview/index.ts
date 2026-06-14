@@ -4,9 +4,11 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// Simple in-memory cache (5 minute TTL)
+// Simple in-memory cache (5 minute TTL for overview, 30s for realtime)
 let cache: { data: any; timestamp: number } | null = null;
+let realtimeCache: { data: any; timestamp: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const REALTIME_CACHE_TTL = 30 * 1000; // 30 seconds
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -20,7 +22,76 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    // Determine which part is requested: 'overview' (default) or 'realtime'.
+    // Accept via query (?part=realtime) or POST body ({ part: 'realtime' }).
+    let part = 'overview';
     try {
+        const url = new URL(req.url);
+        part = url.searchParams.get('part') || 'overview';
+        if (part === 'overview' && req.method === 'POST') {
+            const body = await req.clone().json().catch(() => null);
+            if (body && typeof body.part === 'string') part = body.part;
+        }
+    } catch (_e) { /* yoksay */ }
+
+    try {
+        // ============ REALTIME (son 30 dakika) ============
+        if (part === 'realtime') {
+            if (realtimeCache && Date.now() - realtimeCache.timestamp < REALTIME_CACHE_TTL) {
+                return new Response(JSON.stringify(realtimeCache.data), { headers: corsHeaders });
+            }
+
+            const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
+            const propertyId = Deno.env.get('GA4_PROPERTY_ID');
+            if (!serviceAccountJson || !propertyId) {
+                throw new Error('Missing GA4 configuration. Set GOOGLE_SERVICE_ACCOUNT and GA4_PROPERTY_ID secrets.');
+            }
+            const credentials = JSON.parse(serviceAccountJson);
+            const token = await getAccessToken(credentials);
+
+            // Toplam aktif kullanıcı (son 30 dk)
+            const rtTotal = await runRealtimeReport(propertyId, token, {
+                metrics: [{ name: 'activeUsers' }],
+            });
+            const activeUsers = parseInt(rtTotal.rows?.[0]?.metricValues?.[0]?.value || '0');
+
+            // Dakika bazında (0 = şu an, 29 = 29 dk önce)
+            const rtMinutes = await runRealtimeReport(propertyId, token, {
+                metrics: [{ name: 'activeUsers' }],
+                dimensions: [{ name: 'minutesAgo' }],
+            });
+            const perMinute: number[] = new Array(30).fill(0);
+            (rtMinutes.rows || []).forEach((row: any) => {
+                const m = parseInt(row.dimensionValues?.[0]?.value || '-1');
+                if (m >= 0 && m < 30) perMinute[m] = parseInt(row.metricValues?.[0]?.value || '0');
+            });
+
+            // Ülke bazında ilk 5
+            const rtCountry = await runRealtimeReport(propertyId, token, {
+                metrics: [{ name: 'activeUsers' }],
+                dimensions: [{ name: 'country' }],
+                orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+                limit: 5,
+            });
+            const byCountry = (rtCountry.rows || []).map((row: any) => ({
+                country: row.dimensionValues?.[0]?.value || 'Bilinmiyor',
+                users: parseInt(row.metricValues?.[0]?.value || '0'),
+            }));
+
+            const realtimeData = {
+                status: 'ok' as const,
+                hasError: false,
+                errorMessage: null as string | null,
+                activeUsers,
+                perMinute,
+                byCountry,
+                lastUpdated: new Date().toISOString(),
+            };
+            realtimeCache = { data: realtimeData, timestamp: Date.now() };
+            return new Response(JSON.stringify(realtimeData), { headers: corsHeaders });
+        }
+
+        // ============ OVERVIEW (Son 7 gün + 30 günlük seri) ============
         // Check cache first
         if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
             console.log('Returning cached data');
@@ -77,6 +148,18 @@ serve(async (req) => {
             limit: 10,
         });
 
+        // Fetch 30-day daily time series (traffic trend)
+        const timeseriesData = await runReport(propertyId, tokenResponse, {
+            dateRanges: [{ startDate: '29daysAgo', endDate: 'today' }],
+            dimensions: [{ name: 'date' }],
+            metrics: [
+                { name: 'activeUsers' },
+                { name: 'sessions' },
+                { name: 'screenPageViews' },
+            ],
+            orderBys: [{ dimension: { dimensionName: 'date' } }],
+        });
+
         // Parse main metrics
         const mainMetrics = metricsData.rows?.[0]?.metricValues || [];
 
@@ -101,6 +184,20 @@ serve(async (req) => {
             views: parseInt(row.metricValues?.[0]?.value || '0'),
         })) || [];
 
+        // Parse 30-day time series (date = 'YYYYMMDD' → 'YYYY-MM-DD')
+        const timeseries = (timeseriesData.rows || []).map((row: any) => {
+            const raw = row.dimensionValues?.[0]?.value || '';
+            const date = raw.length === 8
+                ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+                : raw;
+            return {
+                date,
+                users: parseInt(row.metricValues?.[0]?.value || '0'),
+                sessions: parseInt(row.metricValues?.[1]?.value || '0'),
+                pageViews: parseInt(row.metricValues?.[2]?.value || '0'),
+            };
+        });
+
         const responseData = {
             // Status fields for Data Health card
             status: 'ok' as const,
@@ -113,6 +210,7 @@ serve(async (req) => {
             pageViews: parseInt(mainMetrics[2]?.value || '0'),
             events,
             topPages,
+            timeseries,
             lastUpdated: new Date().toISOString(),
         };
 
@@ -235,6 +333,28 @@ async function runReport(propertyId: string, accessToken: string, body: any) {
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`GA4 API error: ${response.status} ${errorText}`);
+    }
+
+    return response.json();
+}
+
+// Run GA4 Realtime API report (son 30 dakika)
+async function runRealtimeReport(propertyId: string, accessToken: string, body: any) {
+    const response = await fetch(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runRealtimeReport`,
+        {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        }
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`GA4 Realtime API error: ${response.status} ${errorText}`);
     }
 
     return response.json();

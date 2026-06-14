@@ -6,6 +6,8 @@ import { adminUserService } from '../../services/api/adminUserService';
 import { analyticsService, AnalyticsData, DataHealthInfo } from '../../services/api/analytics';
 import { serverStatsService, ServerStats } from '../../services/api/serverStats';
 import { pdfDownloadService, MemberDownloadStat } from '../../services/api/pdfDownloadService';
+import { TrafficChart } from '../../components/admin/TrafficChart';
+import { RealtimeUsers } from '../../components/admin/RealtimeUsers';
 import { useAuth } from '../../hooks/useAuth';
 import {
     Users,
@@ -160,6 +162,7 @@ export const AdminDashboard: React.FC = () => {
         { label: 'Kampanyalar', path: '/admin/campaigns', keywords: ['kampanya', 'campaign', 'kampanyalar'] },
         { label: 'Sektör Haberleri', path: '/admin/news', keywords: ['haber', 'news', 'sektör', 'haberler'] },
         { label: 'Blog', path: '/admin/blog', keywords: ['blog', 'yazı', 'makale'] },
+        { label: 'Blog Kategorileri', path: '/admin/blog-categories', keywords: ['blog', 'kategori', 'category', 'kategoriler'] },
         { label: 'Site Ayarları', path: '/admin/site-settings', keywords: ['ayar', 'setting', 'site', 'yapılandırma'] },
         { label: 'Hesaplama Aracı', path: '/admin/calculator', keywords: ['hesap', 'calculator', 'hesaplama', 'araç'] },
         { label: 'İletişim', path: '/admin/contact', keywords: ['iletişim', 'contact', 'mesaj', 'mail'] },
@@ -541,6 +544,28 @@ export const AdminDashboard: React.FC = () => {
                             <MetricCard label="Oturumlar" value={analytics.sessions} icon={TrendingUp} />
                             <MetricCard label="Sayfa Görüntüleme" value={analytics.pageViews} icon={Eye} />
                             <MetricCard label="PDF İndirme" value={analytics.events.pdf_download} icon={FileDown} />
+                        </div>
+
+                        {/* Trafik Grafiği (Son 30 Gün) + Anlık Aktif Kullanıcı */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <Card hover={false} className="lg:col-span-2">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <TrendingUp size={16} className="text-slate-400" />
+                                        Trafik
+                                        <span className="text-xs font-normal text-slate-400">(Son 30 Gün)</span>
+                                    </h3>
+                                </div>
+                                {analytics.timeseries && analytics.timeseries.length > 0 ? (
+                                    <TrafficChart data={analytics.timeseries} />
+                                ) : (
+                                    <div className="h-[280px] flex items-center justify-center text-center text-xs text-slate-400 px-6">
+                                        30 günlük trafik grafiği için <code className="mx-1">analytics-overview</code> Edge Function'ını güncelleyip yeniden deploy edin.
+                                    </div>
+                                )}
+                            </Card>
+
+                            <RealtimeUsers />
                         </div>
 
                         {/* Top Pages Table */}

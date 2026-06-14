@@ -127,6 +127,20 @@ export const consultationRequestService = {
         }
     },
 
+    async updateNote(id: string, adminNote: string): Promise<boolean> {
+        try {
+            const { error } = await supabase
+                .from('consultation_requests')
+                .update({ admin_note: adminNote })
+                .eq('id', id);
+            if (error) throw error;
+            return true;
+        } catch (err) {
+            console.error('Consultation note update error:', err);
+            return false;
+        }
+    },
+
     async remove(id: string): Promise<boolean> {
         try {
             const { error } = await supabase

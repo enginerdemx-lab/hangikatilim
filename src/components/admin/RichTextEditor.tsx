@@ -16,6 +16,7 @@ import {
     Pilcrow, Maximize2, Minimize2, Trash2, Code
 } from 'lucide-react';
 import { mediaApi } from '../../services/api/media';
+import { marked } from 'marked';
 
 interface RichTextEditorProps {
     content: string;
@@ -120,7 +121,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose lg:prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[300px] px-4 py-3',
+                class: 'prose prose-sm sm:prose lg:prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[300px] max-h-[65vh] overflow-y-auto px-4 py-3',
             },
             handleDrop: (view, event, slice, moved) => {
                 if (!moved && event.dataTransfer?.files.length) {
@@ -144,6 +145,19 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                             }
                         }
                     }
+                }
+                // --- Markdown yapıştırma → otomatik zengin metne dönüştür ---
+                // AI'dan kopyalanan "## Başlık", "**Kalın**", "* Madde", "[link](url)"
+                // gibi düz metin Markdown'ı HTML'e çevirip ekler. Zaten biçimli (HTML)
+                // içerik yapıştırılırsa dokunmaz; görsel yapıştırma yukarıda ele alınır.
+                const text = event.clipboardData?.getData('text/plain') ?? '';
+                const html = event.clipboardData?.getData('text/html');
+                const looksMarkdown = /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s)|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)/.test(text);
+                if (editor && text && !html && looksMarkdown) {
+                    const rendered = (marked.parse(text, { breaks: true }) as string)
+                        .replace(/<(\/?)h1\b/g, '<$1h2'); // editör yalnızca H2/H3 destekliyor
+                    editor.chain().focus().insertContent(rendered).run();
+                    return true;
                 }
                 return false;
             },

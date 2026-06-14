@@ -71,25 +71,45 @@ const SocialFollowPromo: React.FC = () => {
     const enabled = settings?.social_follow_promo_enabled !== false;
     const shouldRender = loaded && enabled && socials.length > 0;
 
+    // Timing config (admin-controlled, in seconds -> ms) with safe fallbacks.
+    const initialDelayMs = Math.max(0, settings?.social_follow_promo_initial_delay ?? 15) * 1000;
+    const intervalMs = Math.max(5, settings?.social_follow_promo_interval ?? 180) * 1000;
+    const durationSec = Math.max(2, settings?.social_follow_promo_duration ?? 7);
+    const maxCount = Math.max(0, settings?.social_follow_promo_max_count ?? 0); // 0 = unlimited
+
+    const getShownCount = () => {
+        try { return parseInt(sessionStorage.getItem('social_follow_promo_count') || '0', 10) || 0; } catch { return 0; }
+    };
+    const bumpShownCount = () => {
+        try { const c = getShownCount() + 1; sessionStorage.setItem('social_follow_promo_count', String(c)); return c; } catch { return 0; }
+    };
+
     // Periodic toast scheduler
     const showToast = useCallback(() => {
         setToastVisible(true);
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-        toastTimeoutRef.current = setTimeout(() => setToastVisible(false), 7000);
-    }, []);
+        toastTimeoutRef.current = setTimeout(() => setToastVisible(false), durationSec * 1000);
+    }, [durationSec]);
 
     useEffect(() => {
         if (!shouldRender || toastDismissed) return;
+        if (maxCount > 0 && getShownCount() >= maxCount) return; // session cap already reached
         const initial = setTimeout(() => {
             showToast();
-            toastIntervalRef.current = setInterval(showToast, 45000 + Math.random() * 15000);
-        }, 12000);
+            if (maxCount > 0 && bumpShownCount() >= maxCount) return; // cap hit on first show
+            toastIntervalRef.current = setInterval(() => {
+                showToast();
+                if (maxCount > 0 && bumpShownCount() >= maxCount && toastIntervalRef.current) {
+                    clearInterval(toastIntervalRef.current);
+                }
+            }, intervalMs);
+        }, initialDelayMs);
         return () => {
             clearTimeout(initial);
             if (toastIntervalRef.current) clearInterval(toastIntervalRef.current);
             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
         };
-    }, [shouldRender, toastDismissed, showToast]);
+    }, [shouldRender, toastDismissed, showToast, initialDelayMs, intervalMs, maxCount]);
 
     const dismissToast = () => {
         setToastVisible(false);
@@ -211,7 +231,7 @@ const SocialFollowPromo: React.FC = () => {
 
                         {/* auto-hide progress bar */}
                         {toastVisible && (
-                            <div className="sfp-progress absolute bottom-0 left-0 h-1 bg-blue-500/40" aria-hidden="true" />
+                            <div className="sfp-progress absolute bottom-0 left-0 h-1 bg-blue-500/40" style={{ animationDuration: `${durationSec}s` }} aria-hidden="true" />
                         )}
                     </div>
                 </div>

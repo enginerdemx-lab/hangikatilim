@@ -80,6 +80,31 @@ export const campaignsApi = {
         return data;
     },
 
+    // Increment view count (called from the public campaign detail page).
+    // Mirrors news/blog: prefer the SECURITY DEFINER RPC (works for anon visitors,
+    // bypasses RLS), fall back to a direct update if the RPC is unavailable.
+    async incrementViewCount(id: string): Promise<void> {
+        try {
+            const { error: rpcError } = await supabase.rpc('increment_campaign_view_count', { row_id: id });
+            if (rpcError) {
+                console.warn('Campaign RPC view count failed, trying direct update:', rpcError.message);
+                const { data: current } = await supabase
+                    .from('campaigns')
+                    .select('view_count')
+                    .eq('id', id)
+                    .single();
+                const newCount = ((current?.view_count) || 0) + 1;
+                const { error: updateError } = await supabase
+                    .from('campaigns')
+                    .update({ view_count: newCount })
+                    .eq('id', id);
+                if (updateError) console.error('Direct campaign view count update failed:', updateError.message);
+            }
+        } catch (error) {
+            console.error('Error incrementing campaign view count:', error);
+        }
+    },
+
     // Create new campaign
     async createCampaign(campaignData: CampaignFormData): Promise<Campaign> {
         const { data, error } = await supabase
@@ -115,6 +140,7 @@ export const campaignsApi = {
         if (campaignData.slug !== undefined) safeData.slug = campaignData.slug || null;
         if (campaignData.content !== undefined) safeData.content = campaignData.content || null;
         if (campaignData.is_active !== undefined) safeData.is_active = campaignData.is_active;
+        safeData.updated_at = new Date().toISOString();
 
         console.log('[campaignsApi] updateCampaign id:', id, 'safeData:', safeData);
 
@@ -150,7 +176,7 @@ export const campaignsApi = {
 
         const { error, count } = await supabase
             .from('campaigns')
-            .update({ is_active: isActive }, { count: 'exact' })
+            .update({ is_active: isActive, updated_at: new Date().toISOString() }, { count: 'exact' })
             .eq('id', id);
 
         if (error) {
@@ -183,7 +209,7 @@ export const campaignsApi = {
     async updateCampaignOrder(campaignId: string, newOrderIndex: number): Promise<void> {
         const { error } = await supabase
             .from('campaigns')
-            .update({ order_index: newOrderIndex })
+            .update({ order_index: newOrderIndex, updated_at: new Date().toISOString() })
             .eq('id', campaignId);
 
         if (error) throw error;
@@ -203,16 +229,18 @@ export const campaignsApi = {
         const [camp1, camp2] = campaigns;
 
         // Swap their order_index values
+        const updatedAt = new Date().toISOString();
+
         const { error: update1Error } = await supabase
             .from('campaigns')
-            .update({ order_index: camp2.order_index })
+            .update({ order_index: camp2.order_index, updated_at: updatedAt })
             .eq('id', camp1.id);
 
         if (update1Error) throw update1Error;
 
         const { error: update2Error } = await supabase
             .from('campaigns')
-            .update({ order_index: camp1.order_index })
+            .update({ order_index: camp1.order_index, updated_at: updatedAt })
             .eq('id', camp2.id);
 
         if (update2Error) throw update2Error;

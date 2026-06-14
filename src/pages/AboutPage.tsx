@@ -3,8 +3,10 @@ import DOMPurify from 'dompurify';
 import { siteSettingsApi } from '../services/api/siteSettings';
 import { SiteSettings } from '../types/database';
 import { Loader2 } from 'lucide-react';
+import { usePageSeo } from '../hooks/usePageSeo';
 
 export const AboutPage: React.FC = () => {
+    usePageSeo();
     const [settings, setSettings] = useState<SiteSettings | null>(null);
     const [loading, setLoading] = useState(true);
 

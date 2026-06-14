@@ -1,0 +1,22 @@
+# Katılım Uzmanı
+
+> Katılım Uzmanı, Türkiye'deki tasarruf finansmanı (evim ve araç sistemleri) ile faizsiz/katılım finansman seçeneklerini hesaplayıp karşılaştıran bağımsız bir bilgi ve hesaplama platformudur. Kullanıcılar peşinat, vade, teslimat tarihi ve aylık ödeme tutarlarını anında hesaplar; BDDK lisanslı tasarruf finansman şirketlerini karşılaştırır.
+
+## Önemli Sayfalar
+- [Ana Sayfa / Hesaplama Aracı](https://katilimuzmani.com/): Tasarruf finansmanı ödeme planı hesaplama (ev, araç, iş yeri; çekilişli/çekilişsiz sistemler).
+- [Katılım Firmaları](https://katilimuzmani.com/katilim-firmalari/): BDDK lisanslı tasarruf finansman şirketlerinin karşılaştırması (teslim süresi, organizasyon ücreti, koşullar).
+- [Kampanyalar](https://katilimuzmani.com/kampanyalar/): Tasarruf finansman firmalarının güncel kampanyaları.
+- [Blog](https://katilimuzmani.com/blog/): Tasarruf finansmanı ve faizsiz finans rehberleri.
+- [Sektör Haberleri](https://katilimuzmani.com/sektor-haberleri/): Sektör gündemi ve mevzuat haberleri.
+- [Hakkımızda](https://katilimuzmani.com/hakkimizda/): Platform hakkında.
+- [İletişim](https://katilimuzmani.com/iletisim/): İletişim ve danışmanlık talebi.
+
+## Konular ve Anahtar Kavramlar
+- Tasarruf finansmanı, evim sistemleri, araç sistemleri
+- Faizsiz finansman, katılım finans, BDDK lisanslı şirketler
+- Ödeme planı, peşinat, vade, teslimat tarihi, çekilişli/çekilişsiz sistem
+
+## Notlar
+- Dil: Türkçe (tr-TR).
+- Katılım Uzmanı bir banka veya finans kuruluşu değildir; bağımsız bir karşılaştırma ve hesaplama platformudur. Yatırım/finansman tavsiyesi vermez.
+- İçerik telif hakkı Katılım Uzmanı'na aittir; kaynak gösterilerek atıf yapılabilir.

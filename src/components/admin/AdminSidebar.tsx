@@ -11,6 +11,7 @@ import {
     Megaphone,
     Newspaper,
     FileText,
+    Tags,
     Zap,
     Image,
     Grid3X3,
@@ -85,7 +86,7 @@ const menuConfig: MenuCategory[] = [
         items: [
             { label: 'Hesaplama Ayarları', path: '/admin/calculator', icon: Calculator, allowedRoles: ['superadmin'] },
             { label: 'Kademeli Plan Şablonları', path: '/admin/payment-plan-templates', icon: Layers, allowedRoles: ['superadmin'] },
-            { label: 'Danışmanlık Talepleri', path: '/admin/consultation-requests', icon: Headphones, allowedRoles: ['superadmin'] },
+            { label: 'Danışmanlık Talepleri', path: '/admin/consultation-requests', icon: Headphones, allowedRoles: ['superadmin', 'social_media'] }, // 'social_media' = "Satış Danışmanı" rolü
             { label: 'PDF İndirme Logları', path: '/admin/pdf-logs', icon: FileDown, allowedRoles: ['superadmin'] },
             { label: 'Geri Bildirimler', path: '/admin/feedback', icon: MessageSquare, allowedRoles: ['superadmin'] },
         ],
@@ -110,6 +111,7 @@ const menuConfig: MenuCategory[] = [
             { label: 'Kampanyalar', path: '/admin/campaigns', icon: Megaphone, allowedRoles: ['superadmin', 'content_manager'] },
             { label: 'Sektör Haberleri', path: '/admin/news', icon: Newspaper, allowedRoles: ['superadmin', 'news_editor', 'content_manager'] },
             { label: 'Blog', path: '/admin/blog', icon: FileText, allowedRoles: ['superadmin', 'content_manager'] },
+            { label: 'Blog Kategorileri', path: '/admin/blog-categories', icon: Tags, allowedRoles: ['superadmin', 'content_manager'] },
             { label: 'Hakkımızda', path: '/admin/about-settings', icon: Info, allowedRoles: ['superadmin', 'content_manager'] },
             { label: 'Sektör Gündemi', path: '/admin/ticker', icon: Zap, allowedRoles: ['superadmin', 'content_manager'] },
             { label: 'Kampanya Bannerları', path: '/admin/campaign-banners', icon: Image, allowedRoles: ['superadmin', 'content_manager'] },

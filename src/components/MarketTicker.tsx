@@ -96,10 +96,13 @@ const MarketTicker: React.FC = () => {
         return () => clearInterval(intervalId);
     }, []);
 
+    // CLS fix: yükleme sırasında 44px yüksekliği koru ki veri gelince
+    // hero ve altındaki içerik aşağı kaymasın (eskiden null = 0 yükseklikti).
+    if (loading) {
+        return <div className="bg-white border-b border-gray-200 h-11" aria-hidden="true" />;
+    }
     if (!active || !isVisible) return null;
-
-    // Minimal skeleton or null while loading initial data
-    if (loading || !tickerData) return null;
+    if (!tickerData) return null;
 
     const formatRate = (val: number) => {
         return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(val);

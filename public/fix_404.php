@@ -5,18 +5,20 @@ $htaccessContent = <<<EOD
   RewriteBase /
   Options -MultiViews
 
-  # 1. Zorunlu HTTPS Yönlendirmesi
+  # 1. Force HTTPS
   RewriteCond %{HTTPS} off
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # 2. www'dan www'suz (katilimuzmani.com) yönlendirme
+  # 2. www -> non-www
   RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
   RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
 
-  # 3. Sitemap için yönlendirme
+  # 3. Sitemap
   RewriteRule ^sitemap\.xml$ api/sitemap.php [L]
 
-  # 4. React SPA Fallback (Tüm diğer yollar için)
+  # 4. React SPA fallback. Prerendered pages are physical folders
+  #    (e.g. /blog/index.html) and are served directly by the -d check below;
+  #    every other path falls back to index.html (RELATIVE path = LiteSpeed-safe).
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-l
@@ -29,7 +31,6 @@ $htaccessContent = <<<EOD
     Header set Pragma "no-cache"
     Header set Expires 0
   </FilesMatch>
-  
   <FilesMatch "\.(js|css|webp|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>

@@ -6,6 +6,7 @@ import { blogApi } from '../../services/api/blog';
 import { BlogContent } from '../../components/BlogContent';
 import { FavoriteButton } from '../../components/FavoriteButton';
 import type { BlogPost } from '../../types/database';
+import { buildSeoTitle } from '../../data/pageSeo';
 
 const BlogDetailPage: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -22,9 +23,9 @@ const BlogDetailPage: React.FC = () => {
     // Update page title, meta, OG tags, canonical, and JSON-LD for SEO
     useEffect(() => {
         if (post) {
-            const pageTitle = `${post.title} | Katılım Uzmanı Blog`;
+            const pageTitle = buildSeoTitle(post.title, 'Katılım Uzmanı Blog');
             const pageDesc = post.excerpt || post.title;
-            const pageUrl = `https://katilimuzmani.com/blog/${post.slug || post.id}`;
+            const pageUrl = `https://katilimuzmani.com/blog/${post.slug || post.id}/`;
             const publishDate = post.published_at || post.created_at;
 
             // Title

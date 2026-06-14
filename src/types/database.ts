@@ -66,6 +66,10 @@ export interface SiteSettings {
   social_proof_enabled?: boolean;
   // Social media follow promo (sticky button + periodic toast)
   social_follow_promo_enabled?: boolean;
+  social_follow_promo_initial_delay?: number;
+  social_follow_promo_interval?: number;
+  social_follow_promo_duration?: number;
+  social_follow_promo_max_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -111,6 +115,10 @@ export interface HomeHero {
   cta1_link?: string;
   cta2_label?: string;
   cta2_link?: string;
+  text_color?: string;
+  button_color?: string;
+  button_text_color?: string;
+  badge_text_color?: string; // Üst rozet ("Katılım Uzmanı ile Geleceği Planla") yazı rengi
   sort_order?: number;
   is_active?: boolean;
   created_at: string;
@@ -167,6 +175,7 @@ export interface Campaign {
   order_index: number;
   created_at: string;
   updated_at: string;
+  view_count?: number; // Görüntülenme sayısı
   // Joined data
   company?: Company;
 }
@@ -246,11 +255,20 @@ export interface BlogPost {
   content: string;
   cover_image_url?: string;
   author: string;
+  category?: string;
   published_at: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
   view_count?: number;
+}
+
+export interface BlogCategory {
+  id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ContactSettings {
@@ -316,6 +334,7 @@ export interface BlogPostFormData {
   content: string;
   cover_image_url?: string;
   author: string;
+  category?: string;
   published_at: string;
   is_active: boolean;
 }

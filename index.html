@@ -2,18 +2,38 @@
 <html lang="tr">
 
 <head>
-  <!-- Google Analytics (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-0CYE3EZ2QH"></script>
+  <!-- Performance: marketing tags are loaded after the first render path is free. -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-0CYE3EZ2QH');
+    window.addEventListener('load', function () {
+      var runIdle = window.requestIdleCallback || function (cb) { return setTimeout(cb, 1); };
+      var loadAnalytics = function () {
+        if (window.__gaLoaded) return;
+        window.__gaLoaded = true;
+        var ga = document.createElement('script');
+        ga.async = true;
+        ga.src = 'https://www.googletagmanager.com/gtag/js?id=G-0CYE3EZ2QH';
+        document.head.appendChild(ga);
+        gtag('js', new Date());
+        gtag('config', 'G-0CYE3EZ2QH');
+      };
+      var loadAds = function () {
+        if (window.__adsLoaded) return;
+        window.__adsLoaded = true;
+        var ads = document.createElement('script');
+        ads.async = true;
+        ads.crossOrigin = 'anonymous';
+        ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8670247978409557';
+        document.head.appendChild(ads);
+      };
+      setTimeout(function () { runIdle(loadAnalytics, { timeout: 2000 }); }, 3000);
+      ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(function (eventName) {
+        window.addEventListener(eventName, function () { runIdle(loadAds, { timeout: 2000 }); }, { once: true, passive: true });
+      });
+      setTimeout(function () { runIdle(loadAds, { timeout: 3000 }); }, 12000);
+    }, { once: true });
   </script>
-
-  <!-- Google AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8670247978409557"
-    crossorigin="anonymous"></script>
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -87,52 +107,12 @@
     ]
   }
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            primary: {
-              50: '#eff6ff',
-              100: '#dbeafe',
-              200: '#bfdbfe',
-              300: '#93c5fd',
-              400: '#60a5fa',
-              500: '#3b82f6',
-              600: '#0855f8', // Main Brand Color
-              700: '#0645d0', // Hover state
-              800: '#1e40af',
-              900: '#1e3a8a',
-              950: '#172554',
-            },
-            // Secondary accent color
-            gold: {
-              50: '#eff6ff',
-              100: '#dbeafe',
-              200: '#bfdbfe',
-              300: '#93c5fd',
-              400: '#60a5fa',
-              500: '#3b82f6',
-              600: '#0855f8',
-              700: '#0645d0',
-              800: '#1e40af',
-              900: '#1e3a8a',
-            },
-            slate: {
-              850: '#1e293b',
-              900: '#0f172a',
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-        },
-      },
-    }
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind artık BUILD adımında derleniyor; runtime CDN (cdn.tailwindcss.com) kaldırıldı (hız için).
+       Yapılandırma: tailwind.config.js · CSS girişi: src/index.css (index.tsx içinde import edilir). -->
+  <!-- Performans: üçüncü taraf kaynaklara erken bağlantı -->
+  <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <!-- Inter fontu artık self-host (build içine gömülü, @fontsource) — Google Fonts dış isteği kaldırıldı -->
   <style>
     html {
       scroll-behavior: smooth;
@@ -168,22 +148,6 @@
       background: #94a3b8;
     }
   </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
-    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
-    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.1",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6"
-  }
-}
-</script>
-
 </head>
 
 <body class="transition-colors duration-300">

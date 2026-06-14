@@ -223,6 +223,9 @@ export const News: React.FC = () => {
                                 className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 focus:border-transparent"
                                 placeholder="Haber başlığı"
                             />
+                            <p className={`mt-1 text-xs ${(formData.title?.length || 0) > 60 ? 'text-orange-500' : 'text-slate-400'}`}>
+                                {formData.title?.length || 0}/60 karakter {(formData.title?.length || 0) > 60 ? '— SEO başlığı (title) otomatik ≤60 karaktere kısaltılır' : ''}
+                            </p>
                         </div>
 
                         {/* Row: Category, Status, Date */}

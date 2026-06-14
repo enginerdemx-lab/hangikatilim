@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calculator as CalcIcon, Calendar, CalendarCheck, Sparkles, PlusCircle, MinusCircle, Shuffle, Zap, TrendingUp, XCircle, FileDown, Plus, Minus, Lock, ChevronDown, Table as TableIcon, Home, Car, Building2, Layers, Save, UserPlus, Link, MessageCircle, Info } from 'lucide-react';
-import { Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { FeePaymentType, CalculationParams, CalculationResult, PaymentRow, SystemType, AssetType, IncreaseType, CalculationType } from '../../types';
-import { generatePDF } from '../services/pdfService';
 import { calculationService } from '../services/api/calculationService';
 import { pdfDownloadService } from '../services/api/pdfDownloadService';
 import { feedbackService } from '../services/api/feedbackService';
@@ -16,6 +14,7 @@ import { PasswordResetModal } from './auth/PasswordResetModal';
 import { ConfirmationModal } from './ConfirmationModal';
 import { SponsorArea, SponsorTrigger } from './SponsorArea';
 import { ConsultationRequestModal } from '../../components/ConsultationRequestModal';
+import { DeferredResultChart } from './DeferredResultChart';
 import {
   parseQueryToState,
   buildShareUrl,
@@ -846,7 +845,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
   };
 
   // PDF İndirme - Üye girişi gerektirir
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     if (!result) return;
 
     // Üye değilse popup göster
@@ -857,7 +856,14 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
     // Üye girişi yapılmış, PDF indir
     const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Üye';
-    generatePDF(params, result, userName);
+    try {
+      const { generatePDF } = await import('../services/pdfService');
+      await generatePDF(params, result, userName);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      showToast('PDF oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.', 'error');
+      return;
+    }
 
     // PDF indirme logunu kaydet (fire-and-forget)
     pdfDownloadService.logDownload({
@@ -992,9 +998,6 @@ ${url}`;
     { id: AssetType.WORKPLACE, label: 'İş Yeri', icon: Building2 },
     { id: AssetType.CAR, label: 'Araç', icon: Car },
   ];
-
-  // Chart theme colors
-  const chartGridColor = theme === 'dark' ? '#334155' : '#f3f4f6'; // slate-700 : gray-100
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl" id="calculator">
@@ -2150,36 +2153,7 @@ ${url}`;
                 </div>
               )}
 
-              <div className="h-48 w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={result?.schedule.filter((_, i) => i % Math.ceil((result?.schedule.length || 1) / 20) === 0) || []}>
-                    <defs>
-                      <linearGradient id="colorRemaining" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#210CAE" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#210CAE" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartGridColor} opacity={0.5} />
-                    <XAxis dataKey="month" hide />
-                    {/* Dual Axis Configuration */}
-                    <YAxis yAxisId="left" orientation="left" hide domain={['auto', 'auto']} />
-                    <YAxis yAxisId="right" orientation="right" hide domain={['auto', 'auto']} />
-                    <Tooltip
-                      labelFormatter={(value) => `${value}. Taksit`}
-                      formatter={(value: any, name: any) => {
-                        const label = name === 'remaining' ? 'Kalan Borç' : 'Aylık Taksit';
-                        return [new Intl.NumberFormat('tr-TR').format(value) + ' TL', label];
-                      }}
-                      contentStyle={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      itemStyle={{ color: theme === 'dark' ? '#e2e8f0' : '#334155' }}
-                    />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                    {/* Updated to show Remaining Debt (Area) and Installment (Line) with separate axes */}
-                    <Area yAxisId="left" type="monotone" dataKey="remaining" stroke="#210CAE" fill="url(#colorRemaining)" strokeWidth={2} name="Kalan Anapara" />
-                    <Line yAxisId="right" type="monotone" dataKey="amount" stroke="#4DC9E6" strokeWidth={3} dot={false} name="Aylık Taksit" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <DeferredResultChart schedule={result?.schedule || []} theme={theme} />
 
             </div>
           </div>

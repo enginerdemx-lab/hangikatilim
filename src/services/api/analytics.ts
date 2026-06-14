@@ -19,8 +19,20 @@ export interface AnalyticsData {
         share_whatsapp?: number;
     };
     topPages: { path: string; views: number }[];
+    // 30 günlük günlük trafik serisi (tarih artan sıralı)
+    timeseries?: { date: string; users: number; sessions: number; pageViews: number }[];
     lastUpdated: string;
     error?: string;
+}
+
+// GA4 Realtime (son 30 dakika)
+export interface RealtimeData {
+    activeUsers: number;
+    perMinute: number[]; // 30 eleman; index 0 = şu an, 29 = 29 dk önce
+    byCountry: { country: string; users: number }[];
+    lastUpdated: string;
+    hasError: boolean;
+    errorMessage: string | null;
 }
 
 // Data Health Status
@@ -108,6 +120,45 @@ export const analyticsService = {
             };
             localCache = { data: errorData, timestamp: Date.now(), httpStatus: 0 };
             return errorData;
+        }
+    },
+
+    /**
+     * Fetch GA4 realtime (last 30 minutes) active users.
+     * Not cached client-side — the dashboard polls this periodically.
+     */
+    async getRealtime(): Promise<RealtimeData> {
+        const empty = (msg: string | null): RealtimeData => ({
+            activeUsers: 0,
+            perMinute: [],
+            byCountry: [],
+            lastUpdated: new Date().toISOString(),
+            hasError: true,
+            errorMessage: msg,
+        });
+
+        try {
+            const { data, error } = await supabase.functions.invoke('analytics-overview', {
+                body: { part: 'realtime' },
+            });
+
+            if (error) return empty(error.message);
+            // Edge Function henüz güncellenmediyse realtime alanları gelmez
+            if (!data || !Array.isArray((data as any).perMinute)) {
+                return empty('Realtime verisi yok (Edge Function güncel mi?)');
+            }
+
+            const rt = data as any;
+            return {
+                activeUsers: rt.activeUsers || 0,
+                perMinute: rt.perMinute || [],
+                byCountry: rt.byCountry || [],
+                lastUpdated: rt.lastUpdated || new Date().toISOString(),
+                hasError: false,
+                errorMessage: null,
+            };
+        } catch (error) {
+            return empty(error instanceof Error ? error.message : 'Bağlantı hatası');
         }
     },
 

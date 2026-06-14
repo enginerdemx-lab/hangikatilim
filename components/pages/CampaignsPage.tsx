@@ -166,7 +166,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
    const formatMoney = (val: number) => new Intl.NumberFormat('tr-TR').format(val);
 
    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 animate-fade-in pb-12">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 animate-fade-in pb-12 overflow-x-hidden">
 
          {/* HEADER SECTION - Calculator Style */}
          <div className="bg-gradient-to-r from-slate-800 to-[#1e3a8a] py-10 md:py-16 relative overflow-hidden">
@@ -312,15 +312,16 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                      </div>
 
                      {/* Hemen Teslim Poster Cards — Tam boy afiş görselli */}
-                     <div className="space-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {hemenTeslimCampaigns.map((camp) => (
                            <div
                               key={camp.id}
-                              className="group relative bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl transition-all duration-300"
+                              className="group relative bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300"
                            >
-                              {/* Red accent top bar */}
-                              <div className="h-1 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
-
+                              {/* Shine Effect Overlay — alttaki kartlarla aynı ışık geçişi */}
+                              <div className="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-[2500ms]"></div>
+                              </div>
                               {/* Full-size campaign poster image */}
                               {(camp.image_url || camp.mobile_image_url) && (
                                  <div className="relative w-full overflow-hidden cursor-pointer bg-white dark:bg-slate-800" onClick={() => camp.slug && routerNavigate(`/kampanyalar/${camp.slug}`)}>
@@ -341,7 +342,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
 
                               {/* Bottom info bar */}
                               <div className="p-4 md:p-5 bg-white dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
-                                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                                 <div className="flex flex-col gap-3">
                                     {/* Left: Company + Title */}
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                        {camp.company?.logo_url && (
@@ -361,7 +362,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                                     </div>
 
                                     {/* Center: Stats chips */}
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex flex-wrap items-center gap-2">
                                        {(camp.vade_months || 0) > 0 && (
                                           <div className="flex items-center gap-1 bg-orange-50 dark:bg-orange-900/20 px-2.5 py-1 rounded-lg">
                                              <Calendar size={12} className="text-orange-500" />
@@ -381,7 +382,7 @@ export const CampaignsPage: React.FC<CampaignsPageProps> = ({ onNavigate }) => {
                                     </div>
 
                                     {/* Right: CTA Button */}
-                                    <div className="flex gap-2 flex-shrink-0 w-full md:w-auto">
+                                    <div className="flex gap-2 w-full">
                                        <button
                                           className="flex-1 md:flex-none bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-700 hover:to-orange-600 text-white font-bold py-2.5 px-6 rounded-lg transition-all text-sm shadow-lg shadow-red-500/20"
                                           onClick={() => camp.slug ? routerNavigate(`/kampanyalar/${camp.slug}`) : window.open(camp.application_link, '_blank')}

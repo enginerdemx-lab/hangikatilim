@@ -103,11 +103,10 @@ export const RegisterPage: React.FC = () => {
 
         if (password !== confirmPassword) return setError('Şifreler eşleşmiyor.');
 
-        // 2. Legal Checks
-        if (!agreements.terms) return setError('Lütfen Kullanıcı Sözleşmesini onaylayın.');
-        if (!agreements.privacy) return setError('Lütfen Gizlilik Politikasını onaylayın.');
-        if (!agreements.kvkk) return setError('Lütfen KVKK Aydınlatma Metnini onaylayın.');
-        if (!agreements.consent) return setError('Lütfen Açık Rıza Metnini onaylayın.');
+        // 2. Legal Checks — 4 zorunlu metin tek onayda toplanır
+        if (!(agreements.terms && agreements.privacy && agreements.kvkk && agreements.consent)) {
+            return setError('Devam etmek için sözleşme ve metinleri onaylamanız gerekir.');
+        }
 
         setLoading(true);
         try {
@@ -240,153 +239,86 @@ export const RegisterPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Legal Checkboxes */}
+                        {/* Legal Checkboxes — gruplanmış: 1 zorunlu (4 metin) + 1 opsiyonel */}
                         <div className="space-y-3 pt-2">
-                            {/* Helper to handle checkbox clicks */}
                             {(() => {
-                                const handleCheckboxClick = (e: React.MouseEvent, type: LegalType, checked: boolean, key: keyof typeof agreements) => {
-                                    e.preventDefault();
-                                    if (checked) {
-                                        setAgreements(prev => ({ ...prev, [key]: false }));
-                                    } else {
-                                        handleOpenLegal(type);
-                                    }
+                                const requiredAccepted =
+                                    agreements.terms && agreements.privacy && agreements.kvkk && agreements.consent;
+
+                                const toggleRequired = () => {
+                                    const next = !requiredAccepted;
+                                    setAgreements(prev => ({
+                                        ...prev,
+                                        terms: next,
+                                        privacy: next,
+                                        kvkk: next,
+                                        consent: next,
+                                    }));
                                 };
+
+                                const toggleCommercial = () => {
+                                    setAgreements(prev => ({ ...prev, commercial: !prev.commercial }));
+                                };
+
+                                // Metin linkine tıklayınca ilgili metin açılır; kutu durumunu değiştirmez
+                                const openLegal = (e: React.MouseEvent, type: LegalType) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleOpenLegal(type);
+                                };
+
+                                const legalLink = (type: LegalType, label: string) => (
+                                    <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(e) => openLegal(e, type)}
+                                        className="font-medium text-primary-600 hover:underline cursor-pointer"
+                                    >
+                                        {label}
+                                    </span>
+                                );
+
+                                const box = (checked: boolean) => (
+                                    <div className="relative mt-0.5">
+                                        <div
+                                            className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
+                                                ${checked
+                                                    ? 'bg-primary-600 border-primary-600'
+                                                    : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
+                                                }`}
+                                        >
+                                            {checked && <CheckCircle size={12} className="text-white" />}
+                                        </div>
+                                    </div>
+                                );
 
                                 return (
                                     <>
-                                        {/* Terms */}
+                                        {/* 1) Zorunlu onaylar — 4 metin tek kutuda */}
                                         <div
                                             className="flex items-start gap-3 cursor-pointer group"
-                                            onClick={(e) => handleCheckboxClick(e, 'TERMS', agreements.terms, 'terms')}
+                                            onClick={toggleRequired}
                                         >
-                                            <div className="relative mt-1">
-                                                <input
-                                                    type="checkbox"
-                                                    id="terms"
-                                                    checked={agreements.terms}
-                                                    readOnly
-                                                    className="peer sr-only"
-                                                />
-                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
-                                                    ${agreements.terms
-                                                        ? 'bg-primary-600 border-primary-600'
-                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
-                                                    }`}
-                                                >
-                                                    {agreements.terms && <CheckCircle size={12} className="text-white" />}
-                                                </div>
-                                            </div>
+                                            {box(requiredAccepted)}
                                             <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
-                                                <span className="font-medium text-primary-600 hover:underline">Kullanıcı Sözleşmesi</span>'ni okudum ve onaylıyorum.
+                                                {legalLink('TERMS', 'Kullanıcı Sözleşmesi')},{' '}
+                                                {legalLink('PRIVACY', 'Gizlilik Politikası')},{' '}
+                                                {legalLink('KVKK', 'Aydınlatma Metni')} ve{' '}
+                                                {legalLink('CONSENT', 'Açık Rıza Metni')}'ni okudum; kişisel verilerimin
+                                                işlenmesine ve paylaşılmasına onay veriyorum.
                                             </label>
                                         </div>
 
-                                        {/* Privacy */}
+                                        {/* 2) Ticari elektronik ileti — opsiyonel */}
                                         <div
                                             className="flex items-start gap-3 cursor-pointer group"
-                                            onClick={(e) => handleCheckboxClick(e, 'PRIVACY', agreements.privacy, 'privacy')}
+                                            onClick={toggleCommercial}
                                         >
-                                            <div className="relative mt-1">
-                                                <input
-                                                    type="checkbox"
-                                                    id="privacy"
-                                                    checked={agreements.privacy}
-                                                    readOnly
-                                                    className="peer sr-only"
-                                                />
-                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
-                                                    ${agreements.privacy
-                                                        ? 'bg-primary-600 border-primary-600'
-                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
-                                                    }`}
-                                                >
-                                                    {agreements.privacy && <CheckCircle size={12} className="text-white" />}
-                                                </div>
-                                            </div>
+                                            {box(agreements.commercial)}
                                             <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
-                                                <span className="font-medium text-primary-600 hover:underline">Gizlilik Politikası</span>'nı okudum ve onaylıyorum.
-                                            </label>
-                                        </div>
-
-                                        {/* KVKK */}
-                                        <div
-                                            className="flex items-start gap-3 cursor-pointer group"
-                                            onClick={(e) => handleCheckboxClick(e, 'KVKK', agreements.kvkk, 'kvkk')}
-                                        >
-                                            <div className="relative mt-1">
-                                                <input
-                                                    type="checkbox"
-                                                    id="kvkk"
-                                                    checked={agreements.kvkk}
-                                                    readOnly
-                                                    className="peer sr-only"
-                                                />
-                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
-                                                    ${agreements.kvkk
-                                                        ? 'bg-primary-600 border-primary-600'
-                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
-                                                    }`}
-                                                >
-                                                    {agreements.kvkk && <CheckCircle size={12} className="text-white" />}
-                                                </div>
-                                            </div>
-                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
-                                                <span className="font-medium text-primary-600 hover:underline">Aydınlatma Metni</span>'ni okudum ve anladım.
-                                            </label>
-                                        </div>
-
-                                        {/* Consent */}
-                                        <div
-                                            className="flex items-start gap-3 cursor-pointer group"
-                                            onClick={(e) => handleCheckboxClick(e, 'CONSENT', agreements.consent, 'consent')}
-                                        >
-                                            <div className="relative mt-1">
-                                                <input
-                                                    type="checkbox"
-                                                    id="consent"
-                                                    checked={agreements.consent}
-                                                    readOnly
-                                                    className="peer sr-only"
-                                                />
-                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
-                                                    ${agreements.consent
-                                                        ? 'bg-primary-600 border-primary-600'
-                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
-                                                    }`}
-                                                >
-                                                    {agreements.consent && <CheckCircle size={12} className="text-white" />}
-                                                </div>
-                                            </div>
-                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
-                                                <span className="font-medium text-primary-600 hover:underline">Açık Rıza Metni</span>'ni okudum ve kişisel verilerimin işlenmesine ve paylaşılmasına onay veriyorum.
-                                            </label>
-                                        </div>
-
-                                        {/* Commercial (Optional) */}
-                                        <div
-                                            className="flex items-start gap-3 cursor-pointer group"
-                                            onClick={(e) => handleCheckboxClick(e, 'COMMERCIAL', agreements.commercial, 'commercial')}
-                                        >
-                                            <div className="relative mt-1">
-                                                <input
-                                                    type="checkbox"
-                                                    id="commercial"
-                                                    checked={agreements.commercial}
-                                                    readOnly
-                                                    className="peer sr-only"
-                                                />
-                                                <div className={`w-4 h-4 border rounded transition-colors flex items-center justify-center
-                                                    ${agreements.commercial
-                                                        ? 'bg-primary-600 border-primary-600'
-                                                        : 'border-gray-300 dark:border-slate-500 group-hover:border-primary-500'
-                                                    }`}
-                                                >
-                                                    {agreements.commercial && <CheckCircle size={12} className="text-white" />}
-                                                </div>
-                                            </div>
-                                            <label className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed cursor-pointer select-none">
-                                                <span className="font-medium text-primary-600 hover:underline">Ticari Elektronik İleti Bilgilendirme Metni</span>'ni okudum ve tarafıma ileti gönderilmesini onaylıyorum.
+                                                {legalLink('COMMERCIAL', 'Ticari Elektronik İleti Bilgilendirme Metni')}'ni
+                                                okudum, tarafıma ticari ileti gönderilmesini onaylıyorum.{' '}
+                                                <span className="text-gray-400">(İsteğe bağlı)</span>
                                             </label>
                                         </div>
                                     </>

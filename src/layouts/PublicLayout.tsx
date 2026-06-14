@@ -4,12 +4,17 @@ import { Facebook, Instagram, Linkedin, Mail, ChevronRight, Send, CheckCircle, L
 import { PublicNavbar } from '../components/PublicNavbar';
 import MarketTicker from '../components/MarketTicker';
 import { NewsTicker } from '../../components/NewsTicker';
-import { LegalModal, LegalType } from '../../components/LegalModal';
+import type { LegalType } from '../../components/LegalModal';
 import { siteSettingsApi } from '../services/api/siteSettings';
-import emailService from '../services/api/emailService';
 import type { SiteSettings } from '../types/database';
-import { SnowOverlay } from '../components/SnowOverlay';
-import SocialFollowPromo from '../components/SocialFollowPromo';
+
+const LegalModal = React.lazy(() =>
+    import('../../components/LegalModal').then(module => ({ default: module.LegalModal }))
+);
+const SnowOverlay = React.lazy(() =>
+    import('../components/SnowOverlay').then(module => ({ default: module.SnowOverlay }))
+);
+const SocialFollowPromo = React.lazy(() => import('../components/SocialFollowPromo'));
 
 // Custom X (Twitter) Icon
 const XIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
@@ -23,6 +28,7 @@ export const PublicLayout: React.FC = () => {
     const [legalModalOpen, setLegalModalOpen] = useState(false);
     const [legalModalType, setLegalModalType] = useState<LegalType>('KVKK');
     const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+    const [loadEnhancements, setLoadEnhancements] = useState(false);
     const location = useLocation();
 
     // Newsletter state
@@ -31,32 +37,40 @@ export const PublicLayout: React.FC = () => {
     const [newsletterResult, setNewsletterResult] = useState<{ success: boolean; message: string } | null>(null);
 
     useEffect(() => {
+        let cleanup = () => { };
+        if ('requestIdleCallback' in window) {
+            const id = (window as any).requestIdleCallback(() => setLoadEnhancements(true), { timeout: 3500 });
+            cleanup = () => (window as any).cancelIdleCallback?.(id);
+        } else {
+            const id = window.setTimeout(() => setLoadEnhancements(true), 2200);
+            cleanup = () => window.clearTimeout(id);
+        }
+        return cleanup;
+    }, []);
+
+    useEffect(() => {
         // FORCE light mode on every page load
         localStorage.removeItem('theme');
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
         setTheme('light');
 
-        // Immediately set title from cache to prevent FOUC
-        const cachedSiteName = localStorage.getItem('cached_site_name');
-        if (cachedSiteName) {
-            document.title = `${cachedSiteName} | Tasarruf Finansmanı Hesaplayıcı`;
-        }
+        // NOTE: Per-page <title> and meta are now owned by the usePageSeo() hook
+        // (static per-route defaults + optional Supabase page_seo overrides).
+        // PublicLayout must NOT set a global document.title here, otherwise it would
+        // overwrite the unique per-page titles required for SEO / AdSense crawling.
 
         // Load site settings (favicon + footer data)
         const loadSiteSettings = async () => {
             try {
                 const settings = await siteSettingsApi.getSettings();
                 console.log('[DEBUG] Site settings fetched:', settings);
-                console.log('[DEBUG] App Store Badge URL:', settings?.app_store_badge_url);
-                console.log('[DEBUG] Google Play Badge URL:', settings?.google_play_badge_url);
-                console.log('[DEBUG] App Gallery Badge URL:', settings?.app_gallery_badge_url);
                 if (settings) {
                     setSiteSettings(settings);
 
-                    // Set document title with site name and cache it
+                    // Cache the site name for other UI uses. The document title is
+                    // intentionally NOT set here; usePageSeo() owns per-page titles.
                     if (settings.site_name) {
-                        document.title = `${settings.site_name} | Tasarruf Finansmanı Hesaplayıcı`;
                         localStorage.setItem('cached_site_name', settings.site_name);
                     }
 
@@ -72,29 +86,15 @@ export const PublicLayout: React.FC = () => {
                         if (appleTouchIcon) appleTouchIcon.href = settings.favicon_url;
                     }
 
-                    // Update SEO meta tags from admin panel
-                    const seoTitle = settings.default_seo_title || `${settings.site_name} | Tasarruf Finansmanı Hesaplayıcı`;
-                    const seoDescription = settings.default_seo_description || "Türkiye'nin en kapsamlı tasarruf finansmanı hesaplama ve karşılaştırma platformu.";
-
-                    // Update meta description
-                    const metaDesc = document.getElementById('meta-description') as HTMLMetaElement;
-                    if (metaDesc) metaDesc.content = seoDescription;
-
-                    // Update Open Graph tags
-                    const ogTitle = document.getElementById('og-title') as HTMLMetaElement;
-                    const ogDesc = document.getElementById('og-description') as HTMLMetaElement;
-                    const ogImage = document.getElementById('og-image') as HTMLMetaElement;
-                    if (ogTitle) ogTitle.content = seoTitle;
-                    if (ogDesc) ogDesc.content = seoDescription;
-                    if (ogImage && settings.og_image_url) ogImage.content = settings.og_image_url;
-
-                    // Update Twitter Card tags
-                    const twitterTitle = document.getElementById('twitter-title') as HTMLMetaElement;
-                    const twitterDesc = document.getElementById('twitter-description') as HTMLMetaElement;
-                    const twitterImage = document.getElementById('twitter-image') as HTMLMetaElement;
-                    if (twitterTitle) twitterTitle.content = seoTitle;
-                    if (twitterDesc) twitterDesc.content = seoDescription;
-                    if (twitterImage && settings.og_image_url) twitterImage.content = settings.og_image_url;
+                    // SEO meta (title / description / OG title&desc / Twitter title&desc)
+                    // are now set PER PAGE by the usePageSeo() hook so each route is unique
+                    // and crawlable. Here we only keep the global OG/Twitter *image* default.
+                    if (settings.og_image_url) {
+                        const ogImage = document.getElementById('og-image') as HTMLMetaElement;
+                        const twitterImage = document.getElementById('twitter-image') as HTMLMetaElement;
+                        if (ogImage) ogImage.content = settings.og_image_url;
+                        if (twitterImage) twitterImage.content = settings.og_image_url;
+                    }
                 }
             } catch (error) {
                 console.error('Site ayarları yüklenemedi:', error);
@@ -133,6 +133,7 @@ export const PublicLayout: React.FC = () => {
         setNewsletterResult(null);
 
         try {
+            const { default: emailService } = await import('../services/api/emailService');
             const result = await emailService.subscribeNewsletter(newsletterEmail);
             if (result.success) {
                 setNewsletterResult({ success: true, message: result.message || 'Başarıyla abone oldunuz!' });
@@ -147,69 +148,14 @@ export const PublicLayout: React.FC = () => {
         }
     };
 
-    // Helper function to render app store badge
-    // ONLY uses database URL - NO fallbacks
-    const renderAppBadge = (
-        enabled: boolean | undefined,
-        storeUrl: string | undefined,
-        badgeUrl: string | undefined,
-        altText: string
-    ) => {
-        // Don't render if explicitly disabled (null/undefined = enabled)
-        if (enabled === false) return null;
-
-        // Get the image source from database ONLY - no fallbacks
-        const imgSrc = (badgeUrl || '').trim();
-
-        // Don't render if no badge URL from database
-        if (!imgSrc) {
-            console.log(`[DEBUG] Badge skipped (no URL): ${altText}`);
-            return null;
-        }
-
-        console.log(`[DEBUG] Badge rendering: ${altText}`, imgSrc);
-
-        const imgElement = (
-            <img
-                src={imgSrc}
-                alt={altText}
-                className="h-10 w-auto object-contain cursor-pointer"
-                style={{ minWidth: '100px', maxWidth: '140px' }}
-                onLoad={() => console.log(`[DEBUG] Badge LOADED: ${altText}`, imgSrc)}
-                onError={(e) => {
-                    console.error(`[DEBUG] Badge FAILED: ${altText}`, imgSrc);
-                    (e.target as HTMLImageElement).style.display = 'none';
-                }}
-            />
-        );
-
-        // If store URL exists, wrap in link; otherwise just show image
-        if (storeUrl?.trim()) {
-            return (
-                <a
-                    href={storeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:scale-105 transition-transform inline-block"
-                >
-                    {imgElement}
-                </a>
-            );
-        }
-
-        // No store URL but badge exists - show without link
-        return (
-            <div className="inline-block">
-                {imgElement}
-            </div>
-        );
-    };
-
-
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-slate-900 font-sans text-gray-900 dark:text-gray-100 selection:bg-primary-200 selection:text-primary-900 transition-colors duration-300 relative flex flex-col">
-            <SnowOverlay />
-            <SocialFollowPromo />
+            {loadEnhancements && (
+                <React.Suspense fallback={null}>
+                    <SnowOverlay />
+                    <SocialFollowPromo />
+                </React.Suspense>
+            )}
             <NewsTicker />
             <PublicNavbar theme={theme} toggleTheme={toggleTheme} />
             <MarketTicker />
@@ -218,12 +164,16 @@ export const PublicLayout: React.FC = () => {
                 <Outlet context={{ theme }} />
             </main>
 
-            <LegalModal
-                isOpen={legalModalOpen}
-                type={legalModalType}
-                onClose={() => setLegalModalOpen(false)}
-                siteSettings={siteSettings}
-            />
+            {legalModalOpen && (
+                <React.Suspense fallback={null}>
+                    <LegalModal
+                        isOpen={legalModalOpen}
+                        type={legalModalType}
+                        onClose={() => setLegalModalOpen(false)}
+                        siteSettings={siteSettings}
+                    />
+                </React.Suspense>
+            )}
 
             {/* Footer */}
             <footer className="bg-gray-900 dark:bg-slate-950 text-gray-400 pt-16 pb-12 border-t border-gray-800 dark:border-slate-900 transition-colors duration-300">
@@ -293,6 +243,11 @@ export const PublicLayout: React.FC = () => {
                                     </NavLink>
                                 </li>
                                 <li>
+                                    <NavLink to="/sektor-haberleri" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
+                                        <ChevronRight size={14} /> Sektör Haberleri
+                                    </NavLink>
+                                </li>
+                                <li>
                                     <NavLink to="/blog" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
                                         <ChevronRight size={14} /> Blog & Haberler
                                     </NavLink>
@@ -307,11 +262,6 @@ export const PublicLayout: React.FC = () => {
                                         <ChevronRight size={14} /> Hakkımızda
                                     </NavLink>
                                 </li>
-                                <li>
-                                    <NavLink to="/sss" className="text-sm text-gray-400 hover:text-[#4DC9E6] flex items-center justify-center md:justify-start gap-2 transition-colors">
-                                        <ChevronRight size={14} /> S.S.S
-                                    </NavLink>
-                                </li>
                             </ul>
                         </div>
 
@@ -323,32 +273,22 @@ export const PublicLayout: React.FC = () => {
                                     <span>{siteSettings?.footer_email || 'info@hangikatilim.com'}</span>
                                 </li>
                             </ul>
-                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-6">
-                                {/* App Store Badge */}
-                                {renderAppBadge(
-                                    siteSettings?.show_app_store_badge,
-                                    siteSettings?.app_store_url,
-                                    siteSettings?.app_store_badge_url,
-                                    'App Store'
-                                )}
-
-                                {/* Google Play Badge */}
-                                {renderAppBadge(
-                                    siteSettings?.show_google_play_badge,
-                                    siteSettings?.google_play_url,
-                                    siteSettings?.google_play_badge_url,
-                                    'Google Play'
-                                )}
-
-                                {/* App Gallery Badge */}
-                                {renderAppBadge(
-                                    siteSettings?.show_app_gallery_badge,
-                                    siteSettings?.app_gallery_url,
-                                    siteSettings?.app_gallery_badge_url,
-                                    'App Gallery'
-                                )}
-                            </div>
                         </div>
+                    </div>
+
+                    {/* SEO: Popüler konular — anahtar kelime odaklı iç bağlantılar */}
+                    <div className="border-t border-gray-800 pt-8 mb-8">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-3">Popüler Konular</h4>
+                        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                            <NavLink to="/" className="text-gray-400 hover:text-[#4DC9E6] transition-colors">Tasarruf Finansmanı Hesaplama</NavLink>
+                            <NavLink to="/kampanyalar" className="text-gray-400 hover:text-[#4DC9E6] transition-colors">Faizsiz Ev ve Araç Kampanyaları</NavLink>
+                            <NavLink to="/katilim-firmalari" className="text-gray-400 hover:text-[#4DC9E6] transition-colors">Katılım Firmaları Karşılaştırma</NavLink>
+                            <NavLink to="/sektor-haberleri" className="text-gray-400 hover:text-[#4DC9E6] transition-colors">Tasarruf Finansmanı Sektör Haberleri</NavLink>
+                            <NavLink to="/blog" className="text-gray-400 hover:text-[#4DC9E6] transition-colors">Faizsiz Finansman Rehberi</NavLink>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed mt-4 max-w-3xl">
+                            Katılım Uzmanı; tasarruf finansmanı (evim sistemi), faizsiz ev ve araç finansmanı, çekilişli ve çekilişsiz sistemler ile BDDK lisanslı katılım finansman firmalarını şeffaf biçimde karşılaştırmanızı ve kendi ödeme planınızı ücretsiz hesaplamanızı sağlar.
+                        </p>
                     </div>
 
                     {/* Newsletter Subscription Section */}

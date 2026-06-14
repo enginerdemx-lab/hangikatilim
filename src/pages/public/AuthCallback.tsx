@@ -11,60 +11,90 @@ export const AuthCallback: React.FC = () => {
     useEffect(() => {
         const handleAuthCallback = async () => {
             try {
-                // Get the hash parameters from the URL
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const queryParams = new URLSearchParams(window.location.search);
+
+                // type hem hash hem query'de olabilir
+                const type = hashParams.get('type') || queryParams.get('type');
+
+                // Doğrulama türüne göre başarı mesajı
+                const successMessageFor = (t: string | null): string => {
+                    if (t === 'email_change') return 'E-posta adresiniz başarıyla değiştirildi!';
+                    if (t === 'recovery') return 'Şifre sıfırlama bağlantısı doğrulandı!';
+                    // signup / email_confirmation / bilinmeyen → e-posta onayı
+                    return 'E-posta adresiniz başarıyla onaylandı! Hesabınız aktif.';
+                };
+
+                const finishSuccess = (t: string | null) => {
+                    if (t === 'recovery') {
+                        setMessage('Şifre sıfırlama bağlantısı doğrulandı!');
+                        setStatus('success');
+                        setTimeout(() => navigate('/reset-password'), 2000);
+                        return;
+                    }
+                    setMessage(successMessageFor(t));
+                    setStatus('success');
+                };
+
+                // Önce hata parametrelerini kontrol et (hem hash hem query)
+                const errorCode = hashParams.get('error') || queryParams.get('error');
+                const errorDescription =
+                    hashParams.get('error_description') || queryParams.get('error_description');
+                if (errorCode) {
+                    setMessage(
+                        (errorDescription && decodeURIComponent(errorDescription.replace(/\+/g, ' '))) ||
+                        'Doğrulama bağlantısı geçersiz veya süresi dolmuş.'
+                    );
+                    setStatus('error');
+                    return;
+                }
+
+                // 1) PKCE akışı: ?code=...
+                const code = queryParams.get('code');
+                if (code) {
+                    const { error } = await supabase.auth.exchangeCodeForSession(code);
+                    if (error) throw error;
+                    finishSuccess(type);
+                    return;
+                }
+
+                // 2) token_hash + type akışı (verifyOtp)
+                const tokenHash = queryParams.get('token_hash') || hashParams.get('token_hash');
+                if (tokenHash && type) {
+                    const { error } = await supabase.auth.verifyOtp({
+                        type: type as any,
+                        token_hash: tokenHash,
+                    });
+                    if (error) throw error;
+                    finishSuccess(type);
+                    return;
+                }
+
+                // 3) Implicit akış: #access_token & #refresh_token (SDK henüz tüketmediyse)
                 const accessToken = hashParams.get('access_token');
                 const refreshToken = hashParams.get('refresh_token');
-                const type = hashParams.get('type');
-
                 if (accessToken && refreshToken) {
-                    // Set the session with the tokens
                     const { error } = await supabase.auth.setSession({
                         access_token: accessToken,
                         refresh_token: refreshToken,
                     });
-
                     if (error) throw error;
+                    finishSuccess(type);
+                    return;
+                }
 
-                    // Determine the message based on type
-                    if (type === 'signup' || type === 'email_confirmation') {
-                        setMessage('E-posta adresiniz başarıyla onaylandı!');
-                    } else if (type === 'recovery') {
-                        setMessage('Şifre sıfırlama bağlantısı doğrulandı!');
-                        // Redirect to password reset page
-                        setTimeout(() => navigate('/reset-password'), 2000);
-                        setStatus('success');
-                        return;
-                    } else if (type === 'email_change') {
-                        setMessage('E-posta adresiniz başarıyla değiştirildi!');
-                    } else {
-                        setMessage('Hesabınız başarıyla doğrulandı!');
-                    }
-
-                    setStatus('success');
+                // 4) Hash, SDK tarafından otomatik tüketilmiş olabilir (detectSessionInUrl).
+                //    Bu durumda oturum varsa bu BAŞARILI bir doğrulamadır — "zaten doğrulanmış" deme.
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    finishSuccess(type);
                 } else {
-                    // No tokens, might be an error or invalid link
-                    const error = hashParams.get('error');
-                    const errorDescription = hashParams.get('error_description');
-
-                    if (error) {
-                        setMessage(errorDescription || 'Doğrulama işlemi başarısız oldu.');
-                        setStatus('error');
-                    } else {
-                        // Try to get session - user might already be logged in
-                        const { data: { session } } = await supabase.auth.getSession();
-                        if (session) {
-                            setMessage('Hesabınız zaten doğrulanmış!');
-                            setStatus('success');
-                        } else {
-                            setMessage('Geçersiz veya süresi dolmuş bağlantı.');
-                            setStatus('error');
-                        }
-                    }
+                    setMessage('Doğrulama bağlantısı geçersiz veya süresi dolmuş. Lütfen tekrar deneyin.');
+                    setStatus('error');
                 }
             } catch (error: any) {
                 console.error('Auth callback error:', error);
-                setMessage(error.message || 'Bir hata oluştu.');
+                setMessage(error?.message || 'Doğrulama sırasında bir hata oluştu.');
                 setStatus('error');
             }
         };

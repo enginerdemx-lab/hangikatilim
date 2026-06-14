@@ -1,0 +1,6 @@
+/* Tailwind giriş dosyası — build adımında derlenir (eski cdn.tailwindcss.com yerine).
+   index.tsx içinde import edilir. Genel/özel CSS (scrollbar, body) index.html'deki
+   <style> bloğunda kaldı; burada yalnızca Tailwind katmanları var. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
